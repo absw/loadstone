@@ -17,7 +17,7 @@ features = ["stm32f429", "rt"]
 
 [[bin]]
 name = "app"
-test = false
+test = true
 bench = false
 
 [profile.release]
