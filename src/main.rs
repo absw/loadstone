@@ -5,35 +5,40 @@
 #[cfg(not(test))]
 extern crate panic_semihosting; // logs messages to the host stderr
 
+pub mod drivers;
+pub mod hal;
+
 use cortex_m_rt::entry;
-use stm32f4::stm32f429;
 use cortex_m_semihosting::hprintln;
+use stm32f4::stm32f429;
+use crate::drivers::gpio::GpioExt;
+use crate::hal::gpio::OutputPin;
+
 
 #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
-    let peripherals = stm32f429::Peripherals::take().unwrap();
-
-    peripherals.RCC.ahb1enr.write(|w| w.gpioben().bit(true));
-    peripherals.GPIOB.moder.write(|w| w.moder7().bits(0b01));
+    let mut peripherals = stm32f429::Peripherals::take().unwrap();
+    let mut gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+    let mut led_pin = gpiob.pb7.into_push_pull_output(&mut gpiob.moder, &mut gpiob.otyper);
 
     loop {
         cortex_m::asm::delay(2_000_000);
         hprintln!("Turning LED on").unwrap();
-        peripherals.GPIOB.bsrr.write(|w| w.bs7().bit(true));
+        led_pin.set_high();
         cortex_m::asm::delay(2_000_000);
         hprintln!("Turning LED off").unwrap();
-        peripherals.GPIOB.bsrr.write(|w| w.br7().bit(true));
+        led_pin.set_low();
     }
 }
 
 #[cfg(test)]
 mod test {
-  use super::*;
+    use super::*;
 
-  #[test]
-  fn foo() {
-    println!("tests work!");
-    assert!(2 == 3);
-  }
+    #[test]
+    fn foo() {
+        println!("tests work!");
+        assert!(3 == 3);
+    }
 }
