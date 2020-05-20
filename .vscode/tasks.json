@@ -1,5 +1,5 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558 
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
@@ -12,7 +12,7 @@
             "label": "cargo build",
             "type": "process",
             "command": "cargo",
-            "args": ["build"],
+            "args": ["build", "--target", "thumbv7em-none-eabi"],
             "problemMatcher": [
                 "$rustc"
             ],
@@ -25,27 +25,17 @@
             "label": "cargo build --release",
             "type": "process",
             "command": "cargo",
-            "args": ["build", "--release"],
+            "args": ["build", "--target", "thumbv7em-none-eabi", "--release"],
             "problemMatcher": [
                 "$rustc"
             ],
             "group": "build"
         },
         {
-            "label": "cargo build --examples",
+            "label": "cargo test",
             "type": "process",
             "command": "cargo",
-            "args": ["build","--examples"],
-            "problemMatcher": [
-                "$rustc"
-            ],
-            "group": "build"
-        },
-        {
-            "label": "cargo build --examples --release",
-            "type": "process",
-            "command": "cargo",
-            "args": ["build","--examples", "--release"],
+            "args": ["test"],
             "problemMatcher": [
                 "$rustc"
             ],
