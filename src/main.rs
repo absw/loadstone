@@ -5,8 +5,10 @@
 #[cfg(not(test))]
 extern crate panic_semihosting; // logs messages to the host stderr
 
+#[macro_use]
 pub mod drivers;
 pub mod hal;
+pub mod pin_configuration;
 
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
@@ -14,13 +16,12 @@ use stm32f4::stm32f429;
 use crate::drivers::gpio::GpioExt;
 use crate::hal::gpio::OutputPin;
 
-
 #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
     let mut peripherals = stm32f429::Peripherals::take().unwrap();
     let mut gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-    let mut led_pin = gpiob.pb7.into_push_pull_output(&mut gpiob.moder, &mut gpiob.otyper);
+    let mut led_pin = gpiob.pb7;
 
     loop {
         cortex_m::asm::delay(2_000_000);
