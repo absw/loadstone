@@ -10,11 +10,10 @@ pub mod drivers;
 pub mod hal;
 pub mod pin_configuration;
 
+use crate::{drivers::gpio::GpioExt, hal::gpio::OutputPin};
 use cortex_m_rt::entry;
 use cortex_m_semihosting::hprintln;
 use stm32f4::stm32f429;
-use crate::drivers::gpio::GpioExt;
-use crate::hal::gpio::OutputPin;
 
 #[cfg(not(test))]
 #[entry]

@@ -31,10 +31,43 @@ pub struct PushPull;
 /// Open drain output (type state)
 pub struct OpenDrain;
 
+/// Alternate function 0 (type state)
+pub struct AF0;
+/// Alternate function 1 (type state)
+pub struct AF1;
+/// Alternate function 2 (type state)
+pub struct AF2;
+/// Alternate function 3 (type state)
+pub struct AF3;
+/// Alternate function 4 (type state)
+pub struct AF4;
+/// Alternate function 5 (type state)
+pub struct AF5;
+/// Alternate function 6 (type state)
+pub struct AF6;
+/// Alternate function 7 (type state)
+pub struct AF7;
+/// Alternate function 8 (type state)
+pub struct AF8;
+/// Alternate function 9 (type state)
+pub struct AF9;
+/// Alternate function 10 (type state)
+pub struct AF10;
+/// Alternate function 11 (type state)
+pub struct AF11;
+/// Alternate function 12 (type state)
+pub struct AF12;
+/// Alternate function 13 (type state)
+pub struct AF13;
+/// Alternate function 14 (type state)
+pub struct AF14;
+/// Alternate function 15 (type state)
+pub struct AF15;
+
 #[macro_export]
 macro_rules! gpio {
     ($GPIOX:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $PXx:ident, [
-        $($PXi:ident: ($pxi:ident, $i:expr, $default_mode:ty), [ $($alias:ident)+ ], )+
+        $($PXi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $AFR:ident), [ $($alias:ident)* ], )+
     ]) => {
         /// GPIO
         pub mod $gpiox {
@@ -42,13 +75,14 @@ macro_rules! gpio {
             use crate::hal::gpio::OutputPin;
             use stm32f4::stm32f429::{self, $gpiox, $GPIOX};
 
-            use crate::drivers::gpio::{
-                Floating, GpioExt, Input, OpenDrain, Output,
-                PullDown, PullUp, PushPull,
-            };
+            use crate::drivers::gpio::*;
 
             /// GPIO parts
             pub struct Parts {
+                /// Opaque AFRH register
+                pub afrh: AFRH,
+                /// Opaque AFRL register
+                pub afrl: AFRL,
                 /// Opaque MODER register
                 pub moder: MODER,
                 /// Opaque OTYPER register
@@ -70,13 +104,41 @@ macro_rules! gpio {
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());
 
                     Parts {
+                        afrh: AFRH { _0: () },
+                        afrl: AFRL { _0: () },
                         moder: MODER { _0: () },
                         otyper: OTYPER { _0: () },
                         pupdr: PUPDR { _0: () },
                         $(
-                            $pxi: $PXi::<$default_mode>::new(&mut MODER { _0: () }, &mut PUPDR { _0: ()}, &mut OTYPER {_0: ()}),
+                            $pxi: $PXi::<$default_mode>::new(&mut MODER { _0: () },
+                                                             &mut PUPDR { _0: ()},
+                                                             &mut OTYPER {_0: ()},
+                                                             &mut $AFR {_0: ()},
+                                                             ),
                         )+
                     }
+                }
+            }
+
+            /// Opaque AFRL register
+            pub struct AFRL {
+                _0: (),
+            }
+
+            impl AFRL {
+                pub(crate) fn afr(&mut self) -> &$gpiox::AFRL {
+                    unsafe { &(*$GPIOX::ptr()).afrl }
+                }
+            }
+
+            /// Opaque AFRH register
+            pub struct AFRH {
+                _0: (),
+            }
+
+            impl AFRH {
+                pub(crate) fn afr(&mut self) -> &$gpiox::AFRH {
+                    unsafe { &(*$GPIOX::ptr()).afrh }
                 }
             }
 
@@ -143,14 +205,14 @@ macro_rules! gpio {
 
                 impl $PXi<Input<Floating>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER) -> Self {
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
                         $PXi { _mode: PhantomData }
                     }
                 }
 
                 impl $PXi<Output<PushPull>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER) -> Self {
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
                         pin.into_push_pull_output(_moder, _otyper)
                     }
@@ -158,7 +220,7 @@ macro_rules! gpio {
 
                 impl $PXi<Input<PullDown>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER) -> Self {
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
                         pin.into_pull_down_input(_moder, _pupdr)
                     }
@@ -166,7 +228,7 @@ macro_rules! gpio {
 
                 impl $PXi<Input<PullUp>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER) -> Self {
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
                         pin.into_pull_up_input(_moder, _pupdr)
                     }
@@ -174,16 +236,46 @@ macro_rules! gpio {
 
                 impl $PXi<Output<OpenDrain>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER) -> Self {
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
                         pin.into_open_drain_output(_moder, _otyper)
                     }
                 }
 
+                impl $PXi<AF7> {
+                    #[allow(dead_code)]
+                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                        let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
+                        pin.into_af7(_moder, _afr)
+                    }
+                }
+
                 // Alias the type with any function-specific names.
-                $( type $alias = $PXi<$default_mode>; )+
+                $( type $alias = $PXi<$default_mode>; )*
 
                 impl<MODE> $PXi<MODE> {
+                    pub fn into_af7(
+                        self,
+                        moder: &mut MODER,
+                        afr: &mut $AFR,
+                    ) -> $PXi<AF7> {
+                        let offset = 2 * $i;
+
+                        // alternate function mode
+                        let mode = 0b10;
+                        moder.moder().modify(|r, w| unsafe {
+                            w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
+                        });
+
+                        let af = 7;
+                        let offset = 4 * ($i % 8);
+                        afr.afr().modify(|r, w| unsafe {
+                            w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                        });
+
+                        $PXi { _mode: PhantomData }
+                    }
+
                     /// Configures the pin to operate as a floating input pin
                     pub fn into_floating_input(
                         self,
