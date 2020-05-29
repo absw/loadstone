@@ -28,5 +28,5 @@ macro_rules! uprintln {
     ($serial:expr, $arg:tt) => {
         uprint!($serial, $arg);
         uprint!($serial, "\n");
-    }
+    };
 }

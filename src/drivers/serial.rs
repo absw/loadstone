@@ -1,17 +1,16 @@
-use stm32f4::stm32f429::{USART1,RCC};
+use stm32f4::stm32f429::{RCC, USART1};
 
-use core::marker::PhantomData;
-use core::ptr;
+use core::{marker::PhantomData, ptr};
 
-use crate::hal::serial;
-use crate::drivers::rcc;
+use crate::{drivers::rcc, hal::serial};
 use nb;
 
-use crate::drivers::gpio::*;
-use crate::pin_configuration::gpioa::*;
+use crate::{drivers::gpio::*, pin_configuration::gpioa::*};
 
 #[doc(hidden)]
-mod private { pub trait Sealed {} }
+mod private {
+    pub trait Sealed {}
+}
 
 pub unsafe trait TxPin<USART>: private::Sealed {}
 pub unsafe trait RxPin<USART>: private::Sealed {}
@@ -47,8 +46,7 @@ pub enum Event {
 }
 
 pub mod config {
-    use crate::hal::time::Bps;
-    use crate::hal::time::U32Ext;
+    use crate::hal::time::{Bps, U32Ext};
 
     pub enum WordLength {
         DataBits8,

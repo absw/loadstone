@@ -1,6 +1,10 @@
-use crate::stm32f429::rcc::cfgr::{HPRE_A, SW_A};
-use crate::stm32f429::RCC;
-use crate::hal::time::Hertz;
+use crate::{
+    hal::time::Hertz,
+    stm32f429::{
+        rcc::cfgr::{HPRE_A, SW_A},
+        RCC,
+    },
+};
 
 /// Extension trait that constrains the `RCC` peripheral, wrapping it in a higher level abstraction
 pub trait RccExt {
@@ -103,11 +107,7 @@ impl CFGR {
         let pllm_min = (pllsrcclk + 1_999_999) / 2_000_000;
         let pllm_max = pllsrcclk / 1_000_000;
 
-        let target_freq = if self.pll48clk {
-            48_000_000
-        } else {
-            sysclk * sysclk_div
-        };
+        let target_freq = if self.pll48clk { 48_000_000 } else { sysclk * sysclk_div };
 
         // Find the lowest pllm value that minimize the difference between
         // target frequency and the real vco_out frequency.
@@ -152,11 +152,7 @@ impl CFGR {
             w.pllsrc().bit(self.hse.is_some())
         });
 
-        let real_sysclk = if sysclk_on_pll {
-            vco_in * plln / sysclk_div
-        } else {
-            sysclk
-        };
+        let real_sysclk = if sysclk_on_pll { vco_in * plln / sysclk_div } else { sysclk };
         (true, sysclk_on_pll, real_sysclk, Some(Hertz(pll48clk)))
     }
 
@@ -204,9 +200,7 @@ impl CFGR {
         let hclk = sysclk / hpre_div;
         let (pclk1_max, pclk2_max) = (45_000_000, 90_000_000);
 
-        let pclk1 = self
-            .pclk1
-            .unwrap_or_else(|| core::cmp::min(pclk1_max, hclk));
+        let pclk1 = self.pclk1.unwrap_or_else(|| core::cmp::min(pclk1_max, hclk));
         let (ppre1_bits, ppre1) = match (hclk + pclk1 - 1) / pclk1 {
             0 => unreachable!(),
             1 => (0b000, 1),
@@ -221,9 +215,7 @@ impl CFGR {
 
         assert!(pclk1 <= pclk1_max);
 
-        let pclk2 = self
-            .pclk2
-            .unwrap_or_else(|| core::cmp::min(pclk2_max, hclk));
+        let pclk2 = self.pclk2.unwrap_or_else(|| core::cmp::min(pclk2_max, hclk));
         let (ppre2_bits, ppre2) = match (hclk + pclk2 - 1) / pclk2 {
             0 => unreachable!(),
             1 => (0b000, 1),
@@ -256,12 +248,7 @@ impl CFGR {
 
         // Set scaling factors
         rcc.cfgr.modify(|_, w| unsafe {
-            w.ppre2()
-                .bits(ppre2_bits)
-                .ppre1()
-                .bits(ppre1_bits)
-                .hpre()
-                .variant(hpre_bits)
+            w.ppre2().bits(ppre2_bits).ppre1().bits(ppre1_bits).hpre().variant(hpre_bits)
         });
 
         // Wait for the new prescalers to kick in
@@ -313,39 +300,25 @@ pub struct Clocks {
 
 impl Clocks {
     /// Returns the frequency of the AHB1
-    pub fn hclk(&self) -> Hertz {
-        self.hclk
-    }
+    pub fn hclk(&self) -> Hertz { self.hclk }
 
     /// Returns the frequency of the APB1
-    pub fn pclk1(&self) -> Hertz {
-        self.pclk1
-    }
+    pub fn pclk1(&self) -> Hertz { self.pclk1 }
 
     /// Returns the frequency of the APB2
-    pub fn pclk2(&self) -> Hertz {
-        self.pclk2
-    }
+    pub fn pclk2(&self) -> Hertz { self.pclk2 }
 
     /// Returns the prescaler of the APB1
-    pub fn ppre1(&self) -> u8 {
-        self.ppre1
-    }
+    pub fn ppre1(&self) -> u8 { self.ppre1 }
 
     /// Returns the prescaler of the APB2
-    pub fn ppre2(&self) -> u8 {
-        self.ppre2
-    }
+    pub fn ppre2(&self) -> u8 { self.ppre2 }
 
     /// Returns the system (core) frequency
-    pub fn sysclk(&self) -> Hertz {
-        self.sysclk
-    }
+    pub fn sysclk(&self) -> Hertz { self.sysclk }
 
     /// Returns the frequency of the PLL48 clock line
-    pub fn pll48clk(&self) -> Option<Hertz> {
-        self.pll48clk
-    }
+    pub fn pll48clk(&self) -> Option<Hertz> { self.pll48clk }
 
     /// Returns true if the PLL48 clock is within USB
     /// specifications. It is required to use the USB functionality.

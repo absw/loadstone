@@ -13,11 +13,8 @@ pub mod hal;
 pub mod pin_configuration;
 
 use crate::{
-    drivers::gpio::GpioExt,
-    hal::gpio::OutputPin,
-    hal::serial::Write,
-    drivers::rcc::RccExt,
-    drivers::serial
+    drivers::{gpio::GpioExt, rcc::RccExt, serial},
+    hal::{gpio::OutputPin, serial::Write},
 };
 use cortex_m_rt::entry;
 use stm32f4::stm32f429;
@@ -29,7 +26,10 @@ fn main() -> ! {
     let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
     let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
 
-    let clock_configuration = peripherals.RCC.constrain().cfgr
+    let clock_configuration = peripherals
+        .RCC
+        .constrain()
+        .cfgr
         .sysclk(hal::time::MegaHertz(180))
         .hclk(hal::time::MegaHertz(84))
         .pclk1(hal::time::MegaHertz(42))
@@ -42,7 +42,9 @@ fn main() -> ! {
         peripherals.USART1,
         (gpioa.pa9, gpioa.pa10),
         serial::config::Config::default().baudrate(hal::time::Bps(115_200)),
-        clocks).unwrap();
+        clocks,
+    )
+    .unwrap();
 
     let mut led_pin = gpiob.pb7;
     loop {
