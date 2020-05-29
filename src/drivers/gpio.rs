@@ -251,7 +251,7 @@ macro_rules! gpio {
                 }
 
                 // Alias the type with any function-specific names.
-                $( type $alias = $PXi<$default_mode>; )*
+                $( pub type $alias = $PXi<$default_mode>; )*
 
                 impl<MODE> $PXi<MODE> {
                     pub fn into_af7(

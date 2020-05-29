@@ -160,6 +160,23 @@ impl CFGR {
         (true, sysclk_on_pll, real_sysclk, Some(Hertz(pll48clk)))
     }
 
+    fn flash_setup(sysclk: u32) {
+        use crate::stm32f429::FLASH;
+
+        let flash_latency_step = 30_000_000;
+
+        unsafe {
+            let flash = &(*FLASH::ptr());
+            // Adjust flash wait states
+            flash.acr.modify(|_, w| {
+                w.latency().bits(((sysclk - 1) / flash_latency_step) as u8);
+                w.prften().set_bit();
+                w.icen().set_bit();
+                w.dcen().set_bit()
+            })
+        }
+    }
+
     pub fn freeze(self) -> Clocks {
         let rcc = unsafe { &*RCC::ptr() };
 
@@ -220,6 +237,8 @@ impl CFGR {
         let pclk2 = hclk / u32::from(ppre2);
 
         assert!(pclk2 <= pclk2_max);
+
+        Self::flash_setup(sysclk);
 
         if self.hse.is_some() {
             // enable HSE and wait for it to be ready

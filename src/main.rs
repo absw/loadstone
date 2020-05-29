@@ -11,9 +11,14 @@ pub mod drivers;
 pub mod hal;
 pub mod pin_configuration;
 
-use crate::{drivers::gpio::GpioExt, hal::gpio::OutputPin};
+use crate::{
+    drivers::gpio::GpioExt,
+    hal::gpio::OutputPin,
+    hal::serial::Write,
+    drivers::rcc::RccExt,
+    drivers::serial
+};
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 use stm32f4::stm32f429;
 
 #[cfg(not(test))]
@@ -21,14 +26,30 @@ use stm32f4::stm32f429;
 fn main() -> ! {
     let mut peripherals = stm32f429::Peripherals::take().unwrap();
     let mut gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-    let mut led_pin = gpiob.pb7;
+    let mut gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
 
+    let clock_configuration = peripherals.RCC.constrain().cfgr
+        .sysclk(hal::time::MegaHertz(180))
+        .hclk(hal::time::MegaHertz(84))
+        .pclk1(hal::time::MegaHertz(42))
+        .pclk2(hal::time::MegaHertz(84))
+        .require_pll48clk();
+
+    let clocks = clock_configuration.freeze();
+
+    let mut serial = serial::Serial::usart1(
+        peripherals.USART1,
+        (gpioa.pa9, gpioa.pa10),
+        serial::config::Config::default().baudrate(hal::time::Bps(115_200)),
+        clocks).unwrap();
+
+    let mut led_pin = gpiob.pb7;
     loop {
-        cortex_m::asm::delay(2_000_000);
-        hprintln!("Turning LED on").unwrap();
+        cortex_m::asm::delay(20_000_000);
         led_pin.set_high();
-        cortex_m::asm::delay(2_000_000);
-        hprintln!("Turning LED off").unwrap();
+        "I switched the led off!".as_bytes().iter().for_each(|&b| nb::block!(serial.write(b)).unwrap());
+        cortex_m::asm::delay(20_000_000);
+        "I switched the led on!".as_bytes().iter().for_each(|&b| nb::block!(serial.write(b)).unwrap());
         led_pin.set_low();
     }
 }

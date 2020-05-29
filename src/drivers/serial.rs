@@ -1,4 +1,4 @@
-use stm32f4::stm32f429::{USART1, RCC};
+use stm32f4::stm32f429::{USART1,RCC};
 
 use core::marker::PhantomData;
 use core::ptr;
