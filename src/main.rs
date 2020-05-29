@@ -8,6 +8,7 @@ extern crate panic_semihosting; // logs messages to the host stderr
 
 #[macro_use]
 pub mod drivers;
+#[macro_use]
 pub mod hal;
 pub mod pin_configuration;
 
@@ -47,9 +48,9 @@ fn main() -> ! {
     loop {
         cortex_m::asm::delay(20_000_000);
         led_pin.set_high();
-        "I switched the led off!".as_bytes().iter().for_each(|&b| nb::block!(serial.write(b)).unwrap());
+        uprintln!(serial, "I switched the led off!");
         cortex_m::asm::delay(20_000_000);
-        "I switched the led on!".as_bytes().iter().for_each(|&b| nb::block!(serial.write(b)).unwrap());
+        uprintln!(serial, "I switched the led on!");
         led_pin.set_low();
     }
 }
