@@ -26,8 +26,8 @@ use stm32f4::stm32f429;
 #[entry]
 fn main() -> ! {
     let mut peripherals = stm32f429::Peripherals::take().unwrap();
-    let mut gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-    let mut gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
+    let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+    let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
 
     let clock_configuration = peripherals.RCC.constrain().cfgr
         .sysclk(hal::time::MegaHertz(180))

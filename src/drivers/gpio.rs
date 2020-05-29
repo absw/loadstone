@@ -126,6 +126,7 @@ macro_rules! gpio {
             }
 
             impl AFRL {
+                #[allow(dead_code)]
                 pub(crate) fn afr(&mut self) -> &$gpiox::AFRL {
                     unsafe { &(*$GPIOX::ptr()).afrl }
                 }
@@ -137,6 +138,7 @@ macro_rules! gpio {
             }
 
             impl AFRH {
+                #[allow(dead_code)]
                 pub(crate) fn afr(&mut self) -> &$gpiox::AFRH {
                     unsafe { &(*$GPIOX::ptr()).afrh }
                 }
@@ -251,6 +253,7 @@ macro_rules! gpio {
                 }
 
                 // Alias the type with any function-specific names.
+                 #[allow(dead_code)]
                 $( pub type $alias = $PXi<$default_mode>; )*
 
                 impl<MODE> $PXi<MODE> {
