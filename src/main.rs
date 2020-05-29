@@ -1,3 +1,4 @@
+#![feature(never_type)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
