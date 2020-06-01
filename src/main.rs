@@ -24,7 +24,7 @@ use stm32f4::stm32f429;
 fn main() -> ! {
     let mut peripherals = stm32f429::Peripherals::take().unwrap();
     let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-    let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
+    let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
 
     let clock_configuration = peripherals
         .RCC
@@ -38,9 +38,9 @@ fn main() -> ! {
 
     let clocks = clock_configuration.freeze();
 
-    let mut serial = serial::Serial::usart1(
-        peripherals.USART1,
-        (gpioa.pa9, gpioa.pa10),
+    let mut serial = serial::Serial::usart3(
+        peripherals.USART3,
+        (gpiod.pd8, gpiod.pd9),
         serial::config::Config::default().baudrate(hal::time::Bps(115_200)),
         clocks,
     )

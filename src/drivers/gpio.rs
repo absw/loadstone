@@ -1,5 +1,4 @@
 use stm32f4::stm32f429;
-
 use core::marker::PhantomData;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
@@ -66,7 +65,7 @@ pub struct AF15;
 
 #[macro_export]
 macro_rules! gpio {
-    ($GPIOX:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $PXx:ident, [
+    ($GPIOX:ident, $gpiox:ident, $gpio_svd_mod:ident, $enable_pin:ident, $reset_pin:ident, $PXx:ident, [
         $($PXi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $AFR:ident), [ $($alias:ident)* ], )+
     ]) => {
         /// GPIO
@@ -74,7 +73,7 @@ macro_rules! gpio {
             use core::marker::PhantomData;
             use core::ops::Deref;
             use crate::hal::gpio::OutputPin;
-            use stm32f4::stm32f429::{self, $gpiox, $GPIOX};
+            use stm32f4::stm32f429::{self, $gpio_svd_mod, $GPIOX};
 
             use crate::drivers::gpio::*;
 
@@ -127,7 +126,7 @@ macro_rules! gpio {
             }
 
             impl Deref for AFRL {
-                type Target = $gpiox::AFRL;
+                type Target = $gpio_svd_mod::AFRL;
 
                 fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).afrl }
@@ -140,7 +139,7 @@ macro_rules! gpio {
             }
 
             impl Deref for AFRH {
-                type Target = $gpiox::AFRH;
+                type Target = $gpio_svd_mod::AFRH;
 
                 fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).afrh }
@@ -153,7 +152,7 @@ macro_rules! gpio {
             }
 
             impl Deref for MODER {
-                type Target = $gpiox::MODER;
+                type Target = $gpio_svd_mod::MODER;
 
                 fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).moder }
@@ -166,7 +165,7 @@ macro_rules! gpio {
             }
 
             impl Deref for OTYPER {
-                type Target = $gpiox::OTYPER;
+                type Target = $gpio_svd_mod::OTYPER;
 
                 fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).otyper }
@@ -179,7 +178,7 @@ macro_rules! gpio {
             }
 
             impl Deref for PUPDR {
-                type Target = $gpiox::PUPDR;
+                type Target = $gpio_svd_mod::PUPDR;
 
                 fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).pupdr }

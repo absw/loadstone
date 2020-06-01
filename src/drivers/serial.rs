@@ -1,11 +1,11 @@
-use stm32f4::stm32f429::{RCC, USART1};
+use stm32f4::stm32f429::{RCC, USART3};
 
 use core::{marker::PhantomData, ptr};
 
 use crate::{drivers::rcc, hal::serial};
 use nb;
 
-use crate::{drivers::gpio::*, pin_configuration::gpioa::*};
+use crate::{drivers::gpio::*, pin_configuration::gpiod::*};
 
 #[doc(hidden)]
 mod private {
@@ -15,10 +15,10 @@ mod private {
 pub unsafe trait TxPin<USART>: private::Sealed {}
 pub unsafe trait RxPin<USART>: private::Sealed {}
 
-unsafe impl TxPin<USART1> for PA9<AF7> {}
-impl private::Sealed for PA9<AF7> {}
-unsafe impl RxPin<USART1> for PA10<AF7> {}
-impl private::Sealed for PA10<AF7> {}
+unsafe impl TxPin<USART3> for PD8<AF7> {}
+impl private::Sealed for PD8<AF7> {}
+unsafe impl RxPin<USART3> for PD9<AF7> {}
+impl private::Sealed for PD9<AF7> {}
 
 /// Serial error
 #[derive(Debug)]
@@ -389,5 +389,5 @@ macro_rules! instances {
 }
 
 instances! {
-    USART1: (usart1, apb2enr, usart1en, pclk2),
+    USART3: (usart3, apb1enr, usart3en, pclk1),
 }
