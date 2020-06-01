@@ -72,6 +72,7 @@ macro_rules! gpio {
         /// GPIO
         pub mod $gpiox {
             use core::marker::PhantomData;
+            use core::ops::Deref;
             use crate::hal::gpio::OutputPin;
             use stm32f4::stm32f429::{self, $gpiox, $GPIOX};
 
@@ -125,9 +126,10 @@ macro_rules! gpio {
                 _0: (),
             }
 
-            impl AFRL {
-                #[allow(dead_code)]
-                pub(crate) fn afr(&mut self) -> &$gpiox::AFRL {
+            impl Deref for AFRL {
+                type Target = $gpiox::AFRL;
+
+                fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).afrl }
                 }
             }
@@ -137,9 +139,10 @@ macro_rules! gpio {
                 _0: (),
             }
 
-            impl AFRH {
-                #[allow(dead_code)]
-                pub(crate) fn afr(&mut self) -> &$gpiox::AFRH {
+            impl Deref for AFRH {
+                type Target = $gpiox::AFRH;
+
+                fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).afrh }
                 }
             }
@@ -149,8 +152,10 @@ macro_rules! gpio {
                 _0: (),
             }
 
-            impl MODER {
-                pub(crate) fn moder(&mut self) -> &$gpiox::MODER {
+            impl Deref for MODER {
+                type Target = $gpiox::MODER;
+
+                fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).moder }
                 }
             }
@@ -160,8 +165,10 @@ macro_rules! gpio {
                 _0: (),
             }
 
-            impl OTYPER {
-                pub(crate) fn otyper(&mut self) -> &$gpiox::OTYPER {
+            impl Deref for OTYPER {
+                type Target = $gpiox::OTYPER;
+
+                fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).otyper }
                 }
             }
@@ -171,8 +178,10 @@ macro_rules! gpio {
                 _0: (),
             }
 
-            impl PUPDR {
-                pub(crate) fn pupdr(&mut self) -> &$gpiox::PUPDR {
+            impl Deref for PUPDR {
+                type Target = $gpiox::PUPDR;
+
+                fn deref(&self) -> &Self::Target {
                     unsafe { &(*$GPIOX::ptr()).pupdr }
                 }
             }
@@ -266,13 +275,13 @@ macro_rules! gpio {
 
                         // alternate function mode
                         let mode = 0b10;
-                        moder.moder().modify(|r, w| unsafe {
+                        (*moder).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
                         });
 
                         let af = 7;
                         let offset = 4 * ($i % 8);
-                        afr.afr().modify(|r, w| unsafe {
+                        (*afr).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
                         });
 
@@ -288,14 +297,10 @@ macro_rules! gpio {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        (*moder).modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
 
                         // no pull-up or pull-down
-                        pupdr
-                            .pupdr()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        (*pupdr).modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
 
                         $PXi { _mode: PhantomData }
                     }
@@ -309,12 +314,10 @@ macro_rules! gpio {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        (*moder).modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
 
                         // pull-down
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        (*pupdr).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b11 << offset)) | (0b10 << offset))
                         });
 
@@ -330,12 +333,10 @@ macro_rules! gpio {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        (*moder).modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
 
                         // pull-up
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        (*pupdr).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b11 << offset)) | (0b01 << offset))
                         });
 
@@ -352,14 +353,12 @@ macro_rules! gpio {
 
                         // general purpose output mode
                         let mode = 0b01;
-                        moder.moder().modify(|r, w| unsafe {
+                        (*moder).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
                         });
 
                         // open drain output
-                        otyper
-                            .otyper()
-                            .modify(|r, w| unsafe { w.bits(r.bits() | (0b1 << $i)) });
+                        (*otyper).modify(|r, w| unsafe { w.bits(r.bits() | (0b1 << $i)) });
 
                         $PXi { _mode: PhantomData }
                     }
@@ -374,14 +373,12 @@ macro_rules! gpio {
 
                         // general purpose output mode
                         let mode = 0b01;
-                        moder.moder().modify(|r, w| unsafe {
+                        (*moder).modify(|r, w| unsafe {
                             w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
                         });
 
                         // push pull output
-                        otyper
-                            .otyper()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b1 << $i)) });
+                        (*otyper).modify(|r, w| unsafe { w.bits(r.bits() & !(0b1 << $i)) });
 
                         $PXi { _mode: PhantomData }
                     }
@@ -392,7 +389,7 @@ macro_rules! gpio {
                     pub fn internal_pull_up(&mut self, pupdr: &mut PUPDR, on: bool) {
                         let offset = 2 * $i;
 
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        (*pupdr).modify(|r, w| unsafe {
                             w.bits(
                                 (r.bits() & !(0b11 << offset)) | if on {
                                     0b01 << offset
