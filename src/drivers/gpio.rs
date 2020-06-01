@@ -5,10 +5,10 @@ use core::marker::PhantomData;
 /// Extension trait to split a GPIO peripheral in independent pins and registers
 pub trait GpioExt {
     /// The type to split the GPIO into
-    type Parts;
+    type GpioWrapper;
 
     /// Splits the GPIO block into independent pins and registers
-    fn split(self, rcc: &mut stm32f429::RCC) -> Self::Parts;
+    fn split(self, rcc: &mut stm32f429::RCC) -> Self::GpioWrapper;
 }
 
 /// Input mode (type state)
@@ -79,7 +79,7 @@ macro_rules! gpio {
             use crate::drivers::gpio::*;
 
             /// GPIO parts
-            pub struct Parts {
+            pub struct GpioWrapper {
                 /// Opaque AFRH register
                 pub afrh: AFRH,
                 /// Opaque AFRL register
@@ -97,14 +97,14 @@ macro_rules! gpio {
             }
 
             impl GpioExt for $GPIOX {
-                type Parts = Parts;
+                type GpioWrapper = GpioWrapper;
 
-                fn split(self, rcc: &mut stm32f429::RCC) -> Parts {
+                fn split(self, rcc: &mut stm32f429::RCC) -> GpioWrapper {
                     rcc.ahb1enr.modify(|_, w| w.$enable_pin().enabled());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().set_bit());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());
 
-                    Parts {
+                    GpioWrapper {
                         afrh: AFRH { _0: () },
                         afrl: AFRL { _0: () },
                         moder: MODER { _0: () },
