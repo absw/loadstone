@@ -1,27 +1,21 @@
-#![feature(never_type)]
-#![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
-#[cfg(not(test))]
-extern crate panic_semihosting; // logs messages to the host stderr
-
-#[macro_use]
-pub mod drivers;
-#[macro_use]
-pub mod hal;
-pub mod pin_configuration;
-
-use crate::{
-    drivers::{gpio::GpioExt, rcc::RccExt, serial},
-    hal::{gpio::OutputPin, serial::Write},
-};
 use cortex_m_rt::entry;
-use stm32f4::stm32f429;
 
-#[cfg(not(test))]
+#[cfg(not(any(test, doctest)))]
 #[entry]
 fn main() -> ! {
+    use secure_bootloader_lib;
+    use stm32f4::stm32f429;
+
+    use secure_bootloader_lib::{
+        drivers::{gpio::GpioExt, rcc::RccExt, serial},
+        hal,
+        hal::{gpio::OutputPin, serial::Write},
+        uprint, uprintln,
+    };
+
     let mut peripherals = stm32f429::Peripherals::take().unwrap();
     let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
     let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
@@ -54,16 +48,5 @@ fn main() -> ! {
         cortex_m::asm::delay(20_000_000);
         uprintln!(serial, "I switched the led on!");
         led_pin.set_low();
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn foo() {
-        println!("tests work!");
-        assert!(3 == 3);
     }
 }

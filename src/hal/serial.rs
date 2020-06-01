@@ -35,7 +35,6 @@ macro_rules! uprintln {
 
 #[cfg(test)]
 mod test {
-
     #[derive(Debug, Default)]
     struct MockUsart {
         pub mock_value_to_read: u8,
@@ -55,9 +54,7 @@ mod test {
         type Error = ();
 
         /// Reads a single word
-        fn read(&mut self) -> nb::Result<u8, Self::Error> {
-            Ok(self.mock_value_to_read)
-        }
+        fn read(&mut self) -> nb::Result<u8, Self::Error> { Ok(self.mock_value_to_read) }
     }
 
     use super::*;
@@ -67,7 +64,8 @@ mod test {
         // Given
         let mut mock_usart = MockUsart::default();
         let arbitrary_message = "Hello world!";
-        let arbitrary_message_as_bytes: Vec<u8> = arbitrary_message.as_bytes().iter().cloned().collect();
+        let arbitrary_message_as_bytes: Vec<u8> =
+            arbitrary_message.as_bytes().iter().cloned().collect();
 
         // When
         uprint!(mock_usart, arbitrary_message);

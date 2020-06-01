@@ -366,7 +366,7 @@ macro_rules! instances {
         $(
         impl<PINS> Serial<$USARTX, PINS> {
             fn config_stop(self, config: config::Config) -> Self {
-                use crate::stm32f429::usart1::cr2::STOP_A;
+                use stm32f4::stm32f429::usart1::cr2::STOP_A;
                 use self::config::*;
 
                 self.usart.cr2.write(|w| {

@@ -1,9 +1,7 @@
-use crate::{
-    hal::time::Hertz,
-    stm32f429::{
-        rcc::cfgr::{HPRE_A, SW_A},
-        RCC,
-    },
+use crate::hal::time::Hertz;
+use stm32f4::stm32f429::{
+    rcc::cfgr::{HPRE_A, SW_A},
+    RCC,
 };
 
 /// Extension trait that constrains the `RCC` peripheral, wrapping it in a higher level abstraction
@@ -157,7 +155,7 @@ impl CFGR {
     }
 
     fn flash_setup(sysclk: u32) {
-        use crate::stm32f429::FLASH;
+        use stm32f4::stm32f429::FLASH;
 
         let flash_latency_step = 30_000_000;
 

@@ -2,7 +2,7 @@
 authors = ["PabloMansanet <pablomansanet@gmail.com>"]
 edition = "2018"
 readme = "README.md"
-name = "app"
+name = "secure_bootloader"
 version = "0.1.0"
 
 [dependencies]
@@ -16,8 +16,13 @@ nb = "*"
 version = "*"
 features = ["stm32f429", "rt"]
 
+[lib]
+name = "secure_bootloader_lib"
+test = true
+bench = false
+
 [[bin]]
-name = "app"
+name = "secure_bootloader"
 test = true
 bench = false
 

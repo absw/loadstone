@@ -1,5 +1,5 @@
-use stm32f4::stm32f429;
 use core::marker::PhantomData;
+use stm32f4::stm32f429;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
 pub trait GpioExt {
