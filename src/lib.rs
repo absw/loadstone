@@ -10,14 +10,3 @@ pub mod drivers;
 #[macro_use]
 pub mod hal;
 pub mod pin_configuration;
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn foo() {
-        println!("tests work!");
-        assert!(3 == 3);
-    }
-}
