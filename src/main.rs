@@ -38,9 +38,9 @@ fn main() -> ! {
 
     let clocks = clock_configuration.freeze();
 
-    let mut serial = serial::Serial::usart3(
-        peripherals.USART3,
-        (gpiod.pd8, gpiod.pd9),
+    let mut serial = serial::Serial::usart2(
+        peripherals.USART2,
+        (gpiod.pd5, gpiod.pd6),
         serial::config::Config::default().baudrate(hal::time::Bps(115_200)),
         clocks,
     )

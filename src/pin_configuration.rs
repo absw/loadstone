@@ -3,6 +3,6 @@ gpio!(GPIOB, gpiob, gpiob, gpioben, gpiobrst, PBx, [
 ]);
 
 gpio!(GPIOD, gpiod, gpiok, gpioden, gpiodrst, PDx, [
-      PD8: (pd8, 8, AF7, AFRH), [Usart3TxPin],
-      PD9: (pd9, 9, AF7, AFRH), [Usart3RxPin],
+      PD5: (pd5, 5, AF7, AFRL), [Usart2TxPin],
+      PD6: (pd6, 6, AF7, AFRL), [Usart2RxPin],
 ]);

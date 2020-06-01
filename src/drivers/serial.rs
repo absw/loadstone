@@ -1,4 +1,4 @@
-use stm32f4::stm32f429::{RCC, USART3};
+use stm32f4::stm32f429::{RCC, USART2};
 
 use core::{marker::PhantomData, ptr};
 
@@ -15,10 +15,10 @@ mod private {
 pub unsafe trait TxPin<USART>: private::Sealed {}
 pub unsafe trait RxPin<USART>: private::Sealed {}
 
-unsafe impl TxPin<USART3> for PD8<AF7> {}
-impl private::Sealed for PD8<AF7> {}
-unsafe impl RxPin<USART3> for PD9<AF7> {}
-impl private::Sealed for PD9<AF7> {}
+unsafe impl TxPin<USART2> for PD5<AF7> {}
+impl private::Sealed for PD5<AF7> {}
+unsafe impl RxPin<USART2> for PD6<AF7> {}
+impl private::Sealed for PD6<AF7> {}
 
 /// Serial error
 #[derive(Debug)]
@@ -389,5 +389,5 @@ macro_rules! instances {
 }
 
 instances! {
-    USART3: (usart3, apb1enr, usart3en, pclk1),
+    USART2: (usart2, apb1enr, usart2en, pclk1),
 }
