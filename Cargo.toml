@@ -12,7 +12,6 @@ cortex-m-semihosting = "0.3.3"
 panic-semihosting = "*"
 nb = "*"
 paste = "*"
-casey = "*"
 
 [dependencies.stm32f4]
 version = "*"
