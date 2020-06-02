@@ -4,20 +4,20 @@
 #[allow(unused_imports)]
 use cortex_m_rt::entry;
 
-#[cfg(not(any(test, doctest)))]
+#[cfg(not(test))]
 #[entry]
 fn main() -> ! {
     use secure_bootloader_lib;
-    use stm32f4::stm32f429;
 
     use secure_bootloader_lib::{
         drivers::{gpio::GpioExt, rcc::RccExt, serial},
         hal,
         hal::{gpio::OutputPin, serial::Write},
         uprint, uprintln,
+        stm32pac
     };
 
-    let mut peripherals = stm32f429::Peripherals::take().unwrap();
+    let mut peripherals = stm32pac::Peripherals::take().unwrap();
     let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
     let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
 
@@ -33,6 +33,7 @@ fn main() -> ! {
 
     let clocks = clock_configuration.freeze();
 
+    #[cfg(feature = "stm32f429")]
     let mut serial = serial::Serial::usart2(
         peripherals.USART2,
         (gpiod.pd5, gpiod.pd6),
@@ -41,7 +42,21 @@ fn main() -> ! {
     )
     .unwrap();
 
+    #[cfg(feature = "stm32f469")]
+    let mut serial = serial::Serial::usart3(
+        peripherals.USART3,
+        (gpiob.pb10, gpiob.pb11),
+        serial::config::Config::default().baudrate(hal::time::Bps(115_200)),
+        clocks,
+    )
+    .unwrap();
+
+    #[cfg(feature = "stm32f429")]
     let mut led_pin = gpiob.pb7;
+
+    #[cfg(feature = "stm32f469")]
+    let mut led_pin = gpiod.pd4;
+
     loop {
         cortex_m::asm::delay(20_000_000);
         led_pin.set_high();

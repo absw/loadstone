@@ -1,5 +1,5 @@
 use core::marker::PhantomData;
-use stm32f4::stm32f429;
+use crate::stm32pac;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
 pub trait GpioExt {
@@ -7,7 +7,7 @@ pub trait GpioExt {
     type GpioWrapper;
 
     /// Splits the GPIO block into independent pins and registers
-    fn split(self, rcc: &mut stm32f429::RCC) -> Self::GpioWrapper;
+    fn split(self, rcc: &mut stm32pac::RCC) -> Self::GpioWrapper;
 }
 
 /// Input mode (type state)
@@ -85,12 +85,11 @@ macro_rules! gpio_inner {
         pub mod $gpiox {
             use core::marker::PhantomData;
             use crate::hal::gpio::OutputPin;
-            use stm32f4::stm32f429;
             use super::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]
-            use stm32f4::stm32f429::{
+            use crate::stm32pac::{
                 GPIOA as GPIOa,
                 GPIOB as GPIOb,
                 GPIOC as GPIOc,
@@ -117,7 +116,7 @@ macro_rules! gpio_inner {
             impl GpioExt for $GPIOx {
                 type GpioWrapper = GpioWrapper;
 
-                fn split(self, rcc: &mut stm32f429::RCC) -> GpioWrapper {
+                fn split(self, rcc: &mut crate::stm32pac::RCC) -> GpioWrapper {
                     rcc.ahb1enr.modify(|_, w| w.$enable_pin().enabled());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().set_bit());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());

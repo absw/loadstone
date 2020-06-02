@@ -1,4 +1,4 @@
-use stm32f4::stm32f429::{RCC, USART1, USART2, USART3};
+use crate::stm32pac::{RCC, USART1, USART2, USART3};
 
 use core::{marker::PhantomData, ptr};
 
@@ -25,13 +25,17 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // List of all pins capable of being configured as certain USART
 // functions. NOTE: This is not configuration! there's no need
 // to remove items from these lists once complete.
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
-
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
-
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(TxPin<USART3>: [Pb10<AF7>, Pd8<AF7>, Pc10<AF7>,]);
+#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
 seal_pins!(RxPin<USART3>: [Pb11<AF7>, Pd9<AF7>, Pc11<AF7>,]);
 
 /// Serial error
@@ -380,7 +384,7 @@ macro_rules! instances {
         $(
         impl<PINS> Serial<$USARTX, PINS> {
             fn config_stop(self, config: config::Config) -> Self {
-                use stm32f4::stm32f429::usart1::cr2::STOP_A;
+                use crate::stm32pac::usart1::cr2::STOP_A;
                 use self::config::*;
 
                 self.usart.cr2.write(|w| {
@@ -402,6 +406,11 @@ macro_rules! instances {
     }
 }
 
+// Type definition macros. NOTE: This is not configuration! No
+// need to remove these if unused, they exist only in the type
+// system at this point.
 instances! {
+    USART1: (usart1, apb2enr, usart1en, pclk2),
     USART2: (usart2, apb1enr, usart2en, pclk1),
+    USART3: (usart3, apb1enr, usart3en, pclk1),
 }
