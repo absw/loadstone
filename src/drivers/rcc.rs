@@ -1,5 +1,5 @@
 use crate::hal::time::Hertz;
-use stm32f4::stm32f429::{
+use crate::stm32pac::{
     rcc::cfgr::{HPRE_A, SW_A},
     RCC,
 };
@@ -155,7 +155,7 @@ impl CFGR {
     }
 
     fn flash_setup(sysclk: u32) {
-        use stm32f4::stm32f429::FLASH;
+        use crate::stm32pac::FLASH;
 
         let flash_latency_step = 30_000_000;
 
