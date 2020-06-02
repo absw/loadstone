@@ -1,11 +1,11 @@
-use stm32f4::stm32f429::{RCC, USART2};
+use stm32f4::stm32f429::{RCC, USART1, USART2, USART3};
 
 use core::{marker::PhantomData, ptr};
 
 use crate::{drivers::rcc, hal::serial};
 use nb;
 
-use crate::{drivers::gpio::*, pin_configuration::gpiod::*};
+use crate::pin_configuration::*;
 
 #[doc(hidden)]
 mod private {
@@ -15,14 +15,24 @@ mod private {
 pub unsafe trait TxPin<USART>: private::Sealed {}
 pub unsafe trait RxPin<USART>: private::Sealed {}
 
-macro_rules! seal_pin_function { ($function:ty, $pin:ty) => {
-    unsafe impl $function for $pin {}
-    impl private::Sealed for $pin {}
+macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
+    $(
+        unsafe impl $function for $pin {}
+        impl private::Sealed for $pin {}
+    )+
 };}
 
-// List of all pins capable of being configured as USART pins
-seal_pin_function!(TxPin<USART2>, Pd5<AF7>);
-seal_pin_function!(RxPin<USART2>, Pd6<AF7>);
+// List of all pins capable of being configured as certain USART
+// functions. NOTE: This is not configuration! there's no need
+// to remove items from these lists once complete.
+seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
+seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
+
+seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
+seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
+
+seal_pins!(TxPin<USART3>: [Pb10<AF7>, Pd8<AF7>, Pc10<AF7>,]);
+seal_pins!(RxPin<USART3>: [Pb11<AF7>, Pd9<AF7>, Pc11<AF7>,]);
 
 /// Serial error
 #[derive(Debug)]

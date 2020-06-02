@@ -30,38 +30,33 @@ pub struct PushPull;
 /// Open drain output (type state)
 pub struct OpenDrain;
 
-/// Alternate function 0 (type state)
-pub struct AF0;
-/// Alternate function 1 (type state)
-pub struct AF1;
-/// Alternate function 2 (type state)
-pub struct AF2;
-/// Alternate function 3 (type state)
-pub struct AF3;
-/// Alternate function 4 (type state)
-pub struct AF4;
-/// Alternate function 5 (type state)
-pub struct AF5;
-/// Alternate function 6 (type state)
-pub struct AF6;
-/// Alternate function 7 (type state)
-pub struct AF7;
-/// Alternate function 8 (type state)
-pub struct AF8;
-/// Alternate function 9 (type state)
-pub struct AF9;
-/// Alternate function 10 (type state)
-pub struct AF10;
-/// Alternate function 11 (type state)
-pub struct AF11;
-/// Alternate function 12 (type state)
-pub struct AF12;
-/// Alternate function 13 (type state)
-pub struct AF13;
-/// Alternate function 14 (type state)
-pub struct AF14;
-/// Alternate function 15 (type state)
-pub struct AF15;
+#[macro_export]
+macro_rules! alternate_functions {
+    ($($i:expr, )+) => { $( paste::item! {
+        /// Alternate function (type state)
+        pub struct [<AF $i>];
+    } )+ }
+}
+
+#[macro_export]
+macro_rules! pin_rows {
+    ($($x:ident,)+) => {
+        use core::marker::PhantomData;
+        $(
+            pin_row!($x, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+        )+
+    }
+}
+
+macro_rules! pin_row {
+    ($x:ident, [$($i:expr,)+]) => { $( paste::item! {
+        /// Pin with a MODE typestate
+        pub struct [<P $x $i>]<MODE> {
+            _mode: PhantomData<MODE>,
+        }
+    } )+
+    }
+}
 
 /// Instantiates a gpio pin row with default modes per available pin
 #[macro_export]
@@ -91,6 +86,7 @@ macro_rules! gpio_inner {
             use core::marker::PhantomData;
             use crate::hal::gpio::OutputPin;
             use stm32f4::stm32f429;
+            use super::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]
@@ -159,10 +155,6 @@ macro_rules! gpio_inner {
 
             $(
                 /// Pin
-                pub struct $Pxi<MODE> {
-                    _mode: PhantomData<MODE>,
-                }
-
                 impl $Pxi<Input<Floating>> {
                     #[allow(dead_code)]
                     fn new() -> Self {
