@@ -66,7 +66,7 @@ pub struct AF15;
 #[macro_export]
 macro_rules! gpio {
     ($GPIOX:ident, $gpiox:ident, $gpio_svd_mod:ident, $enable_pin:ident, $reset_pin:ident, $PXx:ident, [
-        $($PXi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $AFR:ident), [ $($alias:ident)* ], )+
+        $($PXi:ident: ($pxi:ident, $i:expr, $default_mode:ty), [ $($alias:ident)* ], )+
     ]) => {
         /// GPIO
         pub mod $gpiox {
@@ -103,19 +103,30 @@ macro_rules! gpio {
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().set_bit());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());
 
+                    let mut moder = MODER { _0: () };
+                    let mut otyper = OTYPER { _0: () };
+                    let mut pupdr = PUPDR { _0: () };
+                    let mut afrl = AFRL { _0: () };
+                    let mut afrh = AFRH { _0: () };
+
+                    let mut builder = PinBuilder {
+                        moder: &mut moder,
+                        otyper: &mut otyper,
+                        pupdr: &mut pupdr,
+                        afrl: &mut afrl,
+                        afrh: &mut afrh };
+
+                    $(
+                        let $pxi = $PXi::<$default_mode>::new(&mut builder);
+                    )+
+
                     GpioWrapper {
-                        afrh: AFRH { _0: () },
-                        afrl: AFRL { _0: () },
-                        moder: MODER { _0: () },
-                        otyper: OTYPER { _0: () },
-                        pupdr: PUPDR { _0: () },
-                        $(
-                            $pxi: $PXi::<$default_mode>::new(&mut MODER { _0: () },
-                                                             &mut PUPDR { _0: ()},
-                                                             &mut OTYPER {_0: ()},
-                                                             &mut $AFR {_0: ()},
-                                                             ),
-                        )+
+                        afrh,
+                        afrl,
+                        moder,
+                        otyper,
+                        pupdr,
+                        $($pxi,)+
                     }
                 }
             }
@@ -207,6 +218,14 @@ macro_rules! gpio {
                 }
             }
 
+            struct PinBuilder<'a> {
+                pub moder: &'a mut MODER,
+                pub pupdr: &'a mut PUPDR,
+                pub otyper: &'a mut OTYPER,
+                pub afrl: &'a mut AFRL,
+                pub afrh: &'a mut AFRH
+            }
+
             $(
                 /// Pin
                 pub struct $PXi<MODE> {
@@ -215,48 +234,48 @@ macro_rules! gpio {
 
                 impl $PXi<Input<Floating>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(_builder: &mut PinBuilder) -> Self {
                         $PXi { _mode: PhantomData }
                     }
                 }
 
                 impl $PXi<Output<PushPull>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(builder: &mut PinBuilder) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_push_pull_output(_moder, _otyper)
+                        pin.into_push_pull_output(builder.moder, builder.otyper)
                     }
                 }
 
                 impl $PXi<Input<PullDown>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(builder: &mut PinBuilder) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_pull_down_input(_moder, _pupdr)
+                        pin.into_pull_down_input(builder.moder, builder.pupdr)
                     }
                 }
 
                 impl $PXi<Input<PullUp>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(builder: &mut PinBuilder) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_pull_up_input(_moder, _pupdr)
+                        pin.into_pull_up_input(builder.moder, builder.pupdr)
                     }
                 }
 
                 impl $PXi<Output<OpenDrain>> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(builder: &mut PinBuilder) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_open_drain_output(_moder, _otyper)
+                        pin.into_open_drain_output(builder.moder, builder.otyper)
                     }
                 }
 
                 impl $PXi<AF7> {
                     #[allow(dead_code)]
-                    fn new(_moder: &mut MODER, _pupdr: &mut PUPDR, _otyper: &mut OTYPER, _afr: &mut $AFR) -> Self {
+                    fn new(builder: &mut PinBuilder) -> Self {
                         let pin = $PXi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_af7(_moder, _afr)
+                        pin.into_af7(builder.moder, builder.afrl, builder.afrh)
                     }
                 }
 
@@ -268,7 +287,8 @@ macro_rules! gpio {
                     pub fn into_af7(
                         self,
                         moder: &mut MODER,
-                        afr: &mut $AFR,
+                        afrl: &mut AFRL,
+                        afrh: &mut AFRH,
                     ) -> $PXi<AF7> {
                         let offset = 2 * $i;
 
@@ -280,9 +300,16 @@ macro_rules! gpio {
 
                         let af = 7;
                         let offset = 4 * ($i % 8);
-                        (*afr).modify(|r, w| unsafe {
-                            w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
-                        });
+
+                        if $i < 8 {
+                            (*afrl).modify(|r, w| unsafe {
+                                w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                            });
+                        } else {
+                            (*afrh).modify(|r, w| unsafe {
+                                w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                            });
+                        }
 
                         $PXi { _mode: PhantomData }
                     }
