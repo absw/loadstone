@@ -15,10 +15,14 @@ mod private {
 pub unsafe trait TxPin<USART>: private::Sealed {}
 pub unsafe trait RxPin<USART>: private::Sealed {}
 
-unsafe impl TxPin<USART2> for PD5<AF7> {}
-impl private::Sealed for PD5<AF7> {}
-unsafe impl RxPin<USART2> for PD6<AF7> {}
-impl private::Sealed for PD6<AF7> {}
+macro_rules! seal_pin_function { ($function:ty, $pin:ty) => {
+    unsafe impl $function for $pin {}
+    impl private::Sealed for $pin {}
+};}
+
+// List of all pins capable of being configured as USART pins
+seal_pin_function!(TxPin<USART2>, Pd5<AF7>);
+seal_pin_function!(RxPin<USART2>, Pd6<AF7>);
 
 /// Serial error
 #[derive(Debug)]

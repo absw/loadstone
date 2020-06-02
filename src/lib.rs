@@ -9,4 +9,5 @@ extern crate panic_semihosting; // logs messages to the host stderr
 pub mod drivers;
 #[macro_use]
 pub mod hal;
+
 pub mod pin_configuration;
