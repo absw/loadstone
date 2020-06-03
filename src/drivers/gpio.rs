@@ -119,7 +119,6 @@ macro_rules! into_af {
                 );
             }
 
-            let af = 7;
             let offset = 4 * ($i % 8);
 
             if $i < 8 {
@@ -128,7 +127,7 @@ macro_rules! into_af {
                 // which preserves single ownership of each pin.
                 unsafe {
                     (*$GPIOx::ptr()).afrl.modify(|r, w|
-                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                        w.bits((r.bits() & !(0b1111 << offset)) | ($af_i << offset))
                     );
                 }
             } else {
@@ -137,7 +136,7 @@ macro_rules! into_af {
                 // which preserves single ownership of each pin.
                 unsafe {
                     (*$GPIOx::ptr()).afrh.modify(|r, w|
-                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                        w.bits((r.bits() & !(0b1111 << offset)) | ($af_i << offset))
                     );
                 }
             }
