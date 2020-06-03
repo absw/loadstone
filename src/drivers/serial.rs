@@ -1,3 +1,4 @@
+//! USART implementation.
 use crate::stm32pac::{RCC, USART1, USART2, USART3};
 use core::{marker::PhantomData, ptr};
 use crate::{drivers::rcc, hal::serial};
@@ -5,7 +6,8 @@ use nb;
 use crate::drivers::gpio::*;
 use crate::pin_configuration::*;
 
-/// Extension trait to wrap a USART peripheral
+/// Extension trait to wrap a USART peripheral into a more useful
+/// high level abstraction.
 pub trait UsartExt<PINS> {
     /// The wrapping type
     type Serial;
@@ -22,7 +24,14 @@ mod private {
     pub trait Sealed {}
 }
 
+/// Sealed trait for all pins that can be TX for each USART.
+/// This can't be implemented by the library user: All available
+/// pins should already be implemented internally.
 pub unsafe trait TxPin<USART>: private::Sealed {}
+
+/// Sealed trait for all pins that can be RX for each USART.
+/// This can't be implemented by the library user: All available
+/// pins should already be implemented internally.
 pub unsafe trait RxPin<USART>: private::Sealed {}
 
 macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
@@ -74,6 +83,23 @@ pub enum Event {
 }
 
 pub mod config {
+    //! Configuration required to construct a new USART instance.
+    //!
+    //! # Example
+    //! ```no_run
+    //! # use secure_bootloader_lib::stm32pac;
+    //! # use secure_bootloader_lib::hal::time::{MegaHertz, Bps};
+    //! # use secure_bootloader_lib::drivers::{serial::{self, UsartExt}, gpio::GpioExt, rcc::{RccExt, RccWrapper}};
+    //! # let mut peripherals = stm32pac::Peripherals::take().unwrap();
+    //! # let rcc_wrapper: RccWrapper = stm32pac::Peripherals::take().unwrap().RCC.constrain();
+    //! # let clocks = rcc_wrapper.sysclk(MegaHertz(180)).freeze();
+    //! # let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
+    //! #
+    //! let (serial, tx, rx) = (peripherals.USART2, gpiod.pd5, gpiod.pd6);
+    //! let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
+    //! let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
+    //! ```
+
     use crate::hal::time::{Bps, U32Ext};
 
     pub enum WordLength {
@@ -158,6 +184,9 @@ pub mod config {
     }
 }
 
+/// Marker trait for a tuple of pins that work for a given USART.
+/// Automatically implemented for any tuple (A, B) where A is
+/// a TxPin and B is a RxPin.
 pub trait Pins<USART> {}
 
 impl<USART, TX, RX> Pins<USART> for (TX, RX)

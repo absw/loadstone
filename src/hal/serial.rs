@@ -1,3 +1,10 @@
+//! Interface to a serial device.
+//!
+//! This interface is block-agnostic thanks to the **nb** crate. This
+//! means it can be used in a blocking manner (through the block! macro)
+//! or in a manner compatible with schedulers, RTOS, etc. See the **nb**
+//! crate documentation for details.
+
 use nb;
 
 /// UART read half
@@ -16,7 +23,10 @@ pub trait Write<Word> {
     fn write(&mut self, word: Word) -> nb::Result<(), Self::Error>;
 }
 
-/// Prints to an abstract serial device
+/// Prints to an abstract serial device.
+/// ```ignore
+/// uprint!(serial, "Hello World!");
+/// ```
 #[macro_export]
 macro_rules! uprint {
     ($serial:expr, $arg:tt) => {
@@ -24,7 +34,12 @@ macro_rules! uprint {
     };
 }
 
-/// Prints to an abstract serial device, with newline
+/// Prints to an abstract serial device, with newline.
+///
+/// # Example
+/// ```ignore
+/// uprintln!(serial, "Hello World!");
+/// ```
 #[macro_export]
 macro_rules! uprintln {
     ($serial:expr, $arg:tt) => {

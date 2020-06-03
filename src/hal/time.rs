@@ -1,4 +1,4 @@
-//! Time units
+//! Time units.
 
 /// Bits per second
 #[derive(Clone, Copy)]

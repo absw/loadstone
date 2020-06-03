@@ -1,10 +1,10 @@
-/// Macro-instantiated GPIO implementation.
+//! Driver implementations for all supported platforms. They offer
+//! a safe API, and are
+//! [typestate](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html)
+//! based whenever possible.
+
 #[macro_use]
 pub mod gpio;
-
-/// Clock configuration.
 pub mod rcc;
-
-/// USART implementation.
 #[macro_use]
 pub mod serial;
