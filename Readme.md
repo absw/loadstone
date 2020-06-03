@@ -146,7 +146,7 @@ At the time of writing, this codebase has far too many lines of code for a
 simple blinky example. This can seem daunting, but the important thing to
 realize is that **the great majority of that code exists only in the type
 system**. The sample layers are written following current embedded Rust best
-practices, generally using [typestate programming](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html). This means that information that would be usually exist at run time
+practices, generally using [typestate programming](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html). This means that information that would usually exist at run time
 is instead managed in the type system. For example, a pin configured as an input
 is an entirely different *type* from a pin configured as an output, with
 different restrictions and methods.
