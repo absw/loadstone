@@ -2,21 +2,34 @@
 authors = ["PabloMansanet <pablomansanet@gmail.com>"]
 edition = "2018"
 readme = "README.md"
-name = "app"
+name = "secure_bootloader"
 version = "0.1.0"
+
+[features]
+default = ["stm32f429"]
+stm32f429 = ["stm32f4/stm32f429"]
+stm32f469 = ["stm32f4/stm32f469"]
+stm32f407 = ["stm32f4/stm32f407"]
 
 [dependencies]
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
 panic-semihosting = "*"
+nb = "*"
+paste = "*"
 
 [dependencies.stm32f4]
 version = "*"
-features = ["stm32f429", "rt"]
+features = ["rt"]
+
+[lib]
+name = "secure_bootloader_lib"
+test = true
+bench = false
 
 [[bin]]
-name = "app"
+name = "secure_bootloader"
 test = true
 bench = false
 

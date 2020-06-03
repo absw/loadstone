@@ -1,262 +1,411 @@
-use stm32f4::stm32f429;
-
+//! Macro-instantiated GPIO implementation.
+//!
+//! Pin configuration is encoded in the type system through typestates,
+//! making it statically impossible to misuse a pin (e.g. there's
+//! no "write" operation on a pin that has been configured as input).
+use crate::stm32pac;
 use core::marker::PhantomData;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
 pub trait GpioExt {
     /// The type to split the GPIO into
-    type Parts;
+    type GpioWrapper;
 
     /// Splits the GPIO block into independent pins and registers
-    fn split(self, rcc: &mut stm32f429::RCC) -> Self::Parts;
+    fn split(self, rcc: &mut stm32pac::RCC) -> Self::GpioWrapper;
 }
 
-/// Input mode (type state)
+/// Input mode (Pin type state)
 pub struct Input<MODE> {
+    // NOTE: The role of PhantomData is to represent that
+    // this Input typestate "owns" a generic MODE typestate,
+    // establishing a typestate hierarchy. Other usages of
+    // PhantomData in this file are similar.
     _mode: PhantomData<MODE>,
 }
-/// Floating input (type state)
+
+/// Floating input (Input type state)
 pub struct Floating;
-/// Pulled down input (type state)
+/// Pulled down input (Input type state)
 pub struct PullDown;
-/// Pulled up input (type state)
+/// Pulled up input (Input type state)
 pub struct PullUp;
 
-/// Output mode (type state)
+/// Output mode (Pin type state)
 pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
-/// Push pull output (type state)
+/// Push pull output (Output type state)
 pub struct PushPull;
-/// Open drain output (type state)
+/// Open drain output (Output type state)
 pub struct OpenDrain;
 
+// Typestate generator for all Alternate Functions
+macro_rules! alternate_functions {
+    ($($i:expr, )+) => { $( paste::item! {
+        /// Alternate function (Pin type state)
+        pub struct [<AF $i>];
+    } )+ }
+}
+// Expands into typestates AF0-AF15
+alternate_functions!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,);
+
+// Type generator for all pins
+macro_rules! pin_rows {
+    ($($x:ident,)+) => {
+        use core::marker::PhantomData;
+        $(
+            pin_row!($x, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+        )+
+    }
+}
+macro_rules! pin_row {
+    ($x:ident, [$($i:expr,)+]) => { $( paste::item! {
+        /// Pin with a MODE typestate
+        pub struct [<P $x $i>]<MODE> {
+            _mode: PhantomData<MODE>,
+        }
+    } )+
+    }
+}
+
+/// Instantiates a gpio pin row with default modes per available pin.
+///
+/// # Examples
+///
+/// ```ignore
+///   gpio!(b, [
+///      (7, Output::<PushPull>),
+///      (8, AF4),
+///      (3, Input::<Floating>),
+///   ]);
+///
+/// ```
+/// This makes the wrapper struct gpiob have the members gpiob.pb7 in
+/// Output + Push/Pull mode, gpiob.pb8 in alternate function 4, and
+/// gpiob.pb3 as a floating input.
+#[macro_export]
 macro_rules! gpio {
-    ($GPIOX:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $PXx:ident, [
-        $($PXi:ident: ($pxi:ident, $i:expr),)+
+    ($x: ident, [
+        $( ($i:expr, $default_mode:ty), )+
+    ]) => {
+
+        // Macro black magic. the "paste" crate generates a context where anything bounded by "[<"
+        // and ">]" delimiters gets concatenated in a single identifier post macro expansion. For
+        // example, "[<GPIO $x>]" becomes "GPIOa" when "$x" represents "a". This is used to
+        // expand the outer level, simplified "gpio!" instantiation macro into the complex one.
+        paste::item_with_macros! {
+            gpio_inner!([<GPIO $x>], [<gpio $x>], [<gpio $x en>], [<gpio $x rst>], [<P $x x>], [
+                $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode), )+
+            ]);
+        }
+    }
+}
+
+macro_rules! into_af {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+        pub fn [<into_af $af_i>](self) -> $Pxi<[<AF $af_i>]> {
+            let offset = 2 * $i;
+
+            // alternate function mode
+            let mode = 0b10;
+
+            // NOTE(safety) atomic read-modify-write operation to a stateless register.
+            // It is also safe because pins are only reachable by splitting a GPIO struct,
+            // which preserves single ownership of each pin.
+            unsafe {
+                (*$GPIOx::ptr()).moder.modify(|r, w|
+                    w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
+                );
+            }
+
+            let af = 7;
+            let offset = 4 * ($i % 8);
+
+            if $i < 8 {
+                // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                // It is also safe because pins are only reachable by splitting a GPIO struct,
+                // which preserves single ownership of each pin.
+                unsafe {
+                    (*$GPIOx::ptr()).afrl.modify(|r, w|
+                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                    );
+                }
+            } else {
+                // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                // It is also safe because pins are only reachable by splitting a GPIO struct,
+                // which preserves single ownership of each pin.
+                unsafe {
+                    (*$GPIOx::ptr()).afrh.modify(|r, w|
+                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                    );
+                }
+            }
+
+            $Pxi { _mode: PhantomData }
+        }
+} )+ }
+}
+
+macro_rules! new_af {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+        impl $Pxi<[<AF $af_i>]> {
+            #[allow(dead_code)]
+            fn new() -> Self {
+                let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                pin.[<into_af $af_i>]()
+            }
+        }
+} )+ }
+}
+
+macro_rules! gpio_inner {
+    ($GPIOx:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $Pxx:ident, [
+        $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty), )+
     ]) => {
         /// GPIO
         pub mod $gpiox {
             use core::marker::PhantomData;
             use crate::hal::gpio::OutputPin;
-            use stm32f4::stm32f429::{self, $gpiox, $GPIOX};
+            use crate::pin_configuration::*;
 
-            use super::{
-                Floating, GpioExt, Input, OpenDrain, Output,
-                PullDown, PullUp, PushPull,
+            // Lower case for identifier concatenation
+            #[allow(unused_imports)]
+            use crate::stm32pac::{
+                GPIOA as GPIOa,
+                GPIOB as GPIOb,
+                GPIOC as GPIOc,
+                GPIOD as GPIOd,
+                GPIOE as GPIOe,
+                GPIOF as GPIOf,
+                GPIOG as GPIOg,
+                GPIOH as GPIOh,
+                GPIOI as GPIOi,
+                GPIOJ as GPIOj,
+                GPIOK as GPIOk,
             };
 
+            use crate::drivers::gpio::*;
+
             /// GPIO parts
-            pub struct Parts {
-                /// Opaque MODER register
-                pub moder: MODER,
-                /// Opaque OTYPER register
-                pub otyper: OTYPER,
-                /// Opaque PUPDR register
-                pub pupdr: PUPDR,
+            pub struct GpioWrapper {
                 $(
                     /// Pin
-                    // Initialized to Floating Input by default
-                    pub $pxi: $PXi<Input<Floating>>,
+                    pub $pxi: $Pxi<$default_mode>,
                 )+
             }
 
-            impl GpioExt for $GPIOX {
-                type Parts = Parts;
+            impl GpioExt for $GPIOx {
+                type GpioWrapper = GpioWrapper;
 
-                fn split(self, rcc: &mut stm32f429::RCC) -> Parts {
+                fn split(self, rcc: &mut crate::stm32pac::RCC) -> GpioWrapper {
                     rcc.ahb1enr.modify(|_, w| w.$enable_pin().enabled());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().set_bit());
                     rcc.ahb1rstr.modify(|_, w| w.$reset_pin().clear_bit());
 
-                    Parts {
-                        moder: MODER { _0: () },
-                        otyper: OTYPER { _0: () },
-                        pupdr: PUPDR { _0: () },
-                        $(
-                            $pxi: $PXi { _mode: PhantomData },
-                        )+
+                    $(
+                        let $pxi = $Pxi::<$default_mode>::new();
+                    )+
+
+                    GpioWrapper {
+                        $($pxi,)+
                     }
                 }
             }
-
-            /// Opaque MODER register
-            pub struct MODER {
-                _0: (),
-            }
-
-            impl MODER {
-                pub(crate) fn moder(&mut self) -> &$gpiox::MODER {
-                    unsafe { &(*$GPIOX::ptr()).moder }
-                }
-            }
-
-            /// Opaque OTYPER register
-            pub struct OTYPER {
-                _0: (),
-            }
-
-            impl OTYPER {
-                pub(crate) fn otyper(&mut self) -> &$gpiox::OTYPER {
-                    unsafe { &(*$GPIOX::ptr()).otyper }
-                }
-            }
-
-            /// Opaque PUPDR register
-            pub struct PUPDR {
-                _0: (),
-            }
-
-            impl PUPDR {
-                pub(crate) fn pupdr(&mut self) -> &$gpiox::PUPDR {
-                    unsafe { &(*$GPIOX::ptr()).pupdr }
-                }
-            }
-
             /// Partially erased pin
-            pub struct $PXx<MODE> {
+            pub struct $Pxx<MODE> {
                 i: u8,
                 _mode: PhantomData<MODE>,
             }
 
-            impl<MODE> OutputPin for $PXx<Output<MODE>> {
+            impl<MODE> OutputPin for $Pxx<Output<MODE>> {
                 fn set_high(&mut self) {
                     // NOTE(safety) atomic write to a stateless register. It is also safe
                     // because pins are only reachable by splitting a GPIO struct,
                     // which preserves single ownership of each pin.
-                    unsafe { (*$GPIOX::ptr()).bsrr.write(|w| w.bits(1 << self.i)) }
+                    unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << self.i)) }
                 }
 
                 fn set_low(&mut self) {
                     // NOTE(safety) atomic write to a stateless register. It is also safe
                     // because pins are only reachable by splitting a GPIO struct,
                     // which preserves single ownership of each pin.
-                    unsafe { (*$GPIOX::ptr()).bsrr.write(|w| w.bits(1 << (16 + self.i))) }
+                    unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << (16 + self.i))) }
                 }
             }
 
             $(
                 /// Pin
-                pub struct $PXi<MODE> {
-                    _mode: PhantomData<MODE>,
+                impl $Pxi<Input<Floating>> {
+                    #[allow(dead_code)]
+                    fn new() -> Self {
+                        $Pxi { _mode: PhantomData }
+                    }
                 }
 
-                impl<MODE> $PXi<MODE> {
+                impl $Pxi<Output<PushPull>> {
+                    #[allow(dead_code)]
+                    fn new() -> Self {
+                        let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                        pin.into_push_pull_output()
+                    }
+                }
+
+                impl $Pxi<Input<PullDown>> {
+                    #[allow(dead_code)]
+                    fn new() -> Self {
+                        let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                        pin.into_pull_down_input()
+                    }
+                }
+
+                impl $Pxi<Input<PullUp>> {
+                    #[allow(dead_code)]
+                    fn new() -> Self {
+                        let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                        pin.into_pull_up_input()
+                    }
+                }
+
+                impl $Pxi<Output<OpenDrain>> {
+                    #[allow(dead_code)]
+                    fn new() -> Self {
+                        let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                        pin.into_open_drain_output()
+                    }
+                }
+
+                new_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+
+                impl<MODE> $Pxi<MODE> {
+                    into_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                     /// Configures the pin to operate as a floating input pin
                     pub fn into_floating_input(
                         self,
-                        moder: &mut MODER,
-                        pupdr: &mut PUPDR,
-                    ) -> $PXi<Input<Floating>> {
+                    ) -> $Pxi<Input<Floating>> {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).moder.modify(|r, w| w.bits(r.bits() & !(0b11 << offset)) ); }
 
                         // no pull-up or pull-down
-                        pupdr
-                            .pupdr()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).pupdr.modify(|r, w|  w.bits(r.bits() & !(0b11 << offset)) ); }
 
-                        $PXi { _mode: PhantomData }
+                        $Pxi { _mode: PhantomData }
                     }
 
                     /// Configures the pin to operate as a pulled down input pin
                     pub fn into_pull_down_input(
                         self,
-                        moder: &mut MODER,
-                        pupdr: &mut PUPDR,
-                    ) -> $PXi<Input<PullDown>> {
+                    ) -> $Pxi<Input<PullDown>> {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).moder.modify(|r, w| w.bits(r.bits() & !(0b11 << offset)) ); }
 
                         // pull-down
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).pupdr.modify(|r, w|
                             w.bits((r.bits() & !(0b11 << offset)) | (0b10 << offset))
-                        });
+                        ); }
 
-                        $PXi { _mode: PhantomData }
+                        $Pxi { _mode: PhantomData }
                     }
 
                     /// Configures the pin to operate as a pulled up input pin
                     pub fn into_pull_up_input(
                         self,
-                        moder: &mut MODER,
-                        pupdr: &mut PUPDR,
-                    ) -> $PXi<Input<PullUp>> {
+                    ) -> $Pxi<Input<PullUp>> {
                         let offset = 2 * $i;
 
                         // input mode
-                        moder
-                            .moder()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << offset)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).moder.modify(|r, w| w.bits(r.bits() & !(0b11 << offset)) ); }
 
                         // pull-up
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).pupdr.modify(|r, w|
                             w.bits((r.bits() & !(0b11 << offset)) | (0b01 << offset))
-                        });
+                        ); }
 
-                        $PXi { _mode: PhantomData }
+                        $Pxi { _mode: PhantomData }
                     }
 
                     /// Configures the pin to operate as an open drain output pin
                     pub fn into_open_drain_output(
                         self,
-                        moder: &mut MODER,
-                        otyper: &mut OTYPER,
-                    ) -> $PXi<Output<OpenDrain>> {
+                    ) -> $Pxi<Output<OpenDrain>> {
                         let offset = 2 * $i;
 
                         // general purpose output mode
                         let mode = 0b01;
-                        moder.moder().modify(|r, w| unsafe {
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).moder.modify(|r, w|
                             w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
-                        });
+                        ); }
 
                         // open drain output
-                        otyper
-                            .otyper()
-                            .modify(|r, w| unsafe { w.bits(r.bits() | (0b1 << $i)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).otyper.modify(|r, w| w.bits(r.bits() | (0b1 << $i)) ); }
 
-                        $PXi { _mode: PhantomData }
+                        $Pxi { _mode: PhantomData }
                     }
 
                     /// Configures the pin to operate as an push pull output pin
                     pub fn into_push_pull_output(
                         self,
-                        moder: &mut MODER,
-                        otyper: &mut OTYPER,
-                    ) -> $PXi<Output<PushPull>> {
+                    ) -> $Pxi<Output<PushPull>> {
                         let offset = 2 * $i;
 
                         // general purpose output mode
                         let mode = 0b01;
-                        moder.moder().modify(|r, w| unsafe {
+
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).moder.modify(|r, w|
                             w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
-                        });
+                        ); }
 
                         // push pull output
-                        otyper
-                            .otyper()
-                            .modify(|r, w| unsafe { w.bits(r.bits() & !(0b1 << $i)) });
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).otyper.modify(|r, w| w.bits(r.bits() & !(0b1 << $i)) ); }
 
-                        $PXi { _mode: PhantomData }
+                        $Pxi { _mode: PhantomData }
                     }
                 }
 
-                impl $PXi<Output<OpenDrain>> {
+                impl $Pxi<Output<OpenDrain>> {
                     /// Enables / disables the internal pull up
-                    pub fn internal_pull_up(&mut self, pupdr: &mut PUPDR, on: bool) {
+                    pub fn internal_pull_up(&mut self, on: bool) {
                         let offset = 2 * $i;
 
-                        pupdr.pupdr().modify(|r, w| unsafe {
+                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                        // It is also safe because pins are only reachable by splitting a GPIO struct,
+                        // which preserves single ownership of each pin.
+                        unsafe { (*$GPIOx::ptr()).pupdr.modify(|r, w|
                             w.bits(
                                 (r.bits() & !(0b11 << offset)) | if on {
                                     0b01 << offset
@@ -264,43 +413,39 @@ macro_rules! gpio {
                                     0
                                 },
                             )
-                        });
+                        ); }
                     }
                 }
 
-                impl<MODE> $PXi<Output<MODE>> {
+                impl<MODE> $Pxi<Output<MODE>> {
                     /// Erases the pin number from the type
                     ///
                     /// This is useful when you want to collect the pins into an array where you
                     /// need all the elements to have the same type
-                    pub fn downgrade(self) -> $PXx<Output<MODE>> {
-                        $PXx {
+                    pub fn downgrade(self) -> $Pxx<Output<MODE>> {
+                        $Pxx {
                             i: $i,
                             _mode: self._mode,
                         }
                     }
                 }
 
-                impl<MODE> OutputPin for $PXi<Output<MODE>> {
+                impl<MODE> OutputPin for $Pxi<Output<MODE>> {
                     fn set_high(&mut self) {
                         // NOTE(safety) atomic write to a stateless register. It is also safe
                         // because pins are only reachable by splitting a GPIO struct,
                         // which preserves single ownership of each pin.
-                        unsafe { (*$GPIOX::ptr()).bsrr.write(|w| w.bits(1 << $i)) }
+                        unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << $i)) }
                     }
 
                     fn set_low(&mut self) {
                         // NOTE(safety) atomic write to a stateless register. It is also safe
                         // because pins are only reachable by splitting a GPIO struct,
                         // which preserves single ownership of each pin.
-                        unsafe { (*$GPIOX::ptr()).bsrr.write(|w| w.bits(1 << (16 + $i))) }
+                        unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << (16 + $i))) }
                     }
                 }
             )+
         }
     }
 }
-
-gpio!(GPIOB, gpiob, gpioben, gpiobrst, PBx, [
-      PB7: (pb7, 7),
-]);

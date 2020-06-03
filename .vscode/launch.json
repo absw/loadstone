@@ -18,11 +18,11 @@
             "executable": "./target/thumbv7em-none-eabi/debug/app",
             /* Run `cargo build --example itm` and uncomment this line to run itm example */
             // "executable": "./target/thumbv7em-none-eabihf/debug/examples/itm",
-            "device": "STM32F469NIH6",
+            "device": "STM32F429ZIT6U",
             "configFiles": [
                 "${workspaceRoot}/openocd.cfg",
             ],
-            "svdFile": "${workspaceRoot}/.vscode/STM32F469.svd",
+            "svdFile": "${workspaceRoot}/.vscode/STM32F429.svd",
             "preLaunchCommands": [
                 "monitor arm semihosting enable",
             ],
