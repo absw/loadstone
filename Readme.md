@@ -131,7 +131,7 @@ However, that doesn't mean we can't leverage the compiler. The
 role of the lower driver layers is to encode that information (e.g. correctness of
 reads/writes to peripheral registers, rules of access) in the type system
 through a collection of simple interfaces, so higher level constructs and
-business logics can be developed safely backed by the guarantees of the borrow
+business logic can be developed safely backed by the guarantees of the borrow
 checker.
 
 This safe wrapper is already mostly implemented by the Peripheral Access Crate
