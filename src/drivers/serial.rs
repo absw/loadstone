@@ -1,11 +1,20 @@
 use crate::stm32pac::{RCC, USART1, USART2, USART3};
-
 use core::{marker::PhantomData, ptr};
-
 use crate::{drivers::rcc, hal::serial};
 use nb;
-
 use crate::pin_configuration::*;
+
+/// Extension trait to wrap a USART peripheral
+pub trait UsartExt<PINS> {
+    /// The wrapping type
+    type Serial;
+
+    fn wrap(self,
+        pins: PINS,
+        config: config::Config,
+        clocks: rcc::Clocks,
+    ) -> Result<Self::Serial, config::InvalidConfig>;
+}
 
 #[doc(hidden)]
 mod private {
@@ -25,17 +34,17 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // List of all pins capable of being configured as certain USART
 // functions. NOTE: This is not configuration! there's no need
 // to remove items from these lists once complete.
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(TxPin<USART3>: [Pb10<AF7>, Pd8<AF7>, Pc10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429"))]
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(RxPin<USART3>: [Pb11<AF7>, Pd9<AF7>, Pc11<AF7>,]);
 
 /// Serial error
@@ -382,27 +391,44 @@ macro_rules! instances {
         $USARTX:ident: ($usartX:ident, $apbXenr:ident, $usartXen:ident, $pclkX:ident),
     )+) => {
         $(
-        impl<PINS> Serial<$USARTX, PINS> {
-            fn config_stop(self, config: config::Config) -> Self {
-                use crate::stm32pac::usart1::cr2::STOP_A;
-                use self::config::*;
+            impl<PINS> Serial<$USARTX, PINS> {
+                fn config_stop(self, config: config::Config) -> Self {
+                    use crate::stm32pac::usart1::cr2::STOP_A;
+                    use self::config::*;
 
-                self.usart.cr2.write(|w| {
-                    w.stop().variant(match config.stopbits {
-                        StopBits::STOP0P5 => STOP_A::STOP0P5,
-                        StopBits::STOP1 => STOP_A::STOP1,
-                        StopBits::STOP1P5 => STOP_A::STOP1P5,
-                        StopBits::STOP2 => STOP_A::STOP2,
-                    })
-                });
-                self
+                    self.usart.cr2.write(|w| {
+                        w.stop().variant(match config.stopbits {
+                            StopBits::STOP0P5 => STOP_A::STOP0P5,
+                            StopBits::STOP1 => STOP_A::STOP1,
+                            StopBits::STOP1P5 => STOP_A::STOP1P5,
+                            StopBits::STOP2 => STOP_A::STOP2,
+                        })
+                    });
+                    self
+                }
             }
-        }
+
         )+
 
         hal_usart_impl! {
             $( $USARTX: ($usartX, $apbXenr, $usartXen, $pclkX), )+
         }
+
+        $(
+            impl<PINS> UsartExt<PINS> for $USARTX
+            where
+                PINS: Pins<$USARTX>, {
+                type Serial = Serial<$USARTX, PINS>;
+
+                fn wrap(self,
+                    pins: PINS,
+                    config: config::Config,
+                    clocks: rcc::Clocks,
+                ) -> Result<Self::Serial, config::InvalidConfig> {
+                    Serial::$usartX(self, pins, config, clocks)
+                }
+            }
+        )+
     }
 }
 

@@ -85,7 +85,7 @@ macro_rules! gpio_inner {
         pub mod $gpiox {
             use core::marker::PhantomData;
             use crate::hal::gpio::OutputPin;
-            use super::*;
+            use crate::pin_configuration::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]

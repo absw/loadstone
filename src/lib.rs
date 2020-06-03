@@ -4,9 +4,10 @@
 
 #[cfg(feature = "stm32f429")]
 pub use stm32f4::stm32f429 as stm32pac;
-
 #[cfg(feature = "stm32f469")]
 pub use stm32f4::stm32f469 as stm32pac;
+#[cfg(feature = "stm32f407")]
+pub use stm32f4::stm32f407 as stm32pac;
 
 #[cfg(not(test))]
 extern crate panic_semihosting; // logs messages to the host stderr
