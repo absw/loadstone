@@ -82,6 +82,63 @@ macro_rules! gpio {
     }
 }
 
+macro_rules! into_af {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+        pub fn [<into_af $af_i>](self) -> $Pxi<[<AF $af_i>]> {
+            let offset = 2 * $i;
+
+            // alternate function mode
+            let mode = 0b10;
+
+            // NOTE(safety) atomic read-modify-write operation to a stateless register.
+            // It is also safe because pins are only reachable by splitting a GPIO struct,
+            // which preserves single ownership of each pin.
+            unsafe {
+                (*$GPIOx::ptr()).moder.modify(|r, w|
+                    w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
+                );
+            }
+
+            let af = 7;
+            let offset = 4 * ($i % 8);
+
+            if $i < 8 {
+                // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                // It is also safe because pins are only reachable by splitting a GPIO struct,
+                // which preserves single ownership of each pin.
+                unsafe {
+                    (*$GPIOx::ptr()).afrl.modify(|r, w|
+                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                    );
+                }
+            } else {
+                // NOTE(safety) atomic read-modify-write operation to a stateless register.
+                // It is also safe because pins are only reachable by splitting a GPIO struct,
+                // which preserves single ownership of each pin.
+                unsafe {
+                    (*$GPIOx::ptr()).afrh.modify(|r, w|
+                        w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
+                    );
+                }
+            }
+
+            $Pxi { _mode: PhantomData }
+        }
+} )+ }
+}
+
+macro_rules! new_af {
+    ($GPIOx:ident, $i:expr, $Pxi:ident, $pxi:ident, [$($af_i:expr, )+]) => { $( paste::item! {
+        impl $Pxi<[<AF $af_i>]> {
+            #[allow(dead_code)]
+            fn new() -> Self {
+                let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
+                pin.[<into_af $af_i>]()
+            }
+        }
+} )+ }
+}
+
 macro_rules! gpio_inner {
     ($GPIOx:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $Pxx:ident, [
         $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty), )+
@@ -198,57 +255,10 @@ macro_rules! gpio_inner {
                     }
                 }
 
-                impl $Pxi<AF7> {
-                    #[allow(dead_code)]
-                    fn new() -> Self {
-                        let pin = $Pxi::<Input<Floating>> { _mode : PhantomData };
-                        pin.into_af7()
-                    }
-                }
+                new_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                 impl<MODE> $Pxi<MODE> {
-                    pub fn into_af7(
-                        self,
-                    ) -> $Pxi<AF7> {
-                        let offset = 2 * $i;
-
-                        // alternate function mode
-                        let mode = 0b10;
-
-                        // NOTE(safety) atomic read-modify-write operation to a stateless register.
-                        // It is also safe because pins are only reachable by splitting a GPIO struct,
-                        // which preserves single ownership of each pin.
-                        unsafe {
-                            (*$GPIOx::ptr()).moder.modify(|r, w|
-                                w.bits((r.bits() & !(0b11 << offset)) | (mode << offset))
-                            );
-                        }
-
-                        let af = 7;
-                        let offset = 4 * ($i % 8);
-
-                        if $i < 8 {
-                            // NOTE(safety) atomic read-modify-write operation to a stateless register.
-                            // It is also safe because pins are only reachable by splitting a GPIO struct,
-                            // which preserves single ownership of each pin.
-                            unsafe {
-                                (*$GPIOx::ptr()).afrl.modify(|r, w|
-                                    w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
-                                );
-                            }
-                        } else {
-                            // NOTE(safety) atomic read-modify-write operation to a stateless register.
-                            // It is also safe because pins are only reachable by splitting a GPIO struct,
-                            // which preserves single ownership of each pin.
-                            unsafe {
-                                (*$GPIOx::ptr()).afrh.modify(|r, w|
-                                    w.bits((r.bits() & !(0b1111 << offset)) | (af << offset))
-                                );
-                            }
-                        }
-
-                        $Pxi { _mode: PhantomData }
-                    }
+                    into_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                     /// Configures the pin to operate as a floating input pin
                     pub fn into_floating_input(
