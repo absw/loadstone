@@ -1,6 +1,6 @@
 //! # Simple GPIO interface
 //!
-//! Separete interfaces to Input and Output pins, automatically
+//! Separate interfaces to Input and Output pins, automatically
 //! implemented by GPIOs that support such operations.
 //!
 //! For this project in particular, these traits are automatically implemented
