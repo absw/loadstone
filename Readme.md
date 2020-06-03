@@ -86,7 +86,7 @@ comfortable with Rust, this section will cover some of the usual pain points, es
 
 ## Documentation and API inspection
 
-At Bluefruit, we are used to looking at two places when broaching a new
+At Bluefruit, we are used to looking at two places when approaching a new
 codebase:
 
 * The API (header files in C/C++)
