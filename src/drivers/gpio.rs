@@ -1,3 +1,8 @@
+//! This GPIO implementation is based on [typestates](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html).
+//!
+//! What this means is that pin configuration is encoded in the type
+//! system, making it statically impossible to misuse a pin (e.g. there's
+//! no "write" operation on a pin that has been configured as input).
 use core::marker::PhantomData;
 use crate::stm32pac;
 
@@ -37,6 +42,7 @@ macro_rules! alternate_functions {
         pub struct [<AF $i>];
     } )+ }
 }
+alternate_functions!(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,);
 
 #[macro_export]
 macro_rules! pin_rows {
@@ -47,7 +53,6 @@ macro_rules! pin_rows {
         )+
     }
 }
-
 macro_rules! pin_row {
     ($x:ident, [$($i:expr,)+]) => { $( paste::item! {
         /// Pin with a MODE typestate

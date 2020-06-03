@@ -2,6 +2,7 @@ use crate::stm32pac::{RCC, USART1, USART2, USART3};
 use core::{marker::PhantomData, ptr};
 use crate::{drivers::rcc, hal::serial};
 use nb;
+use crate::drivers::gpio::*;
 use crate::pin_configuration::*;
 
 /// Extension trait to wrap a USART peripheral

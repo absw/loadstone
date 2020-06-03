@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(unused_attributes))]
 #![cfg_attr(not(test), no_std)]
 #![cfg_attr(not(test), no_main)]
 
