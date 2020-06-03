@@ -83,6 +83,23 @@ pub enum Event {
 }
 
 pub mod config {
+    //! Configuration required to construct a new USART instance.
+    //!
+    //! # Example
+    //! ```no_run
+    //! # use secure_bootloader_lib::stm32pac;
+    //! # use secure_bootloader_lib::hal::time::{MegaHertz, Bps};
+    //! # use secure_bootloader_lib::drivers::{serial::{self, UsartExt}, gpio::GpioExt, rcc::{RccExt, RccWrapper}};
+    //! # let mut peripherals = stm32pac::Peripherals::take().unwrap();
+    //! # let rcc_wrapper: RccWrapper = stm32pac::Peripherals::take().unwrap().RCC.constrain();
+    //! # let clocks = rcc_wrapper.sysclk(MegaHertz(180)).freeze();
+    //! # let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
+    //! #
+    //! let (serial, tx, rx) = (peripherals.USART2, gpiod.pd5, gpiod.pd6);
+    //! let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
+    //! let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
+    //! ```
+
     use crate::hal::time::{Bps, U32Ext};
 
     pub enum WordLength {
@@ -107,23 +124,6 @@ pub mod config {
         STOP1P5,
     }
 
-    /// Configuration struct, required to construct
-    /// a new USART instance.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use secure_bootloader_lib::stm32pac;
-    /// # use secure_bootloader_lib::hal::time::{MegaHertz, Bps};
-    /// # use secure_bootloader_lib::drivers::{serial::{self, UsartExt}, gpio::GpioExt, rcc::{RccExt, RccWrapper}};
-    /// # let mut peripherals = stm32pac::Peripherals::take().unwrap();
-    /// # let rcc_wrapper: RccWrapper = stm32pac::Peripherals::take().unwrap().RCC.constrain();
-    /// # let clocks = rcc_wrapper.sysclk(MegaHertz(180)).freeze();
-    /// # let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
-    ///
-    /// let (serial, tx, rx) = (peripherals.USART2, gpiod.pd5, gpiod.pd6);
-    /// let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
-    /// let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
-    /// ```
     pub struct Config {
         pub baudrate: Bps,
         pub wordlength: WordLength,
