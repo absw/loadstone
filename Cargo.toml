@@ -6,7 +6,7 @@ name = "secure_bootloader"
 version = "0.1.0"
 
 [features]
-default = []
+default = ["stm32f429"]
 stm32f429 = ["stm32f4/stm32f429"]
 stm32f469 = ["stm32f4/stm32f469"]
 

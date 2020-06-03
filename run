@@ -10,9 +10,9 @@ else
 fi
 
 if [ "$board" == "1" ]; then
-   cargo run --target thumbv7em-none-eabi --features "stm32f429"
+   cargo run --target thumbv7em-none-eabi --no-default-features --features "stm32f429"
 elif [ "$board" == "2" ]; then
-   cargo run --target thumbv7em-none-eabi --features "stm32f469"
+   cargo run --target thumbv7em-none-eabi --no-default-features --features "stm32f469"
 else
    echo "Usage: $0 [1|2]"
 fi

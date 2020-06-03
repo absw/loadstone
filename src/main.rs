@@ -7,9 +7,8 @@ use cortex_m_rt::entry;
 #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
-    use secure_bootloader_lib;
-
     use secure_bootloader_lib::{
+        self,
         drivers::{gpio::GpioExt, rcc::RccExt, serial},
         hal,
         hal::{gpio::OutputPin, serial::Write},

@@ -1,4 +1,4 @@
 #!/bin/bash
 
 # Board is arbitrary, but could be set in this script if needed
-cargo test --features "stm32f429"
+cargo test
