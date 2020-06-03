@@ -14,27 +14,18 @@ pub trait RccExt {
 impl RccExt for RCC {
     fn constrain(self) -> RccWrapper {
         RccWrapper {
-            cfgr: CFGR {
-                hse: None,
-                hclk: None,
-                pclk1: None,
-                pclk2: None,
-                sysclk: None,
-                pll48clk: false,
-            },
+           hse: None,
+           hclk: None,
+           pclk1: None,
+           pclk2: None,
+           sysclk: None,
+           pll48clk: false,
         }
     }
 }
 
 /// Constrained RCC peripheral
 pub struct RccWrapper {
-    pub cfgr: CFGR,
-}
-
-const HSI: u32 = 16_000_000; // Hz
-
-/// RCC.CFGR register block abstraction
-pub struct CFGR {
     hse: Option<u32>,
     hclk: Option<u32>,
     pclk1: Option<u32>,
@@ -43,7 +34,9 @@ pub struct CFGR {
     pll48clk: bool,
 }
 
-impl CFGR {
+const HSI: u32 = 16_000_000; // Hz
+
+impl RccWrapper {
     /// Uses HSE (external oscillator) instead of HSI (internal RC oscillator) as the clock source.
     /// Will result in a hang if an external oscillator is not connected or it fails to start.
     pub fn use_hse<F>(mut self, freq: F) -> Self
@@ -181,8 +174,8 @@ impl CFGR {
     /// # use secure_bootloader_lib::stm32pac;
     /// # use secure_bootloader_lib::hal::time::MegaHertz;
     /// # use secure_bootloader_lib::drivers::rcc::{RccExt, RccWrapper};
-    /// # let RccWrapper{cfgr} = stm32pac::Peripherals::take().unwrap().RCC.constrain();
-    ///   let Clocks = cfgr.sysclk(MegaHertz(180))
+    /// # let rcc_config = stm32pac::Peripherals::take().unwrap().RCC.constrain();
+    ///   let Clocks = rcc_config.sysclk(MegaHertz(180))
     ///       .hclk(MegaHertz(84))
     ///       .pclk1(MegaHertz(42))
     ///       .pclk2(MegaHertz(84))
@@ -311,10 +304,10 @@ impl CFGR {
 /// # use secure_bootloader_lib::drivers::rcc::{Clocks, RccExt, RccWrapper};
 /// # fn stores_clock_info(_clocks: Clocks) {}
 ///
-///   let RccWrapper{cfgr} = Peripherals::take().unwrap().RCC.constrain();
+///   let rcc_config = Peripherals::take().unwrap().RCC.constrain();
 ///
-///   // Freeze consumes the cfgr struct, so it's not available anymore.
-///   let clocks = cfgr.sysclk(MegaHertz(180)).freeze();
+///   // Freeze consumes the wrapper struct, so it's not available anymore.
+///   let clocks = rcc_config.sysclk(MegaHertz(180)).freeze();
 ///
 ///   // We can't obtain the RCC again, so there's no way to reconfigure.
 ///   assert!(Peripherals::take().is_none());

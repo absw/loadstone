@@ -26,16 +26,15 @@ fn main() -> ! {
     #[cfg(any(feature = "stm32f429", feature = "stm32f469", feature = "stm32f407"))]
     let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
 
-    let clock_configuration = peripherals
+    let clocks = peripherals
         .RCC
         .constrain()
-        .cfgr
         .sysclk(hal::time::MegaHertz(180))
         .hclk(hal::time::MegaHertz(84))
         .pclk1(hal::time::MegaHertz(42))
         .pclk2(hal::time::MegaHertz(84))
-        .require_pll48clk();
-    let clocks = clock_configuration.freeze();
+        .require_pll48clk()
+        .freeze();
 
     // Bring up serial communications (pins are MCU specific)
     #[cfg(feature = "stm32f429")]
