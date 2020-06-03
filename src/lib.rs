@@ -6,17 +6,17 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(not(test), no_std)]
 
+#[cfg(feature = "stm32f407")]
+#[doc(hidden)]
+pub use stm32f4::stm32f407 as stm32pac;
 #[cfg(feature = "stm32f429")]
 #[doc(hidden)]
 pub use stm32f4::stm32f429 as stm32pac;
 #[cfg(feature = "stm32f469")]
 #[doc(hidden)]
 pub use stm32f4::stm32f469 as stm32pac;
-#[cfg(feature = "stm32f407")]
-#[doc(hidden)]
-pub use stm32f4::stm32f407 as stm32pac;
 
-#[cfg(target_arch="arm")]
+#[cfg(target_arch = "arm")]
 extern crate panic_semihosting; // logs messages to the host stderr
 
 #[macro_use]

@@ -1,8 +1,10 @@
 //! Clock configuration module.
-use crate::hal::time::Hertz;
-use crate::stm32pac::{
-    rcc::cfgr::{HPRE_A, SW_A},
-    RCC,
+use crate::{
+    hal::time::Hertz,
+    stm32pac::{
+        rcc::cfgr::{HPRE_A, SW_A},
+        RCC,
+    },
 };
 
 /// Extension trait that constrains the `RCC` peripheral, wrapping it
@@ -14,12 +16,12 @@ pub trait RccExt {
 impl RccExt for RCC {
     fn constrain(self) -> RccWrapper {
         RccWrapper {
-           hse: None,
-           hclk: None,
-           pclk1: None,
-           pclk2: None,
-           sysclk: None,
-           pll48clk: false,
+            hse: None,
+            hclk: None,
+            pclk1: None,
+            pclk2: None,
+            sysclk: None,
+            pll48clk: false,
         }
     }
 }

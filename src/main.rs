@@ -13,8 +13,7 @@ fn main() -> ! {
         drivers::{gpio::GpioExt, rcc::RccExt, serial, serial::UsartExt},
         hal,
         hal::{gpio::OutputPin, serial::Write, time::Bps},
-        uprint, uprintln,
-        stm32pac
+        stm32pac, uprint, uprintln,
     };
 
     let mut peripherals = stm32pac::Peripherals::take().unwrap();
@@ -45,7 +44,7 @@ fn main() -> ! {
     let (serial, tx, rx) = (peripherals.USART2, gpioa.pa2, gpioa.pa3);
 
     let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
-    let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
+    let mut serial = serial.wrap((tx, rx), serial_config, clocks).unwrap();
 
     // Bring up blinky
     #[cfg(feature = "stm32f429")]

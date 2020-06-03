@@ -3,8 +3,8 @@
 //! Pin configuration is encoded in the type system through typestates,
 //! making it statically impossible to misuse a pin (e.g. there's
 //! no "write" operation on a pin that has been configured as input).
-use core::marker::PhantomData;
 use crate::stm32pac;
+use core::marker::PhantomData;
 
 /// Extension trait to split a GPIO peripheral in independent pins and registers
 pub trait GpioExt {
@@ -48,7 +48,7 @@ macro_rules! alternate_functions {
     } )+ }
 }
 // Expands into typestates AF0-AF15
-alternate_functions!(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,);
+alternate_functions!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,);
 
 // Type generator for all pins
 macro_rules! pin_rows {

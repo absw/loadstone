@@ -1,10 +1,12 @@
 //! USART implementation.
-use crate::stm32pac::{RCC, USART1, USART2, USART3};
+use crate::{
+    drivers::{gpio::*, rcc},
+    hal::serial,
+    pin_configuration::*,
+    stm32pac::{RCC, USART1, USART2, USART3},
+};
 use core::{marker::PhantomData, ptr};
-use crate::{drivers::rcc, hal::serial};
 use nb;
-use crate::drivers::gpio::*;
-use crate::pin_configuration::*;
 
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.
@@ -12,10 +14,8 @@ pub trait UsartExt<PINS> {
     /// The wrapping type
     type Serial;
 
-    fn wrap(self,
-        pins: PINS,
-        config: config::Config,
-        clocks: rcc::Clocks,
+    fn wrap(
+        self, pins: PINS, config: config::Config, clocks: rcc::Clocks,
     ) -> Result<Self::Serial, config::InvalidConfig>;
 }
 
