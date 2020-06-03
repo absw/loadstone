@@ -24,7 +24,17 @@ impl RccExt for RCC {
     }
 }
 
-/// Constrained RCC peripheral
+/// Wrapper for RCC peripheral. Allows one-shot configuration
+/// of clocks.
+///
+/// # Example
+/// ```no_run
+/// # use secure_bootloader_lib::stm32pac;
+/// # use secure_bootloader_lib::hal::time::MegaHertz;
+/// # use secure_bootloader_lib::drivers::rcc::{RccExt, RccWrapper};
+///   let rcc_wrapper: RccWrapper = stm32pac::Peripherals::take().unwrap().RCC.constrain();
+///   let clocks = rcc_wrapper.sysclk(MegaHertz(180)).freeze();
+/// ```
 pub struct RccWrapper {
     hse: Option<u32>,
     hclk: Option<u32>,
@@ -175,7 +185,7 @@ impl RccWrapper {
     /// # use secure_bootloader_lib::hal::time::MegaHertz;
     /// # use secure_bootloader_lib::drivers::rcc::{RccExt, RccWrapper};
     /// # let rcc_config = stm32pac::Peripherals::take().unwrap().RCC.constrain();
-    ///   let Clocks = rcc_config.sysclk(MegaHertz(180))
+    ///   let clocks = rcc_config.sysclk(MegaHertz(180))
     ///       .hclk(MegaHertz(84))
     ///       .pclk1(MegaHertz(42))
     ///       .pclk2(MegaHertz(84))
