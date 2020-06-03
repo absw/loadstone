@@ -1,12 +1,13 @@
+//! Clock configuration module.
 use crate::hal::time::Hertz;
 use crate::stm32pac::{
     rcc::cfgr::{HPRE_A, SW_A},
     RCC,
 };
 
-/// Extension trait that constrains the `RCC` peripheral, wrapping it in a higher level abstraction
+/// Extension trait that constrains the `RCC` peripheral, wrapping it
+/// inside a higher level abstraction that can be safely moved.
 pub trait RccExt {
-    /// Constrains (wraps) the `RCC` peripheral so it plays nicely with the other abstractions
     fn constrain(self) -> RccWrapper;
 }
 
@@ -32,6 +33,7 @@ pub struct RccWrapper {
 
 const HSI: u32 = 16_000_000; // Hz
 
+/// RCC.CFGR register block abstraction
 pub struct CFGR {
     hse: Option<u32>,
     hclk: Option<u32>,
@@ -171,6 +173,21 @@ impl CFGR {
         }
     }
 
+    /// Consumes the register block abstraction and generates a Clocks
+    /// struct. This ensures configuration can't be further modified.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use secure_bootloader_lib::stm32pac;
+    /// # use secure_bootloader_lib::hal::time::MegaHertz;
+    /// # use secure_bootloader_lib::drivers::rcc::{RccExt, RccWrapper};
+    /// # let RccWrapper{cfgr} = stm32pac::Peripherals::take().unwrap().RCC.constrain();
+    ///   let Clocks = cfgr.sysclk(MegaHertz(180))
+    ///       .hclk(MegaHertz(84))
+    ///       .pclk1(MegaHertz(42))
+    ///       .pclk2(MegaHertz(84))
+    ///       .freeze();
+    /// ```
     pub fn freeze(self) -> Clocks {
         let rcc = unsafe { &*RCC::ptr() };
 
@@ -284,7 +301,28 @@ impl CFGR {
 
 /// Frozen clock frequencies
 ///
-/// The existence of this value indicates that the clock configuration can no longer be changed
+/// The existence of this value indicates that the clock configuration can
+/// no longer be changed.
+///
+/// # Example
+/// ```no_run
+/// # use secure_bootloader_lib::stm32pac::Peripherals;
+/// # use secure_bootloader_lib::hal::time::MegaHertz;
+/// # use secure_bootloader_lib::drivers::rcc::{Clocks, RccExt, RccWrapper};
+/// # fn stores_clock_info(_clocks: Clocks) {}
+///
+///   let RccWrapper{cfgr} = Peripherals::take().unwrap().RCC.constrain();
+///
+///   // Freeze consumes the cfgr struct, so it's not available anymore.
+///   let clocks = cfgr.sysclk(MegaHertz(180)).freeze();
+///
+///   // We can't obtain the RCC again, so there's no way to reconfigure.
+///   assert!(Peripherals::take().is_none());
+///
+///   // Now the "clocks" struct can be passed and cloned to anything
+///   // that needs to inspect clock frequencies.
+///   stores_clock_info(clocks);
+/// ```
 #[derive(Clone, Copy)]
 pub struct Clocks {
     hclk: Hertz,

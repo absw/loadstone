@@ -1,7 +1,7 @@
-//! This GPIO implementation is based on [typestates](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html).
+//! Macro-instantiated GPIO implementation.
 //!
-//! What this means is that pin configuration is encoded in the type
-//! system, making it statically impossible to misuse a pin (e.g. there's
+//! Pin configuration is encoded in the type system through typestates,
+//! making it statically impossible to misuse a pin (e.g. there's
 //! no "write" operation on a pin that has been configured as input).
 use core::marker::PhantomData;
 use crate::stm32pac;
@@ -15,35 +15,42 @@ pub trait GpioExt {
     fn split(self, rcc: &mut stm32pac::RCC) -> Self::GpioWrapper;
 }
 
-/// Input mode (type state)
+/// Input mode (Pin type state)
 pub struct Input<MODE> {
+    // NOTE: The role of PhantomData is to represent that
+    // this Input typestate "owns" a generic MODE typestate,
+    // establishing a typestate hierarchy. Other usages of
+    // PhantomData in this file are similar.
     _mode: PhantomData<MODE>,
 }
-/// Floating input (type state)
+
+/// Floating input (Input type state)
 pub struct Floating;
-/// Pulled down input (type state)
+/// Pulled down input (Input type state)
 pub struct PullDown;
-/// Pulled up input (type state)
+/// Pulled up input (Input type state)
 pub struct PullUp;
 
-/// Output mode (type state)
+/// Output mode (Pin type state)
 pub struct Output<MODE> {
     _mode: PhantomData<MODE>,
 }
-/// Push pull output (type state)
+/// Push pull output (Output type state)
 pub struct PushPull;
-/// Open drain output (type state)
+/// Open drain output (Output type state)
 pub struct OpenDrain;
 
-#[macro_export]
+// Typestate generator for all Alternate Functions
 macro_rules! alternate_functions {
     ($($i:expr, )+) => { $( paste::item! {
-        /// Alternate function (type state)
+        /// Alternate function (Pin type state)
         pub struct [<AF $i>];
     } )+ }
 }
+// Expands into typestates AF0-AF15
 alternate_functions!(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,);
 
+// Type generator for all pins
 #[macro_export]
 macro_rules! pin_rows {
     ($($x:ident,)+) => {
@@ -63,7 +70,21 @@ macro_rules! pin_row {
     }
 }
 
-/// Instantiates a gpio pin row with default modes per available pin
+/// Instantiates a gpio pin row with default modes per available pin.
+///
+/// # Examples
+///
+/// ```ignore
+///   gpio!(b, [
+///      (7, Output::<PushPull>),
+///      (8, AF4),
+///      (3, Input::<Floating>),
+///   ]);
+///
+/// ```
+/// This makes the wrapper struct gpiob have the members gpiob.pb7 in
+/// Output + Push/Pull mode, gpiob.pb8 in alternate function 4, and
+/// gpiob.pb3 as a floating input.
 #[macro_export]
 macro_rules! gpio {
     ($x: ident, [

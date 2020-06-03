@@ -2,10 +2,9 @@
 //!
 //! This crate contains all functionality for the
 //! secure bootloader project in library form.
-
 #![feature(never_type)]
-#![cfg_attr(test, allow(unused_imports))]
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(not(any(test, native)), allow(unused_imports))]
+#![cfg_attr(not(any(test, native)), no_std)]
 
 #[cfg(feature = "stm32f429")]
 #[doc(hidden)]
@@ -17,11 +16,9 @@ pub use stm32f4::stm32f469 as stm32pac;
 #[doc(hidden)]
 pub use stm32f4::stm32f407 as stm32pac;
 
-#[cfg(not(test))]
+#[cfg(target_arch="arm")]
 extern crate panic_semihosting; // logs messages to the host stderr
 
-/// Driver implementations for all supported platforms. They offer
-/// a safe API, and are typestate based whenever possible.
 #[macro_use]
 pub mod drivers;
 

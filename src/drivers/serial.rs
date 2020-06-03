@@ -1,3 +1,4 @@
+//! USART implementation.
 use crate::stm32pac::{RCC, USART1, USART2, USART3};
 use core::{marker::PhantomData, ptr};
 use crate::{drivers::rcc, hal::serial};
