@@ -3,8 +3,8 @@
 //! This crate contains all functionality for the
 //! secure bootloader project in library form.
 #![feature(never_type)]
-#![cfg_attr(not(any(test, native)), allow(unused_imports))]
-#![cfg_attr(not(any(test, native)), no_std)]
+#![cfg_attr(test, allow(unused_imports))]
+#![cfg_attr(not(test), no_std)]
 
 #[cfg(feature = "stm32f429")]
 #[doc(hidden)]
