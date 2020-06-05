@@ -10,8 +10,7 @@ use cortex_m_rt::entry;
 fn main() -> ! {
     use secure_bootloader_lib::{
         self,
-        devices::implementations::led,
-        devices::interfaces::led::Toggle,
+        devices::{implementations::led, interfaces::led::Toggle},
         drivers::{gpio::GpioExt, rcc::RccExt, serial, serial::UsartExt},
         hal,
         hal::{serial::Write, time::Bps},

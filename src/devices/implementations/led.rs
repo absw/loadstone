@@ -1,7 +1,9 @@
 //! Various LED device implementations.
 
-use crate::devices::interfaces::led::{self, Toggle, Chromatic};
-use crate::hal::gpio::OutputPin;
+use crate::{
+    devices::interfaces::led::{self, Chromatic, Toggle},
+    hal::gpio::OutputPin,
+};
 
 /// Multi-color type for RGB LEDs
 #[derive(Copy, Clone, Debug, is_enum_variant)]
@@ -13,7 +15,6 @@ pub enum RgbPalette {
 
 /// Solid (non-blinking) color RGB LED
 ///
-/// Implements Chromatic, Toggle and Blink
 /// # Example
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
@@ -54,8 +55,6 @@ pub struct RgbLed<Pin: OutputPin> {
 
 /// Solid (non-blinking) monochrome LED
 ///
-/// Implements Toggle and Blink
-///
 /// # Example
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
@@ -78,7 +77,7 @@ pub enum Logic {
     /// Logical high equals "on"
     Direct,
     /// Logical high equals "off"
-    Inverted
+    Inverted,
 }
 
 // Extension trait to ensure LED pins are correctly
@@ -117,19 +116,27 @@ impl<Pin: OutputPin> Drop for MonochromeLed<Pin> {
     fn drop(&mut self) { self.off(); }
 }
 
-impl <Pin: OutputPin> led::Toggle for MonochromeLed<Pin> {
+impl<Pin: OutputPin> led::Toggle for MonochromeLed<Pin> {
     fn on(&mut self) {
-        if !self.is_on { self.pin.on(self.logic); }
+        if !self.is_on {
+            self.pin.on(self.logic);
+        }
         self.is_on = true;
     }
 
     fn off(&mut self) {
-        if self.is_on { self.pin.off(self.logic); }
+        if self.is_on {
+            self.pin.off(self.logic);
+        }
         self.is_on = false;
     }
 
     fn toggle(&mut self) {
-        if self.is_on { self.off(); } else { self.on(); }
+        if self.is_on {
+            self.off();
+        } else {
+            self.on();
+        }
     }
 }
 
@@ -149,13 +156,19 @@ impl<Pin: OutputPin> Drop for RgbLed<Pin> {
     fn drop(&mut self) { self.off(); }
 }
 
-impl <Pin: OutputPin> led::Toggle for RgbLed<Pin> {
+impl<Pin: OutputPin> led::Toggle for RgbLed<Pin> {
     fn on(&mut self) {
         if !self.is_on {
             match self.color {
-                RgbPalette::Red => { self.red.on(self.logic); },
-                RgbPalette::Green => { self.green.on(self.logic); },
-                RgbPalette::Blue => { self.blue.on(self.logic); },
+                RgbPalette::Red => {
+                    self.red.on(self.logic);
+                }
+                RgbPalette::Green => {
+                    self.green.on(self.logic);
+                }
+                RgbPalette::Blue => {
+                    self.blue.on(self.logic);
+                }
             }
         }
         self.is_on = true;
@@ -171,7 +184,11 @@ impl <Pin: OutputPin> led::Toggle for RgbLed<Pin> {
     }
 
     fn toggle(&mut self) {
-        if self.is_on { self.off(); } else { self.on(); }
+        if self.is_on {
+            self.off();
+        } else {
+            self.on();
+        }
     }
 }
 
@@ -185,13 +202,15 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
     }
 }
 
-#[cfg(not(target="arm"))]
+#[cfg(not(target = "arm"))]
 #[doc(hidden)]
 pub mod mock {
     use super::*;
     #[derive(Clone, Debug, Default)]
     #[doc(hidden)]
-    pub struct MockPin { state: bool }
+    pub struct MockPin {
+        state: bool,
+    }
     impl MockPin {
         pub fn is_high(&self) -> bool { self.state }
         pub fn is_low(&self) -> bool { !self.state }
@@ -222,8 +241,7 @@ pub mod mock {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use super::mock::*;
+    use super::{mock::*, *};
 
     #[test]
     fn monochrome_led_defaults_to_logic_low_with_direct_logic() {
@@ -283,12 +301,8 @@ mod test {
     fn type_erasure_between_chromatic_and_non_chromatic_led() {
         // Given
         let mut monochrome = MonochromeLed::new(MockPin::default(), Logic::Inverted);
-        let mut chromatic = RgbLed::new(
-            MockPin::default(),
-            MockPin::default(),
-            MockPin::default(),
-            Logic::Direct
-        );
+        let mut chromatic =
+            RgbLed::new(MockPin::default(), MockPin::default(), MockPin::default(), Logic::Direct);
 
         chromatic.color(RgbPalette::Red);
 
