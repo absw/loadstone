@@ -1,8 +1,10 @@
+//! Various LED device implementations.
+
 use crate::devices::interfaces::led::{self, Toggle, Chromatic};
 use crate::hal::gpio::OutputPin;
 
-#[derive(Copy, Clone, Debug, is_enum_variant)]
 /// Multi-color type for RGB LEDs
+#[derive(Copy, Clone, Debug, is_enum_variant)]
 pub enum RgbPalette {
     Red,
     Green,
@@ -110,6 +112,11 @@ impl<Pin: OutputPin> MonochromeLed<Pin> {
     pub fn is_on(&self) -> bool { self.is_on }
 }
 
+// Turn off when going out of scope
+impl<Pin: OutputPin> Drop for MonochromeLed<Pin> {
+    fn drop(&mut self) { self.off(); }
+}
+
 impl <Pin: OutputPin> led::Toggle for MonochromeLed<Pin> {
     fn on(&mut self) {
         if !self.is_on { self.pin.on(self.logic); }
@@ -124,6 +131,22 @@ impl <Pin: OutputPin> led::Toggle for MonochromeLed<Pin> {
     fn toggle(&mut self) {
         if self.is_on { self.off(); } else { self.on(); }
     }
+}
+
+impl<Pin: OutputPin> RgbLed<Pin> {
+    pub fn new(mut red: Pin, mut green: Pin, mut blue: Pin, logic: Logic) -> Self {
+        red.off(logic);
+        green.off(logic);
+        blue.off(logic);
+        Self { red, green, blue, color: RgbPalette::Green, is_on: false, logic }
+    }
+    pub fn get_color(&self) -> RgbPalette { self.color }
+    pub fn is_on(&self) -> bool { self.is_on }
+}
+
+// Turn off when going out of scope
+impl<Pin: OutputPin> Drop for RgbLed<Pin> {
+    fn drop(&mut self) { self.off(); }
 }
 
 impl <Pin: OutputPin> led::Toggle for RgbLed<Pin> {
@@ -162,37 +185,30 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
     }
 }
 
-impl<Pin: OutputPin> RgbLed<Pin> {
-    pub fn new(mut red: Pin, mut green: Pin, mut blue: Pin, logic: Logic) -> Self {
-        red.off(logic);
-        green.off(logic);
-        blue.off(logic);
-        Self { red, green, blue, color: RgbPalette::Green, is_on: false, logic }
-    }
-    pub fn get_color(&self) -> RgbPalette { self.color }
-    pub fn is_on(&self) -> bool { self.is_on }
-}
-
 #[cfg(not(target="arm"))]
 #[doc(hidden)]
 pub mod mock {
     use super::*;
     #[derive(Clone, Debug, Default)]
+    #[doc(hidden)]
     pub struct MockPin { state: bool }
     impl MockPin {
         pub fn is_high(&self) -> bool { self.state }
         pub fn is_low(&self) -> bool { !self.state }
     }
 
+    #[doc(hidden)]
     impl OutputPin for MockPin {
         fn set_low(&mut self) { self.state = false }
         fn set_high(&mut self) { self.state = true }
     }
 
+    #[doc(hidden)]
     impl MonochromeLed<MockPin> {
         pub fn pin(&self) -> &MockPin { &self.pin }
     }
 
+    #[doc(hidden)]
     impl RgbLed<MockPin> {
         pub fn pin(&self, color: RgbPalette) -> &MockPin {
             match color {
@@ -266,7 +282,7 @@ mod test {
     #[test]
     fn type_erasure_between_chromatic_and_non_chromatic_led() {
         // Given
-        let mut monochrome = MonochromeLed::new(MockPin::default(), Logic::Direct);
+        let mut monochrome = MonochromeLed::new(MockPin::default(), Logic::Inverted);
         let mut chromatic = RgbLed::new(
             MockPin::default(),
             MockPin::default(),
@@ -276,13 +292,14 @@ mod test {
 
         chromatic.color(RgbPalette::Red);
 
+        // Array over generic "toggleable" leds
         let mut array: [&mut dyn led::Toggle; 2] = [&mut monochrome, &mut chromatic];
 
         // When
         array.iter_mut().for_each(|l| l.toggle());
 
         // Then
-        assert!(monochrome.pin.is_high());
+        assert!(monochrome.pin.is_low()); // Inverted
         assert!(chromatic.red.is_high());
         assert!(chromatic.green.is_low());
         assert!(chromatic.blue.is_low());
