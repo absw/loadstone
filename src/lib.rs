@@ -20,11 +20,14 @@ pub use stm32f4::stm32f469 as stm32pac;
 extern crate panic_semihosting; // logs messages to the host stderr
 
 #[macro_use]
+extern crate derive_is_enum_variant;
+
+#[macro_use]
 pub mod drivers;
 
 /// Hardware Abstraction Layer, containing interfaces
 /// for low level drivers.
 #[macro_use]
 pub mod hal;
-pub mod pin_configuration;
 pub mod devices;
+pub mod pin_configuration;

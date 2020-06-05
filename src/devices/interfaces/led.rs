@@ -2,15 +2,15 @@ use crate::hal::time;
 
 /// Interface to a LED's generic color
 pub trait Chromatic<Color> {
-    fn color(self, color: Color) -> Self;
+    fn color(&mut self, color: Color);
 }
 
 pub trait Toggle {
-    fn on(self) -> Self;
-    fn off(self) -> Self;
-    fn toggle(self) -> Self;
+    fn on(&mut self);
+    fn off(&mut self);
+    fn toggle(&mut self);
 }
 
 pub trait Blink {
-    fn frequency(self, frequency: time::Hertz) -> Self;
+    fn frequency(&mut self, frequency: time::Hertz);
 }
