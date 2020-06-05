@@ -54,6 +54,12 @@ fn main() -> ! {
     #[cfg(feature = "stm32f407")]
     let mut led_pin = gpiod.pd14;
 
+    unsafe {
+        use core::ptr;
+        // read an address outside of the RAM region; this causes a HardFault exception
+        ptr::read_volatile(0x8FFF_FFFF as *const u32);
+    }
+
     loop {
         cortex_m::asm::delay(20_000_000);
         led_pin.set_high();

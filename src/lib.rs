@@ -26,6 +26,5 @@ pub mod drivers;
 /// for low level drivers.
 #[macro_use]
 pub mod hal;
-
-/// GPIO configuration and alternate functions.
 pub mod pin_configuration;
+pub mod devices;
