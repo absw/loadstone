@@ -180,6 +180,11 @@ macro_rules! gpio_inner {
                 GPIOF as GPIOf,
                 GPIOG as GPIOg,
                 GPIOH as GPIOh,
+            };
+
+            #[allow(unused_imports)]
+            #[cfg(not(feature = "stm32f412"))]
+            use crate::stm32pac::{
                 GPIOI as GPIOi,
                 GPIOJ as GPIOj,
                 GPIOK as GPIOk,

@@ -15,6 +15,9 @@ pub use stm32f4::stm32f429 as stm32pac;
 #[cfg(feature = "stm32f469")]
 #[doc(hidden)]
 pub use stm32f4::stm32f469 as stm32pac;
+#[cfg(feature = "stm32f412")]
+#[doc(hidden)]
+pub use stm32f4::stm32f412 as stm32pac;
 
 #[cfg(target_arch = "arm")]
 extern crate panic_semihosting; // logs messages to the host stderr

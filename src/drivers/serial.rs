@@ -46,15 +46,24 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // to remove items from these lists once complete.
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
+
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(RxPin<USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
+
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f412"))]
 seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f412"))]
 seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f412"))]
 seal_pins!(TxPin<USART3>: [Pb10<AF7>, Pd8<AF7>, Pc10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+
+#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407", feature = "stm32f412"))]
 seal_pins!(RxPin<USART3>: [Pb11<AF7>, Pd9<AF7>, Pc11<AF7>,]);
 
 /// Serial error

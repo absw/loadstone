@@ -10,6 +10,7 @@ default = ["stm32f429"]
 stm32f429 = ["stm32f4/stm32f429"]
 stm32f469 = ["stm32f4/stm32f469"]
 stm32f407 = ["stm32f4/stm32f407"]
+stm32f412 = ["stm32f4/stm32f412"]
 
 [dependencies]
 cortex-m = "0.6.0"
