@@ -14,13 +14,13 @@ pub trait UsartExt<PINS> {
     /// The wrapping type
     type Serial;
 
-    fn wrap(
+    fn constrain(
         self, pins: PINS, config: config::Config, clocks: rcc::Clocks,
     ) -> Result<Self::Serial, config::InvalidConfig>;
 }
 
-#[doc(hidden)]
 mod private {
+    #[doc(hidden)]
     pub trait Sealed {}
 }
 
@@ -106,7 +106,7 @@ pub mod config {
     //! #
     //! let (serial, tx, rx) = (peripherals.USART2, gpiod.pd5, gpiod.pd6);
     //! let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
-    //! let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
+    //! let mut serial = serial.constrain((tx,rx), serial_config, clocks).unwrap();
     //! ```
 
     use crate::hal::time::{Bps, U32Ext};
@@ -459,7 +459,7 @@ macro_rules! instances {
                 PINS: Pins<$USARTX>, {
                 type Serial = Serial<$USARTX, PINS>;
 
-                fn wrap(self,
+                fn constrain(self,
                     pins: PINS,
                     config: config::Config,
                     clocks: rcc::Clocks,
