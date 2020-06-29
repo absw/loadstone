@@ -9,12 +9,7 @@ use cortex_m_rt::entry;
 #[entry]
 fn main() -> ! {
     use cortex_m_semihosting::hprintln;
-    use secure_bootloader_lib::{
-        self,
-        drivers::rcc::RccExt,
-        hal,
-        stm32pac,
-    };
+    use secure_bootloader_lib::{self, drivers::rcc::RccExt, hal, stm32pac};
 
     let peripherals = stm32pac::Peripherals::take().unwrap();
 

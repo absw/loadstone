@@ -1,3 +1,5 @@
+//! GPIO configuration and alternate functions.
+
 pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
 
 #[cfg(feature = "stm32f429")]

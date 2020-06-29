@@ -86,7 +86,7 @@ comfortable with Rust, this section will cover some of the usual pain points, es
 
 ## Documentation and API inspection
 
-At Bluefruit, we are used to looking at two places when broaching a new
+At Bluefruit, we are used to looking at two places when approaching a new
 codebase:
 
 * The API (header files in C/C++)
@@ -131,7 +131,7 @@ However, that doesn't mean we can't leverage the compiler. The
 role of the lower driver layers is to encode that information (e.g. correctness of
 reads/writes to peripheral registers, rules of access) in the type system
 through a collection of simple interfaces, so higher level constructs and
-business logics can be developed safely backed by the guarantees of the borrow
+business logic can be developed safely backed by the guarantees of the borrow
 checker.
 
 This safe wrapper is already mostly implemented by the Peripheral Access Crate
@@ -146,7 +146,7 @@ At the time of writing, this codebase has far too many lines of code for a
 simple blinky example. This can seem daunting, but the important thing to
 realize is that **the great majority of that code exists only in the type
 system**. The sample layers are written following current embedded Rust best
-practices, generally using [typestate programming](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html). This means that information that would be usually exist at run time
+practices, generally using [typestate programming](https://rust-embedded.github.io/book/static-guarantees/typestate-programming.html). This means that information that would usually exist at run time
 is instead managed in the type system. For example, a pin configured as an input
 is an entirely different *type* from a pin configured as an output, with
 different restrictions and methods.

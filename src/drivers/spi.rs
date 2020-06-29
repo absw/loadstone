@@ -1,9 +1,10 @@
-use crate::stm32pac::{SPI1, RCC};
-use crate::hal::spi::FullDuplex;
-use crate::pin_configuration::*;
-use crate::drivers::gpio::*;
-use core::marker::PhantomData;
-use core::mem::size_of;
+use crate::{
+    drivers::gpio::*,
+    hal::spi::FullDuplex,
+    pin_configuration::*,
+    stm32pac::{RCC, SPI1},
+};
+use core::{marker::PhantomData, mem::size_of};
 
 const BAUD_RATE_DIVIDER: u8 = 4;
 type SpiAf = AF5;
@@ -44,7 +45,8 @@ where
     MISO: MisoPin<SPI>,
     MOSI: MosiPin<SPI>,
     SCK: SckPin<SPI>,
-{}
+{
+}
 
 /// SPI abstraction
 pub struct Spi<SPI, PINS, WORD> {
@@ -63,7 +65,7 @@ pub enum Mode {
     Zero,
     One,
     Two,
-    Three
+    Three,
 }
 
 #[allow(unused_macros)]
