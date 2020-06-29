@@ -4,22 +4,21 @@
 
 #[allow(unused_imports)]
 use cortex_m_rt::entry;
-use cortex_m_semihosting::hprintln;
 
 #[cfg(not(test))]
 #[entry]
 fn main() -> ! {
+    use cortex_m_semihosting::hprintln;
     use secure_bootloader_lib::{
         self,
-        drivers::{gpio::GpioExt, rcc::RccExt, serial, serial::UsartExt},
+        drivers::rcc::RccExt,
         hal,
-        hal::{gpio::OutputPin, serial::Write, time::Bps},
-        stm32pac, uprint, uprintln,
+        stm32pac,
     };
 
-    let mut peripherals = stm32pac::Peripherals::take().unwrap();
+    let peripherals = stm32pac::Peripherals::take().unwrap();
 
-    let clocks = peripherals
+    peripherals
         .RCC
         .constrain()
         .sysclk(hal::time::MegaHertz(180))
@@ -31,6 +30,6 @@ fn main() -> ! {
 
     loop {
         cortex_m::asm::delay(20_000_000);
-        hprintln!("Hello World");
+        hprintln!("Hello World").unwrap();
     }
 }

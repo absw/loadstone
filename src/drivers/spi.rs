@@ -1,6 +1,4 @@
 use crate::stm32pac::{SPI1, RCC};
-use crate::drivers::rcc;
-use crate::hal::time;
 use crate::hal::spi::FullDuplex;
 use crate::pin_configuration::*;
 use crate::drivers::gpio::*;
@@ -51,14 +49,14 @@ where
 /// SPI abstraction
 pub struct Spi<SPI, PINS, WORD> {
     spi: SPI,
-    pins: PINS,
+    _pins: PINS,
     _word: PhantomData<WORD>,
-    awaiting_read: bool,
+    awaiting_receive: bool,
 }
 
 #[derive(Debug)]
 pub enum FullDuplexSpiError {
-    OutOfOrderTransmission,
+    OutOfOrderOperation,
 }
 
 pub enum Mode {
@@ -66,18 +64,6 @@ pub enum Mode {
     One,
     Two,
     Three
-}
-
-/// Extension trait to wrap a SPI type provided by the RCC
-/// into a full duplex abstraction
-pub trait SpiExt<PINS> {
-    /// The wrapping type
-    type Spi;
-    type Error;
-
-    fn constrain(
-        self, pins: PINS, mode: Mode
-    ) -> Result<Self::Spi, Self::Error>;
 }
 
 #[allow(unused_macros)]
@@ -122,11 +108,19 @@ macro_rules! hal_spi_impl {
                     // Master mode and enable
                     spi.cr1.modify(|_, w| w.mstr().set_bit().spe().set_bit());
 
-                    Self { spi, pins, _word: PhantomData, awaiting_read: false }
+                    Self { spi, _pins: pins, _word: PhantomData, awaiting_receive: false }
                 }
 
                 pub fn is_ready_to_transmit(&self) -> bool {
-                    self.spi.sr.read().txe().bit_is_set()
+                    self.spi.sr.read().txe().bit_is_set() && !self.awaiting_receive
+                }
+
+                pub fn is_ready_to_receive(&self) -> bool {
+                    self.spi.sr.read().rxne().bit_is_set() && self.awaiting_receive
+                }
+
+                pub fn is_busy(&self) -> bool {
+                    self.spi.sr.read().bsy().bit_is_set()
                 }
             }
 
@@ -134,22 +128,31 @@ macro_rules! hal_spi_impl {
                 type Error = FullDuplexSpiError;
 
                 fn transmit(&mut self, word: Option<$word>) -> nb::Result<(), Self::Error> {
-                    if self.awaiting_read {
-                        return Err(nb::Error::Other(FullDuplexSpiError::OutOfOrderTransmission))
+                    if self.awaiting_receive {
+                        return Err(nb::Error::Other(FullDuplexSpiError::OutOfOrderOperation))
                     }
 
-                    if !self.is_ready_to_transmit() {
+                    if !self.is_ready_to_transmit() || self.is_busy() {
                         return Err(nb::Error::WouldBlock);
                     }
 
                     let word = word.unwrap_or(0) as u16;
                     self.spi.dr.write(|w| w.dr().bits(word));
-                    self.awaiting_read = true;
+                    self.awaiting_receive = true;
                     Ok(())
                 }
 
                 fn receive(&mut self) -> nb::Result<$word, Self::Error> {
-                    unimplemented!();
+                    if !self.awaiting_receive {
+                        return Err(nb::Error::Other(FullDuplexSpiError::OutOfOrderOperation))
+                    }
+
+                    if !self.is_ready_to_receive() || self.is_busy() {
+                        return Err(nb::Error::WouldBlock);
+                    }
+
+                    self.awaiting_receive = false;
+                    Ok(self.spi.dr.read().dr().bits() as $word)
                 }
             }
         )+
