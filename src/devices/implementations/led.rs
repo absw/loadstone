@@ -19,7 +19,8 @@ pub enum RgbPalette {
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
 /// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # let pin = mock::MockPin::default();
+/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
 /// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, Logic::Direct);
 ///
@@ -59,7 +60,8 @@ pub struct RgbLed<Pin: OutputPin> {
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
 /// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # let pin = mock::MockPin::default();
+/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # let pin = MockPin::default();
 /// let mut led = MonochromeLed::new(pin, Logic::Direct);
 ///
 /// led.toggle();
@@ -202,25 +204,11 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
     }
 }
 
-#[cfg(not(target = "arm"))]
+#[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
 pub mod mock {
     use super::*;
-    #[derive(Clone, Debug, Default)]
-    #[doc(hidden)]
-    pub struct MockPin {
-        state: bool,
-    }
-    impl MockPin {
-        pub fn is_high(&self) -> bool { self.state }
-        pub fn is_low(&self) -> bool { !self.state }
-    }
-
-    #[doc(hidden)]
-    impl OutputPin for MockPin {
-        fn set_low(&mut self) { self.state = false }
-        fn set_high(&mut self) { self.state = true }
-    }
+    use crate::hal::mock::gpio::*;
 
     #[doc(hidden)]
     impl MonochromeLed<MockPin> {
@@ -242,6 +230,7 @@ pub mod mock {
 #[cfg(test)]
 mod test {
     use super::{mock::*, *};
+    use crate::hal::mock::gpio::*;
 
     #[test]
     fn monochrome_led_defaults_to_logic_low_with_direct_logic() {

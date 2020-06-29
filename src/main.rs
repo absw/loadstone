@@ -1,6 +1,6 @@
 #![cfg_attr(test, allow(unused_attributes))]
-#![cfg_attr(not(test), no_std)]
-#![cfg_attr(not(test), no_main)]
+#![cfg_attr(target_arch = "arm", no_std)]
+#![cfg_attr(target_arch = "arm", no_main)]
 
 #[allow(unused_imports)]
 use cortex_m_rt::entry;

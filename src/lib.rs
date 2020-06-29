@@ -4,7 +4,7 @@
 //! secure bootloader project in library form.
 #![feature(never_type)]
 #![cfg_attr(test, allow(unused_imports))]
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(target_arch = "arm", no_std)]
 
 #[cfg(feature = "stm32f407")]
 #[doc(hidden)]
