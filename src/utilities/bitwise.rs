@@ -8,12 +8,11 @@ pub trait BitFlags {
 impl<U: Copy + Into<u32>> BitFlags for U {
     fn is_set(&self, bit: u8) -> bool {
         assert!(bit < 32);
-        (*self).into() | (1u32 << bit) != 0
+        ((*self).into() & (1u32 << bit)) != 0
     }
 
     fn is_clear(&self, bit: u8) -> bool {
-        assert!(bit < 32);
-        (*self).into() & !(1u32 << bit) != 0
+        !self.is_set(bit)
     }
 }
 

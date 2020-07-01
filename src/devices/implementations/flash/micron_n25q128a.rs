@@ -22,7 +22,7 @@ where
     chip_select: CS,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     TimeOut,
     SpiError,
@@ -38,17 +38,7 @@ enum Command {
     BulkErase = 0xC7,
 }
 
-impl Command {
-    fn writes_data(&self) -> bool {
-        match self {
-            Command::BulkErase => true,
-            _ => false,
-        }
-    }
-}
-
 struct Status {
-    write_enable_latch: bool,
     write_in_progress: bool,
 }
 
@@ -59,10 +49,15 @@ where
 {
     type Error = Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
-        self.execute_command(Command::WriteEnable, None, None)?;
-        self.execute_command(Command::BulkErase, None, None)?;
-        self.execute_command(Command::WriteDisable, None, None)?;
-        Ok(())
+        // Early yield if flash is not ready for writing
+        if !self.can_write()? {
+            Err(nb::Error::WouldBlock)
+        } else {
+            self.execute_command(Command::WriteEnable, None, None)?;
+            self.execute_command(Command::BulkErase, None, None)?;
+            self.execute_command(Command::WriteDisable, None, None)?;
+            Ok(())
+        }
     }
 }
 
@@ -71,10 +66,16 @@ where
     SPI: spi::FullDuplex<u8>,
     CS: gpio::OutputPin,
 {
+    fn can_write(&mut self) -> nb::Result<bool, Error> {
+        let status = self.status()?;
+        Ok(!status.write_in_progress)
+    }
+
     // Low level helper for executing Micron commands
     fn execute_command(
         &mut self, command: Command, arguments: Option<&[u8]>, response_buffer: Option<&mut [u8]>,
-    ) -> Result<(), Error> {
+    ) -> nb::Result<(), Error> {
+
         self.chip_select.set_low();
         block!(self.spi.transmit(Some(command as u8))).map_err(|_| Error::SpiError)?;
         block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
@@ -96,27 +97,26 @@ where
         Ok(())
     }
 
-    fn verify_id(&mut self) -> Result<(), Error> {
+    fn verify_id(&mut self) -> nb::Result<(), Error> {
         let mut response = [0u8; 1];
         self.execute_command(Command::ReadId, None, Some(&mut response))?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
-            _ => Err(Error::WrongManufacturerId),
+            _ => Err(nb::Error::Other(Error::WrongManufacturerId)),
         }
     }
 
-    fn status(&mut self) -> Result<Status, Error> {
+    fn status(&mut self) -> nb::Result<Status, Error> {
         let mut response = [0u8; 1];
         self.execute_command(Command::ReadStatus, None, Some(&mut response))?;
         let response = response[0];
         Ok(Status {
             write_in_progress: response.is_set(0),
-            write_enable_latch: response.is_set(1),
         })
     }
 
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(spi: SPI, chip_select: CS) -> Result<Self, Error> {
+    pub fn new(spi: SPI, chip_select: CS) -> nb::Result<Self, Error> {
         let mut flash = Self { spi, chip_select };
         flash.verify_id()?;
         Ok(flash)
@@ -140,6 +140,7 @@ mod test {
         assert_eq!(flash.chip_select.changes[1], true);
         assert_eq!(flash.spi.sent.pop_front().unwrap(), Command::ReadId as u8);
         flash.spi.sent.clear();
+        flash.spi.to_receive.clear();
         flash
     }
 
@@ -173,14 +174,21 @@ mod test {
         flash.erase().unwrap();
 
         // Then
-        assert_eq!(flash.spi.sent[0], Command::WriteEnable as u8);
-        assert_eq!(flash.spi.sent[1], Command::BulkErase as u8);
-        assert_eq!(flash.spi.sent[2], Command::WriteDisable as u8);
+        assert_eq!(flash.spi.sent[0], Command::ReadStatus as u8);
+        assert_eq!(flash.spi.sent[1], Command::WriteEnable as u8);
+        assert_eq!(flash.spi.sent[2], Command::BulkErase as u8);
+        assert_eq!(flash.spi.sent[3], Command::WriteDisable as u8);
     }
 
     #[test]
-    fn write_capable_commands_yield_if_device_is_busy() {
+    fn write_capable_commands_yield_if_device_busy() {
         // Given
+        const BUSY_WRITING_STATUS: u8 = 1;
         let mut flash = flash_to_test();
+        flash.spi.to_receive.push_back(0);
+        flash.spi.to_receive.push_back(BUSY_WRITING_STATUS);
+
+        // Then
+        assert_eq!(flash.erase(), Err(nb::Error::WouldBlock));
     }
 }
