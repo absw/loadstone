@@ -2,9 +2,11 @@ use crate::{
     devices::interfaces::flash::BulkErase,
     hal::{gpio, spi},
 };
+use nb::block;
 
 const MANUFACTURER_ID: u8 = 0x20;
 
+#[derive(Debug, Clone, Copy)]
 enum Command {
     WriteDisable = 0x04,
     WriteEnable = 0x06,
@@ -40,9 +42,9 @@ where
 {
     type Error = Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
-        Self::write_enable(&mut self.spi, gpio::guard_low(&mut self.chip_select))?;
+        self.execute_command(Command::WriteEnable, None, None)?;
         // erase command
-        Self::write_disable(&mut self.spi, gpio::guard_low(&mut self.chip_select))?;
+        self.execute_command(Command::WriteDisable, None, None)?;
         Ok(())
     }
 }
@@ -52,30 +54,43 @@ where
     SPI: spi::FullDuplex<u8>,
     CS: gpio::OutputPin,
 {
-    fn verify_id(spi: &mut SPI, _: gpio::GuardLow) -> Result<(), Error> {
-        spi.transmit(Some(Command::ReadId as u8)).map_err(|_| Error::SpiError)?;
-        match spi.receive().map_err(|_| Error::SpiError)? {
+    // Low level helper for executing Micron commands
+    fn execute_command(&mut self, command: Command, arguments: Option<&[u8]>, response_buffer: Option<&mut [u8]>) -> Result<(), Error> {
+        self.chip_select.set_low();
+        block!(self.spi.transmit(Some(command as u8))).map_err(|_| Error::SpiError)?;
+        block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
+
+        if let Some(arguments) = arguments {
+            for byte in arguments {
+                block!(self.spi.transmit(Some(*byte))).map_err(|_| Error::SpiError)?;
+                block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
+            }
+        }
+
+        if let Some(response_buffer) = response_buffer {
+            for byte in response_buffer {
+                block!(self.spi.transmit(None)).map_err(|_| Error::SpiError)?;
+                *byte = block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
+            }
+        }
+        self.chip_select.set_high();
+        Ok(())
+    }
+
+
+    fn verify_id(&mut self) -> Result<(), Error> {
+        let mut response = [0u8; 1];
+        self.execute_command(Command::ReadId, None, Some(&mut response))?;
+        match response[0] {
             MANUFACTURER_ID => Ok(()),
             _ => Err(Error::WrongManufacturerId)
         }
     }
 
-    fn write_enable(spi: &mut SPI, _: gpio::GuardLow) -> Result<(), Error> {
-        spi.transmit(Some(Command::WriteEnable as u8)).map_err(|_| Error::SpiError)?;
-        spi.receive().map_err(|_| Error::SpiError)?;
-        Ok(())
-    }
-
-    fn write_disable(spi: &mut SPI, _: gpio::GuardLow) -> Result<(), Error> {
-        spi.transmit(Some(Command::WriteDisable as u8)).map_err(|_| Error::SpiError)?;
-        spi.receive().map_err(|_| Error::SpiError)?;
-        Ok(())
-    }
-
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(mut spi: SPI, mut chip_select: CS) -> Result<Self, Error> {
-        Self::verify_id(&mut spi, gpio::guard_low(&mut chip_select))?;
-        let flash = Self { spi, chip_select };
+    pub fn new(spi: SPI, chip_select: CS) -> Result<Self, Error> {
+        let mut flash = Self { spi, chip_select };
+        flash.verify_id()?;
         Ok(flash)
     }
 }
@@ -87,6 +102,7 @@ mod test {
 
     fn flash_to_test() -> MicronN25q128a<MockSpi::<u8>, MockPin> {
         let mut spi = MockSpi::<u8>::new();
+        spi.to_receive.push_back(0);
         spi.to_receive.push_back(MANUFACTURER_ID);
         MicronN25q128a::new(spi, MockPin::default()).unwrap()
     }
@@ -110,6 +126,7 @@ mod test {
 
         // Given
         let mut spi = MockSpi::<u8>::new();
+        spi.to_receive.push_back(0);
         spi.to_receive.push_back(WRONG_MANUFACTURER_ID);
 
         // Then
@@ -117,6 +134,7 @@ mod test {
 
         // Given
         let mut spi = MockSpi::<u8>::new();
+        spi.to_receive.push_back(0);
         spi.to_receive.push_back(MANUFACTURER_ID);
 
         // Then

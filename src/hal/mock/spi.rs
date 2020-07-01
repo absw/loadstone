@@ -33,7 +33,7 @@ impl<WORD: Default> FullDuplex<WORD> for MockSpi<WORD> {
         if !self.awaiting_receive {
             Err(nb::Error::Other(()))
         } else {
-            self.awaiting_receive = true;
+            self.awaiting_receive = false;
             Ok(self.to_receive.pop_front().unwrap_or(WORD::default()))
         }
     }
