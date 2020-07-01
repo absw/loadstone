@@ -5,12 +5,12 @@
 #[allow(unused_imports)]
 use cortex_m_rt::entry;
 
-#[cfg(not(test))]
+#[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
     use cortex_m_semihosting::hprintln;
     use secure_bootloader_lib::{self, drivers::rcc::RccExt, hal, stm32pac};
-
+    use secure_bootloader_lib::devices::implementations::flash::micron_n25q128a;
     let peripherals = stm32pac::Peripherals::take().unwrap();
 
     peripherals
@@ -28,3 +28,6 @@ fn main() -> ! {
         hprintln!("Hello World").unwrap();
     }
 }
+
+#[cfg(not(target_arch = "arm"))]
+fn main(){}

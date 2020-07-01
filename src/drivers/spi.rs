@@ -7,7 +7,7 @@ use crate::{
 use core::{marker::PhantomData, mem::size_of};
 
 const BAUD_RATE_DIVIDER: u8 = 4;
-type SpiAf = AF5;
+pub type SpiAf = AF5;
 
 mod private {
     #[doc(hidden)]
@@ -15,8 +15,8 @@ mod private {
 }
 
 /// Sealed trait for all SPI capable pins.
-pub unsafe trait MosiPin<SPI>: private::Sealed {}
 pub unsafe trait MisoPin<SPI>: private::Sealed {}
+pub unsafe trait MosiPin<SPI>: private::Sealed {}
 pub unsafe trait SckPin<SPI>: private::Sealed {}
 pub unsafe trait NssPin<SPI>: private::Sealed {}
 
