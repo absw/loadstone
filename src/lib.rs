@@ -34,3 +34,7 @@ pub mod drivers;
 pub mod hal;
 pub mod devices;
 pub mod pin_configuration;
+
+pub mod utilities {
+    pub mod bitwise;
+}
