@@ -1,4 +1,3 @@
-
 /// Quad SPI configured in Indirect mode.
 ///
 /// Indirect mode forces all communication to occur through writes
@@ -9,6 +8,10 @@ pub trait Indirect {
     type Address;
     type Word;
 
-    fn write(instruction: Self::Instruction, address: Option<Self::Address>, data: &[Self::Word]) -> nb::Result<(), Self::Error>;
-    fn read(instruction: Self::Instruction, address: Option<Self::Address>, data: &mut [Self::Word]) -> nb::Result<(), Self::Error>;
+    fn write(
+        instruction: Self::Instruction, address: Option<Self::Address>, data: &[Self::Word],
+    ) -> nb::Result<(), Self::Error>;
+    fn read(
+        instruction: Self::Instruction, address: Option<Self::Address>, data: &mut [Self::Word],
+    ) -> nb::Result<(), Self::Error>;
 }
