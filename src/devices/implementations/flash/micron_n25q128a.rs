@@ -1,7 +1,7 @@
 use crate::{
-    utilities::bitwise::BitFlags,
     devices::interfaces::flash::BulkErase,
     hal::{gpio, spi},
+    utilities::bitwise::BitFlags,
 };
 use nb::block;
 
@@ -75,7 +75,6 @@ where
     fn execute_command(
         &mut self, command: Command, arguments: Option<&[u8]>, response_buffer: Option<&mut [u8]>,
     ) -> nb::Result<(), Error> {
-
         self.chip_select.set_low();
         block!(self.spi.transmit(Some(command as u8))).map_err(|_| Error::SpiError)?;
         block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
@@ -110,9 +109,7 @@ where
         let mut response = [0u8; 1];
         self.execute_command(Command::ReadStatus, None, Some(&mut response))?;
         let response = response[0];
-        Ok(Status {
-            write_in_progress: response.is_set(0),
-        })
+        Ok(Status { write_in_progress: response.is_set(0) })
     }
 
     /// Blocks until flash ID read checks out, or until timeout

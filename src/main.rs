@@ -9,8 +9,9 @@ use cortex_m_rt::entry;
 #[entry]
 fn main() -> ! {
     use cortex_m_semihosting::hprintln;
-    use secure_bootloader_lib::{self, drivers::rcc::RccExt, hal, stm32pac};
-    use secure_bootloader_lib::devices::implementations::flash::micron_n25q128a;
+    use secure_bootloader_lib::{
+        self, devices::implementations::flash::micron_n25q128a, drivers::rcc::RccExt, hal, stm32pac,
+    };
     let peripherals = stm32pac::Peripherals::take().unwrap();
 
     peripherals
@@ -30,4 +31,4 @@ fn main() -> ! {
 }
 
 #[cfg(not(target_arch = "arm"))]
-fn main(){}
+fn main() {}

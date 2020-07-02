@@ -9,4 +9,4 @@ mod bootloader_ports {
 }
 
 #[cfg(feature = "stm32f412")]
-pub use bootloader_ports::stm32f412_discovery::Bootloader as Bootloader;
+pub use bootloader_ports::stm32f412_discovery::Bootloader;

@@ -11,9 +11,7 @@ impl<U: Copy + Into<u32>> BitFlags for U {
         ((*self).into() & (1u32 << bit)) != 0
     }
 
-    fn is_clear(&self, bit: u8) -> bool {
-        !self.is_set(bit)
-    }
+    fn is_clear(&self, bit: u8) -> bool { !self.is_set(bit) }
 }
 
 #[cfg(test)]
@@ -27,5 +25,4 @@ mod test {
         assert!(3u8.is_clear(2));
         assert!(2u8.is_clear(0));
     }
-
 }

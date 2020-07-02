@@ -1,11 +1,12 @@
 /// Marker trait for a minimally featured page flash
 pub trait Flash<P>
 where
-    Self: Read<P>, // Can read pages
+    Self: Read<P>,  // Can read pages
     Self: Write<P>, // Can write pages
     Self: Erase<P>, // Can erase pages
-    Self: BulkErase, // Can erase in bulk
-{}
+    Self: BulkErase,
+{
+}
 
 /// Abstract Flash read, generic over any memory "area"
 pub trait Read<A> {

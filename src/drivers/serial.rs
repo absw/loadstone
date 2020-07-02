@@ -3,7 +3,7 @@ use crate::{
     drivers::{gpio::*, rcc},
     hal::serial,
     pin_configuration::*,
-    stm32pac::{RCC, USART1, USART2, USART3},
+    stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
 use core::{marker::PhantomData, ptr};
 use nb;
@@ -47,14 +47,14 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // functions. NOTE: This is not configuration! there's no need
 // to remove items from these lists once complete.
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(TxPin<USART1>: [Pa9<UsartAF>, Pb6<UsartAF>,]);
+seal_pins!(TxPin<USART1>: [Pa9<UsartAf>, Pb6<UsartAf>,]);
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(TxPin<USART1>: [Pa9<UsartAF>, Pb6<UsartAF>, Pa15<AF6>,]);
+seal_pins!(TxPin<USART1>: [Pa9<UsartAf>, Pb6<UsartAf>, Pa15<AF6>,]);
 
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(RxPin<USART1>: [Pb7<UsartAF>, Pa10<UsartAF>,]);
+seal_pins!(RxPin<USART1>: [Pb7<UsartAf>, Pa10<UsartAf>,]);
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(RxPin<USART1>: [Pb3<UsartAF>, Pb7<UsartAF>, Pa10<UsartAF>,]);
+seal_pins!(RxPin<USART1>: [Pb3<UsartAf>, Pb7<UsartAf>, Pa10<UsartAf>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -62,7 +62,7 @@ seal_pins!(RxPin<USART1>: [Pb3<UsartAF>, Pb7<UsartAF>, Pa10<UsartAF>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(TxPin<USART2>: [Pa2<UsartAF>, Pd5<UsartAF>,]);
+seal_pins!(TxPin<USART2>: [Pa2<UsartAf>, Pd5<UsartAf>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -70,7 +70,7 @@ seal_pins!(TxPin<USART2>: [Pa2<UsartAF>, Pd5<UsartAF>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(RxPin<USART2>: [Pa3<UsartAF>, Pd6<UsartAF>,]);
+seal_pins!(RxPin<USART2>: [Pa3<UsartAf>, Pd6<UsartAf>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -78,7 +78,7 @@ seal_pins!(RxPin<USART2>: [Pa3<UsartAF>, Pd6<UsartAF>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(TxPin<USART3>: [Pb10<UsartAF>, Pd8<UsartAF>, Pc10<UsartAF>,]);
+seal_pins!(TxPin<USART3>: [Pb10<UsartAf>, Pd8<UsartAf>, Pc10<UsartAf>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -86,7 +86,12 @@ seal_pins!(TxPin<USART3>: [Pb10<UsartAF>, Pd8<UsartAF>, Pc10<UsartAF>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(RxPin<USART3>: [Pb11<UsartAF>, Pd9<UsartAF>, Pc11<UsartAF>,]);
+seal_pins!(RxPin<USART3>: [Pb11<UsartAf>, Pd9<UsartAf>, Pc11<UsartAf>,]);
+
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(TxPin<USART6>: [Pc6<UsartAf>, Pa11<UsartAf>, Pg14<UsartAf>,]);
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(RxPin<USART6>: [Pc7<UsartAf>, Pa12<UsartAf>, Pg9<UsartAf>,]);
 
 /// Serial error
 #[derive(Debug)]
@@ -492,4 +497,5 @@ instances! {
     USART1: (usart1, apb2enr, usart1en, pclk2),
     USART2: (usart2, apb1enr, usart2en, pclk1),
     USART3: (usart3, apb1enr, usart3en, pclk1),
+    USART6: (usart6, apb2enr, usart6en, pclk2),
 }
