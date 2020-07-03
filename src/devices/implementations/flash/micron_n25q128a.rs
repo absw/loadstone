@@ -1,6 +1,6 @@
 use crate::{
     devices::interfaces::flash::BulkErase,
-    hal::{gpio, qspi, spi},
+    hal::qspi,
     utilities::bitwise::BitFlags,
 };
 use nb::block;

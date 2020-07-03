@@ -2,9 +2,9 @@ use crate::{
     devices::implementations::flash::micron_n25q128a::MicronN25q128a,
     drivers::{
         gpio::{GpioExt, *},
-        qspi::{mode, QuadSpi},
+        qspi::{mode, QuadSpi, self},
         rcc::RccExt,
-        serial::{self, UsartAf},
+        serial::{self, UsartAf, UsartExt},
     },
     hal,
     pin_configuration::*,
@@ -29,8 +29,8 @@ pub struct Bootloader {
 impl Bootloader {
     pub fn new(mut peripherals: Peripherals) -> Bootloader {
         let _gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
-        let _gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
-        let _clocks = peripherals
+        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+        let clocks = peripherals
             .RCC
             .constrain()
             .sysclk(hal::time::MegaHertz(180))
@@ -39,8 +39,12 @@ impl Bootloader {
             .pclk2(hal::time::MegaHertz(84))
             .require_pll48clk()
             .freeze();
+        let serial_config = serial::config::Config::default().baudrate(hal::time::Bps(115_200));
+        let serial_pins = (gpiog.pg14, gpiog.pg9);
+        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks);
 
-        let _serial_config = serial::config::Config::default().baudrate(hal::time::Bps(115_200));
+        //let qspi_config = qspi::Config::default();
+        //let flash = Flash::new(Qspi::from_config(qspi_config));
 
         unimplemented!();
     }
