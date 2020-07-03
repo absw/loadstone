@@ -1,5 +1,6 @@
 use crate::{
     drivers::gpio::*,
+    hal::qspi,
     pin_configuration::*,
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
@@ -103,7 +104,14 @@ where
 pub struct QuadSpi<PINS, MODE> {
     pins: PINS,
     qspi: QuadSpiPeripheral,
+    config: Config<MODE>,
     _marker: PhantomData<MODE>,
+}
+
+pub struct Address(u32);
+pub struct Instruction(u8);
+pub enum Error {
+    DummyCyclesValueOutOfRange,
 }
 
 impl<MODE> Default for Config<MODE> {
@@ -155,15 +163,20 @@ impl<MODE> Config<MODE> {
         self
     }
 
-    pub fn with_flash_size(mut self, bits: u8) -> Self {
-        assert!(bits <= 32);
-        self.flash_size_bits = bits;
-        self
+    pub fn with_flash_size(mut self, bits: u8) -> nb::Result<Self, ConfigError> {
+        match bits {
+            8 | 16 | 24 | 32 => {
+                self.flash_size_bits = bits;
+                Ok(self)
+            }
+            _ => Err(nb::Error::Other(ConfigError::InvalidFlashSize)),
+        }
     }
 }
 
 pub enum ConfigError {
     NotYetImplemented,
+    InvalidFlashSize,
 }
 
 impl<PINS> QuadSpi<PINS, mode::Single>
@@ -171,9 +184,10 @@ where
     PINS: SingleModePins,
 {
     pub fn from_config(
-        qspi: QuadSpiPeripheral, pins: PINS, config: Config<mode::Single>,
+        qspi: QuadSpiPeripheral,
+        pins: PINS,
+        config: Config<mode::Single>,
     ) -> nb::Result<Self, ConfigError> {
-
         if config.data_rate != DataRate::Single || config.flash_mode != FlashMode::Single {
             return Err(nb::Error::Other(ConfigError::NotYetImplemented));
         }
@@ -184,24 +198,116 @@ where
         rcc.ahb3enr.modify(|_, w| w.qspien().set_bit());
 
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
+        // Applies to all unsafe blocks in this function unless specified otherwise.
         // Prescaler bypass (AHB clock frequency)
         qspi.cr.modify(|_, w| unsafe { w.prescaler().bits(0) });
 
-        // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Fifo threshold 4 (fifo flag up when 4 bytes are free to write)
         qspi.cr.modify(|_, w| unsafe { w.fthres().bits(4u8) });
 
         let fsize = config.flash_size_bits.saturating_sub(1u8);
-        // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         qspi.dcr.modify(|_, w| unsafe { w.fsize().bits(fsize) });
 
         // Enable
         qspi.cr.modify(|_, w| w.en().set_bit());
 
-        Ok(Self {
-            pins,
-            qspi,
-            _marker: PhantomData::default(),
-        })
+        Ok(Self { pins, config, qspi, _marker: PhantomData::default() })
+    }
+}
+
+struct Status {
+    busy: bool,
+    fifo_level: u8,
+    fifo_threshold: bool,
+    transfer_complete: bool,
+    transfer_error: bool,
+}
+
+impl<PINS, MODE> QuadSpi<PINS, MODE> {
+    fn status(&self) -> Status {
+        let flags = self.qspi.sr.read();
+        Status {
+            busy: flags.busy().bit(),
+            fifo_level: flags.flevel().bits(),
+            fifo_threshold: flags.ftf().bit(),
+            transfer_complete: flags.tcf().bit(),
+            transfer_error: flags.tef().bit(),
+        }
+    }
+}
+
+impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
+    type Error = Error;
+    type Address = Address;
+    type Instruction = Instruction;
+
+    fn write(
+        &mut self,
+        instruction: Option<Self::Instruction>,
+        address: Option<Self::Address>,
+        data: Option<&[u8]>,
+        dummy_cycles: u8,
+    ) -> nb::Result<(), Self::Error> {
+        if dummy_cycles > 31 {
+            return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
+        }
+
+        let adsize = match self.config.flash_size_bits {
+            8 => 0b00,
+            16 => 0b01,
+            24 => 0b10,
+            32 => 0b11,
+            _ => panic!("Invalid flash size"),
+        };
+
+        if self.status().busy {
+            // Early yield if busy
+            return nb::Error::WouldBlock;
+        }
+
+        // TODO check bsy flag
+        // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
+        // Applies to all unsafe blocks in this function unless specified otherwise.
+        // Sets Data Length Register, configuring the amount of bytes to read or write.
+        self.qspi
+            .dlr
+            .write(|w| unsafe { w.bits(if let Some(data) = data { data.len() as u32 } else { 0 }) });
+
+        // Configure Communicaton Configuration Register.
+        // This sets up all rules for this QSPI write.
+        self.qspi.ccr.write(|w| unsafe {
+            if let Some(instruction) = instruction {
+                w.imode().bits(0b01).instruction().bits(instruction.0)
+            } else {
+                w
+            }
+            .fmode()
+            .bits(0b00) // indirect write mode
+            .adsize()
+            .bits(adsize)
+            .admode()
+            .bits(if address.is_some() { 0b01 } else { 0b00 })
+            .dmode()
+            .bits(if data.is_some() { 0b01 } else { 0b00 })
+            .dcyc()
+            .bits(dummy_cycles)
+        });
+
+        // Sets Address to write or read from.
+        if let Some(address) = address {
+            self.qspi.ar.write(|w| unsafe { w.bits(address.0) })
+        }
+
+        unimplemented!();
+    }
+
+    fn read(
+        &mut self,
+        instruction: Option<Self::Instruction>,
+        address: Option<Self::Address>,
+        data: &mut [u8],
+        dummy_cycles: u8,
+    ) -> nb::Result<(), Self::Error> {
+        unimplemented!();
     }
 }

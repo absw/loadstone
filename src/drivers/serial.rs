@@ -17,7 +17,10 @@ pub trait UsartExt<PINS> {
     type Serial;
 
     fn constrain(
-        self, pins: PINS, config: config::Config, clocks: rcc::Clocks,
+        self,
+        pins: PINS,
+        config: config::Config,
+        clocks: rcc::Clocks,
     ) -> Result<Self::Serial, config::InvalidConfig>;
 }
 

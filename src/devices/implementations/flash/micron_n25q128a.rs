@@ -73,7 +73,10 @@ where
 
     // Low level helper for executing Micron commands
     fn execute_command(
-        &mut self, command: Command, arguments: Option<&[u8]>, response_buffer: Option<&mut [u8]>,
+        &mut self,
+        command: Command,
+        arguments: Option<&[u8]>,
+        response_buffer: Option<&mut [u8]>,
     ) -> nb::Result<(), Error> {
         self.chip_select.set_low();
         block!(self.spi.transmit(Some(command as u8))).map_err(|_| Error::SpiError)?;
