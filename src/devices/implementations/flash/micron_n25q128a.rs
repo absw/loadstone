@@ -1,6 +1,6 @@
 use crate::{
     devices::interfaces::flash::BulkErase,
-    hal::{gpio, spi},
+    hal::{gpio, qspi, spi},
     utilities::bitwise::BitFlags,
 };
 use nb::block;
@@ -8,24 +8,22 @@ use nb::block;
 const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip memory map
-pub struct Address(u16);
+pub struct Address(u32);
 pub struct Sector(Address);
 pub struct Page(Address);
 pub struct Word(Address);
 
-pub struct MicronN25q128a<SPI, CS>
+pub struct MicronN25q128a<QSPI>
 where
-    SPI: spi::FullDuplex<u8>,
-    CS: gpio::OutputPin,
+    QSPI: qspi::Indirect,
 {
-    spi: SPI,
-    chip_select: CS,
+    qspi: QSPI,
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     TimeOut,
-    SpiError,
+    QspiError,
     WrongManufacturerId,
 }
 
@@ -42,10 +40,16 @@ struct Status {
     write_in_progress: bool,
 }
 
-impl<SPI, CS> BulkErase for MicronN25q128a<SPI, CS>
+enum CommandData<'a> {
+    Arguments(&'a [u8]),
+    Read(&'a mut [u8]),
+    Write(&'a [u8]),
+    None,
+}
+
+impl<QSPI> BulkErase for MicronN25q128a<QSPI>
 where
-    SPI: spi::FullDuplex<u8>,
-    CS: gpio::OutputPin,
+    QSPI: qspi::Indirect,
 {
     type Error = Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
@@ -53,18 +57,17 @@ where
         if !self.can_write()? {
             Err(nb::Error::WouldBlock)
         } else {
-            self.execute_command(Command::WriteEnable, None, None)?;
-            self.execute_command(Command::BulkErase, None, None)?;
-            self.execute_command(Command::WriteDisable, None, None)?;
+            self.execute_command(Command::WriteEnable, None, CommandData::None)?;
+            self.execute_command(Command::BulkErase, None, CommandData::None)?;
+            self.execute_command(Command::WriteDisable, None, CommandData::None)?;
             Ok(())
         }
     }
 }
 
-impl<SPI, CS> MicronN25q128a<SPI, CS>
+impl<QSPI> MicronN25q128a<QSPI>
 where
-    SPI: spi::FullDuplex<u8>,
-    CS: gpio::OutputPin,
+    QSPI: qspi::Indirect,
 {
     fn can_write(&mut self) -> nb::Result<bool, Error> {
         let status = self.status()?;
@@ -75,33 +78,27 @@ where
     fn execute_command(
         &mut self,
         command: Command,
-        arguments: Option<&[u8]>,
-        response_buffer: Option<&mut [u8]>,
+        address: Option<u32>,
+        data: CommandData,
     ) -> nb::Result<(), Error> {
-        self.chip_select.set_low();
-        block!(self.spi.transmit(Some(command as u8))).map_err(|_| Error::SpiError)?;
-        block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
-
-        if let Some(arguments) = arguments {
-            for byte in arguments {
-                block!(self.spi.transmit(Some(*byte))).map_err(|_| Error::SpiError)?;
-                block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
+        match data {
+            CommandData::Arguments(buffer) => {
+                block!(self.qspi.write(Some(command as u8), address, Some(buffer), 0))
             }
-        }
-
-        if let Some(response_buffer) = response_buffer {
-            for byte in response_buffer {
-                block!(self.spi.transmit(None)).map_err(|_| Error::SpiError)?;
-                *byte = block!(self.spi.receive()).map_err(|_| Error::SpiError)?;
+            CommandData::Write(buffer) => {
+                block!(self.qspi.write(Some(command as u8), address, Some(buffer), 0))
             }
+            CommandData::Read(buffer) => {
+                block!(self.qspi.read(Some(command as u8), address, buffer, 0))
+            }
+            CommandData::None => block!(self.qspi.write(Some(command as u8), address, None, 0)),
         }
-        self.chip_select.set_high();
-        Ok(())
+        .map_err(|_| nb::Error::Other(Error::QspiError))
     }
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
         let mut response = [0u8; 1];
-        self.execute_command(Command::ReadId, None, Some(&mut response))?;
+        self.execute_command(Command::ReadId, None, CommandData::Read(&mut response))?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
             _ => Err(nb::Error::Other(Error::WrongManufacturerId)),
@@ -110,14 +107,14 @@ where
 
     fn status(&mut self) -> nb::Result<Status, Error> {
         let mut response = [0u8; 1];
-        self.execute_command(Command::ReadStatus, None, Some(&mut response))?;
+        self.execute_command(Command::ReadStatus, None, CommandData::Read(&mut response))?;
         let response = response[0];
         Ok(Status { write_in_progress: response.is_set(0) })
     }
 
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(spi: SPI, chip_select: CS) -> nb::Result<Self, Error> {
-        let mut flash = Self { spi, chip_select };
+    pub fn new(qspi: QSPI) -> nb::Result<Self, Error> {
+        let mut flash = Self { qspi };
         flash.verify_id()?;
         Ok(flash)
     }
@@ -126,43 +123,33 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hal::mock::{gpio::*, spi::*};
+    use crate::hal::mock::{gpio::*, qspi::*};
 
-    fn flash_to_test() -> MicronN25q128a<MockSpi<u8>, MockPin> {
-        let mut spi = MockSpi::<u8>::new();
-        spi.to_receive.push_back(0);
-        spi.to_receive.push_back(MANUFACTURER_ID);
-        let pin = MockPin::default();
-        let mut flash = MicronN25q128a::new(spi, pin).unwrap();
-        // Chip select line is wiggled to send command
-        assert_eq!(flash.chip_select.changes.len(), 2);
-        assert_eq!(flash.chip_select.changes[0], false);
-        assert_eq!(flash.chip_select.changes[1], true);
-        assert_eq!(flash.spi.sent.pop_front().unwrap(), Command::ReadId as u8);
-        flash.spi.sent.clear();
-        flash.spi.to_receive.clear();
+    fn flash_to_test() -> MicronN25q128a<MockQspi> {
+        let mut qspi = MockQspi::default();
+        qspi.to_read.push_back(vec![MANUFACTURER_ID]);
+        let mut flash = MicronN25q128a::new(qspi).unwrap();
+        let initial_read = flash.qspi.read_records[0].clone();
+        assert_eq!(initial_read.instruction, Some(Command::ReadId as u8));
+        flash.qspi.clear();
         flash
     }
 
     #[test]
     fn initialisation_succeeds_for_correct_manufacturer_id() {
         const WRONG_MANUFACTURER_ID: u8 = 0x21;
-
-        // Given
-        let mut spi = MockSpi::<u8>::new();
-        spi.to_receive.push_back(0);
-        spi.to_receive.push_back(WRONG_MANUFACTURER_ID);
+        let mut qspi = MockQspi::default();
+        qspi.to_read.push_back(vec![WRONG_MANUFACTURER_ID]);
 
         // Then
-        assert!(MicronN25q128a::new(spi, MockPin::default()).is_err());
+        assert!(MicronN25q128a::new(qspi).is_err());
 
         // Given
-        let mut spi = MockSpi::<u8>::new();
-        spi.to_receive.push_back(0);
-        spi.to_receive.push_back(MANUFACTURER_ID);
+        let mut qspi = MockQspi::default();
+        qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
         // Then
-        assert!(MicronN25q128a::new(spi, MockPin::default()).is_ok());
+        assert!(MicronN25q128a::new(qspi).is_ok());
     }
 
     #[test]
@@ -174,10 +161,10 @@ mod test {
         flash.erase().unwrap();
 
         // Then
-        assert_eq!(flash.spi.sent[0], Command::ReadStatus as u8);
-        assert_eq!(flash.spi.sent[1], Command::WriteEnable as u8);
-        assert_eq!(flash.spi.sent[2], Command::BulkErase as u8);
-        assert_eq!(flash.spi.sent[3], Command::WriteDisable as u8);
+        assert_eq!(flash.qspi.read_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.write_records[0].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.write_records[1].instruction, Some(Command::BulkErase as u8));
+        assert_eq!(flash.qspi.write_records[2].instruction, Some(Command::WriteDisable as u8));
     }
 
     #[test]
@@ -185,8 +172,7 @@ mod test {
         // Given
         const BUSY_WRITING_STATUS: u8 = 1;
         let mut flash = flash_to_test();
-        flash.spi.to_receive.push_back(0);
-        flash.spi.to_receive.push_back(BUSY_WRITING_STATUS);
+        flash.qspi.to_read.push_back(vec![BUSY_WRITING_STATUS]);
 
         // Then
         assert_eq!(flash.erase(), Err(nb::Error::WouldBlock));

@@ -4,21 +4,19 @@
 /// and reads to QSPI registers.
 pub trait Indirect {
     type Error;
-    type Instruction;
-    type Address;
 
     fn write(
         &mut self,
-        instruction: Option<Self::Instruction>,
-        address: Option<Self::Address>,
+        instruction: Option<u8>,
+        address: Option<u32>,
         data: Option<&[u8]>,
         dummy_cycles: u8,
     ) -> nb::Result<(), Self::Error>;
 
     fn read(
         &mut self,
-        instruction: Option<Self::Instruction>,
-        address: Option<Self::Address>,
+        instruction: Option<u8>,
+        address: Option<u32>,
         data: &mut [u8],
         dummy_cycles: u8,
     ) -> nb::Result<(), Self::Error>;

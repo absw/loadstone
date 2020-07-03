@@ -1,21 +1,20 @@
 use crate::{
     devices::implementations::flash::micron_n25q128a::MicronN25q128a,
     drivers::{
-        gpio::{GpioExt, Output, PushPull},
+        gpio::{GpioExt, *},
+        qspi::{mode, QuadSpi},
         rcc::RccExt,
         serial::{self, UsartAf},
-        spi::{self, SpiAf},
     },
     hal,
     pin_configuration::*,
-    stm32pac::{Peripherals, SPI1, USART6},
+    stm32pac::{Peripherals, USART6},
 };
 
 // Flash pins and typedefs
-type SpiPins = (Pa6<SpiAf>, Pa7<SpiAf>, Pa5<SpiAf>);
-type Spi = spi::Spi<SPI1, SpiPins, u8>; // TODO replace with QuadSPI
-type FlashChipSelect = Pg6<Output<PushPull>>;
-type Flash = MicronN25q128a<Spi, FlashChipSelect>;
+type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>);
+type Qspi = QuadSpi<QspiPins, mode::Single>;
+type Flash = MicronN25q128a<Qspi>;
 
 // Serial pins and typedefs
 type UsartPins = (Pg14<UsartAf>, Pg9<UsartAf>);
