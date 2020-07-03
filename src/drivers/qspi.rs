@@ -5,6 +5,7 @@ use crate::{
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
 use core::marker::PhantomData;
+use nb::block;
 
 mod private {
     #[doc(hidden)]
@@ -102,7 +103,7 @@ where
 
 /// QuadSPI abstraction
 pub struct QuadSpi<PINS, MODE> {
-    pins: PINS,
+    _pins: PINS,
     qspi: QuadSpiPeripheral,
     config: Config<MODE>,
     _marker: PhantomData<MODE>,
@@ -112,6 +113,7 @@ pub struct Address(u32);
 pub struct Instruction(u8);
 pub enum Error {
     DummyCyclesValueOutOfRange,
+    MisalignedData,
 }
 
 impl<MODE> Default for Config<MODE> {
@@ -211,16 +213,13 @@ where
         // Enable
         qspi.cr.modify(|_, w| w.en().set_bit());
 
-        Ok(Self { pins, config, qspi, _marker: PhantomData::default() })
+        Ok(Self { _pins: pins, config, qspi, _marker: PhantomData::default() })
     }
 }
 
 struct Status {
     busy: bool,
-    fifo_level: u8,
     fifo_threshold: bool,
-    transfer_complete: bool,
-    transfer_error: bool,
 }
 
 impl<PINS, MODE> QuadSpi<PINS, MODE> {
@@ -228,10 +227,33 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
         let flags = self.qspi.sr.read();
         Status {
             busy: flags.busy().bit(),
-            fifo_level: flags.flevel().bits(),
             fifo_threshold: flags.ftf().bit(),
-            transfer_complete: flags.tcf().bit(),
-            transfer_error: flags.tef().bit(),
+        }
+    }
+
+    fn write_word(&mut self, word: &[u8]) -> nb::Result<(), Error> {
+        if self.status().busy || !self.status().fifo_threshold {
+            Err(nb::Error::WouldBlock)
+        } else {
+            // gather up to four bytes into a single big_endian u32
+            let mut byte_array = [0u8; 4];
+            word.iter().enumerate().for_each(|(i, b)| byte_array[i] = *b);
+            let word = u32::from_be_bytes(byte_array);
+
+            // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
+            self.qspi.dr.write(|w| unsafe { w.bits(word) } );
+            Ok(())
+        }
+    }
+
+    fn read_word(&mut self, word: &mut [u8]) -> nb::Result<(), Error> {
+        if self.status().busy || !self.status().fifo_threshold {
+            Err(nb::Error::WouldBlock)
+        } else {
+            // Store read in a big endian array
+            let bytes = self.qspi.dr.read().bits().to_be_bytes();
+            bytes.iter().enumerate().for_each(|(i, b)| word[i] = *b);
+            Ok(())
         }
     }
 }
@@ -252,6 +274,12 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
         }
 
+        // TODO: Consider allowing misaligned writes.
+        match data {
+            Some(data) if data.len() % 4 != 0 => return Err(nb::Error::Other(Error::MisalignedData)),
+            _ => (),
+        }
+
         let adsize = match self.config.flash_size_bits {
             8 => 0b00,
             16 => 0b01,
@@ -262,13 +290,12 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
 
         if self.status().busy {
             // Early yield if busy
-            return nb::Error::WouldBlock;
+            return Err(nb::Error::WouldBlock);
         }
 
-        // TODO check bsy flag
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Applies to all unsafe blocks in this function unless specified otherwise.
-        // Sets Data Length Register, configuring the amount of bytes to read or write.
+        // Sets Data Length Register, configuring the amount of bytes to write.
         self.qspi
             .dlr
             .write(|w| unsafe { w.bits(if let Some(data) = data { data.len() as u32 } else { 0 }) });
@@ -293,12 +320,18 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
             .bits(dummy_cycles)
         });
 
-        // Sets Address to write or read from.
+        // Sets Address to write to.
         if let Some(address) = address {
             self.qspi.ar.write(|w| unsafe { w.bits(address.0) })
-        }
+        };
 
-        unimplemented!();
+        // Write loop (checking FIFO threshold to ensure it is possible to write 4 bytes).
+        if let Some(data) = data {
+            for word in data.chunks(4) {
+                block!(self.write_word(word))?;
+            };
+        }
+        Ok(())
     }
 
     fn read(
@@ -308,6 +341,63 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         data: &mut [u8],
         dummy_cycles: u8,
     ) -> nb::Result<(), Self::Error> {
-        unimplemented!();
+        if dummy_cycles > 31 {
+            return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
+        }
+
+        // TODO: Consider allowing misaligned reads.
+        if data.len() % 4 != 0 {
+            return Err(nb::Error::Other(Error::MisalignedData));
+        }
+
+        let adsize = match self.config.flash_size_bits {
+            8 => 0b00,
+            16 => 0b01,
+            24 => 0b10,
+            32 => 0b11,
+            _ => panic!("Invalid flash size"),
+        };
+
+        if self.status().busy {
+            // Early yield if busy
+            return Err(nb::Error::WouldBlock);
+        }
+        // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
+        // Applies to all unsafe blocks in this function unless specified otherwise.
+        // Sets Data Length Register, configuring the amount of bytes to read.
+        self.qspi
+            .dlr
+            .write(|w| unsafe { w.bits(data.len() as u32) });
+
+        // Configure Communicaton Configuration Register.
+        // This sets up all rules for this QSPI read.
+        self.qspi.ccr.write(|w| unsafe {
+            if let Some(instruction) = instruction {
+                w.imode().bits(0b01).instruction().bits(instruction.0)
+            } else {
+                w
+            }
+            .fmode()
+            .bits(0b01) // indirect read mode
+            .adsize()
+            .bits(adsize)
+            .admode()
+            .bits(if address.is_some() { 0b01 } else { 0b00 })
+            .dmode()
+            .bits(0b01)
+            .dcyc()
+            .bits(dummy_cycles)
+        });
+
+        // Sets Address to read from.
+        if let Some(address) = address {
+            self.qspi.ar.write(|w| unsafe { w.bits(address.0) })
+        };
+
+        // Read loop (checking FIFO threshold to ensure it is possible to read 4 bytes).
+        for word in data.chunks_mut(4) {
+            block!(self.read_word(word))?;
+        };
+        Ok(())
     }
 }

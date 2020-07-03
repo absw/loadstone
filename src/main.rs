@@ -10,7 +10,7 @@ use cortex_m_rt::entry;
 fn main() -> ! {
     use cortex_m_semihosting::hprintln;
     use secure_bootloader_lib::{
-        self, devices::implementations::flash::micron_n25q128a, drivers::rcc::RccExt, hal, stm32pac,
+        self, drivers::rcc::RccExt, hal, stm32pac,
     };
     let peripherals = stm32pac::Peripherals::take().unwrap();
 
