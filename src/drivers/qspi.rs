@@ -58,6 +58,8 @@ seal_pins!(Bk2Io2Pin: [Pc4<AF10>, Pe9<AF10>, Pg9<AF9>,]);
 #[cfg(feature = "stm32f412")]
 seal_pins!(Bk2Io3Pin: [Pc5<AF10>, Pe10<AF10>, Pg14<AF9>,]);
 
+const MAX_DUMMY_CYCLES: u8 = 31;
+
 // Mode Typestates
 pub mod mode {
     pub struct Single;
@@ -176,6 +178,7 @@ impl<MODE> Config<MODE> {
     }
 }
 
+#[derive(Debug)]
 pub enum ConfigError {
     NotYetImplemented,
     InvalidFlashSize,
@@ -198,6 +201,8 @@ where
         // performs single-bit atomic writes related to the QSPI peripheral
         let rcc = unsafe { &(*RCC::ptr()) };
         rcc.ahb3enr.modify(|_, w| w.qspien().set_bit());
+        rcc.ahb3rstr.modify(|_, w| w.qspirst().set_bit());
+        rcc.ahb3rstr.modify(|_, w| w.qspirst().clear_bit());
 
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Applies to all unsafe blocks in this function unless specified otherwise.
@@ -265,7 +270,7 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         data: Option<&[u8]>,
         dummy_cycles: u8,
     ) -> nb::Result<(), Self::Error> {
-        if dummy_cycles > 31 {
+        if dummy_cycles > MAX_DUMMY_CYCLES {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
         }
 
@@ -338,7 +343,7 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         data: &mut [u8],
         dummy_cycles: u8,
     ) -> nb::Result<(), Self::Error> {
-        if dummy_cycles > 31 {
+        if dummy_cycles > MAX_DUMMY_CYCLES {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
         }
 

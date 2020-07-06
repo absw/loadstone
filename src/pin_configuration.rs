@@ -23,9 +23,10 @@ mod pins {
 
 #[cfg(feature = "stm32f412")]
 mod pins {
-    use crate::drivers::{serial::UsartAf, spi::SpiAf};
-    gpio!(a, [(5, super::SpiAf), (6, super::SpiAf), (7, super::SpiAf),]);
-    gpio!(g, [(6, Output::<PushPull>), (14, super::UsartAf), (9, super::UsartAf),]);
+    use crate::drivers::serial::UsartAf;
+    gpio!(b, [(2, AF9),]);
+    gpio!(f, [(8, AF10), (9, AF10),]);
+    gpio!(g, [(6, AF10), (14, super::UsartAf), (9, super::UsartAf),]);
 }
 
 // Reexport facade mod

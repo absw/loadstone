@@ -6,7 +6,7 @@ use crate::{
         rcc::RccExt,
         serial::{self, UsartAf, UsartExt},
     },
-    hal,
+    hal::{self, serial::Write},
     pin_configuration::*,
     stm32pac::{Peripherals, USART6},
 };
@@ -22,14 +22,15 @@ type Serial = serial::Serial<USART6, UsartPins>;
 
 /// Top level Bootloader type for the stm32f412 Discovery board
 pub struct Bootloader {
-    _flash: Flash,
-    _serial: Serial,
+    flash: Flash,
+    serial: Serial,
 }
 
 impl Bootloader {
     pub fn new(mut peripherals: Peripherals) -> Bootloader {
-        let _gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
+        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = peripherals
             .RCC
             .constrain()
@@ -41,11 +42,18 @@ impl Bootloader {
             .freeze();
         let serial_config = serial::config::Config::default().baudrate(hal::time::Bps(115_200));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
-        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks);
+        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
 
-        //let qspi_config = qspi::Config::default();
-        //let flash = Flash::new(Qspi::from_config(qspi_config));
+        let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
+        let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9);
+        let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
+        let flash = Flash::new(qspi).unwrap();
 
-        unimplemented!();
+        Bootloader { flash, serial }
+    }
+
+    pub fn run(mut self) -> ! {
+        uprintln!(self.serial, "Secure Bootloader Startup");
+        loop {}
     }
 }

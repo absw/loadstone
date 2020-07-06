@@ -97,7 +97,7 @@ where
     }
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
-        let mut response = [0u8; 1];
+        let mut response = [0u8; 4];
         self.execute_command(Command::ReadId, None, CommandData::Read(&mut response))?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
@@ -106,7 +106,7 @@ where
     }
 
     fn status(&mut self) -> nb::Result<Status, Error> {
-        let mut response = [0u8; 1];
+        let mut response = [0u8; 4];
         self.execute_command(Command::ReadStatus, None, CommandData::Read(&mut response))?;
         let response = response[0];
         Ok(Status { write_in_progress: response.is_set(0) })

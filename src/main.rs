@@ -8,24 +8,10 @@ use cortex_m_rt::entry;
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
-    use cortex_m_semihosting::hprintln;
-    use secure_bootloader_lib::{self, drivers::rcc::RccExt, hal, stm32pac};
-    let peripherals = stm32pac::Peripherals::take().unwrap();
-
-    peripherals
-        .RCC
-        .constrain()
-        .sysclk(hal::time::MegaHertz(180))
-        .hclk(hal::time::MegaHertz(84))
-        .pclk1(hal::time::MegaHertz(42))
-        .pclk2(hal::time::MegaHertz(84))
-        .require_pll48clk()
-        .freeze();
-
-    loop {
-        cortex_m::asm::delay(20_000_000);
-        hprintln!("Hello World").unwrap();
-    }
+    use secure_bootloader_lib::stm32pac;
+    use secure_bootloader_lib::devices::implementations::Bootloader;
+    let bootloader = Bootloader::new(stm32pac::Peripherals::take().unwrap());
+    bootloader.run();
 }
 
 #[cfg(not(target_arch = "arm"))]

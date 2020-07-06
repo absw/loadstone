@@ -6,6 +6,7 @@
      */
     "version": "0.2.0",
     "configurations": [
+        
         {
             /* Configuration for the STM32F4 Discovery board */
             "type": "cortex-debug",
@@ -15,14 +16,14 @@
             "cwd": "${workspaceRoot}",
             "preLaunchTask": "cargo build",
             "runToMain": true,
-            "executable": "./target/thumbv7em-none-eabi/debug/app",
+            "executable": "./target/thumbv7em-none-eabi/debug/secure_bootloader",
             /* Run `cargo build --example itm` and uncomment this line to run itm example */
             // "executable": "./target/thumbv7em-none-eabihf/debug/examples/itm",
-            "device": "STM32F429ZIT6U",
+            "device": "STM32F412Z6T6U",
             "configFiles": [
                 "${workspaceRoot}/openocd.cfg",
             ],
-            "svdFile": "${workspaceRoot}/.vscode/STM32F429.svd",
+            "svdFile": "${workspaceRoot}/.vscode/STM32F412.svd",
             "preLaunchCommands": [
                 "monitor arm semihosting enable",
             ],
