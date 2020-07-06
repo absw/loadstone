@@ -6,6 +6,7 @@ use crate::{
 };
 use core::marker::PhantomData;
 use nb::block;
+use cortex_m_semihosting::hprintln;
 
 mod private {
     #[doc(hidden)]
@@ -209,8 +210,8 @@ where
         // Prescaler bypass (AHB clock frequency)
         qspi.cr.modify(|_, w| unsafe { w.prescaler().bits(0) });
 
-        // Fifo threshold 4 (fifo flag up when 4 bytes are free to write)
-        qspi.cr.modify(|_, w| unsafe { w.fthres().bits(4u8) });
+        // Fifo threshold 1 (fifo flag up when 1 byte is free to write)
+        qspi.cr.modify(|_, w| unsafe { w.fthres().bits(1) });
 
         let fsize = config.flash_size_bits.saturating_sub(1u8);
         qspi.dcr.modify(|_, w| unsafe { w.fsize().bits(fsize) });
@@ -222,6 +223,7 @@ where
     }
 }
 
+#[derive(Copy, Clone, Debug)]
 struct Status {
     busy: bool,
     fifo_threshold: bool,
@@ -233,29 +235,34 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
         Status { busy: flags.busy().bit(), fifo_threshold: flags.ftf().bit() }
     }
 
-    fn write_word(&mut self, word: &[u8]) -> nb::Result<(), Error> {
-        if self.status().busy || !self.status().fifo_threshold {
+    const QSPI_ADDRESS: u32 = 0xA0001000;
+    const QSPI_DR_OFFSET: u32 = 0x20;
+    const QSPI_DR_ADDRESS: u32 = Self::QSPI_ADDRESS + Self::QSPI_DR_OFFSET;
+
+    fn write_byte(&mut self, byte: u8) -> nb::Result<(), Error> {
+        if !self.status().fifo_threshold {
             Err(nb::Error::WouldBlock)
         } else {
-            // gather up to four bytes into a single big_endian u32
-            let mut byte_array = [0u8; 4];
-            word.iter().enumerate().for_each(|(i, b)| byte_array[i] = *b);
-            let word = u32::from_be_bytes(byte_array);
-
-            // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
-            self.qspi.dr.write(|w| unsafe { w.bits(word) });
+            let pointer = Self::QSPI_DR_ADDRESS as *mut u8;
+            //NOTE(safety): We bypass the PAC here to perform a single byte
+            //access to a 32 bit register. It is safe since write access to
+            //the register is gated behind self.qspi.
+            unsafe { *pointer = byte };
             Ok(())
         }
     }
 
-    fn read_word(&mut self, word: &mut [u8]) -> nb::Result<(), Error> {
-        if self.status().busy || !self.status().fifo_threshold {
+    fn read_byte(&mut self) -> nb::Result<u8, Error> {
+        let status = self.status();
+        if !status.fifo_threshold {
+            hprintln!("Status: {:?}", status).unwrap();
             Err(nb::Error::WouldBlock)
         } else {
-            // Store read in a big endian array
-            let bytes = self.qspi.dr.read().bits().to_be_bytes();
-            bytes.iter().enumerate().for_each(|(i, b)| word[i] = *b);
-            Ok(())
+            let pointer = Self::QSPI_DR_ADDRESS as *const u8;
+            //NOTE(safety): We bypass the PAC here to perform a single byte
+            //access to a 32 bit register. It is safe since access to
+            //the register is gated behind self.qspi.
+            Ok(unsafe { *pointer })
         }
     }
 }
@@ -272,14 +279,6 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
     ) -> nb::Result<(), Self::Error> {
         if dummy_cycles > MAX_DUMMY_CYCLES {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
-        }
-
-        // TODO: Consider allowing misaligned writes.
-        match data {
-            Some(data) if data.len() % 4 != 0 => {
-                return Err(nb::Error::Other(Error::MisalignedData))
-            }
-            _ => (),
         }
 
         let adsize = match self.config.flash_size_bits {
@@ -329,8 +328,8 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
 
         // Write loop (checking FIFO threshold to ensure it is possible to write 4 bytes).
         if let Some(data) = data {
-            for word in data.chunks(4) {
-                block!(self.write_word(word))?;
+            for byte in data {
+                block!(self.write_byte(*byte))?;
             }
         }
         Ok(())
@@ -395,8 +394,8 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
         };
 
         // Read loop (checking FIFO threshold to ensure it is possible to read 4 bytes).
-        for word in data.chunks_mut(4) {
-            block!(self.read_word(word))?;
+        for byte in data {
+            *byte = block!(self.read_byte())?;
         }
         Ok(())
     }
