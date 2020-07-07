@@ -34,6 +34,7 @@ impl Bootloader {
         let clocks = peripherals
             .RCC
             .constrain()
+            .use_hse(hal::time::MegaHertz(180))
             .sysclk(hal::time::MegaHertz(180))
             .hclk(hal::time::MegaHertz(84))
             .pclk1(hal::time::MegaHertz(42))

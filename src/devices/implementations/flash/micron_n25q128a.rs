@@ -97,7 +97,7 @@ where
     }
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
-        let mut response = [0u8; 5];
+        let mut response = [0u8; 1];
         self.execute_command(Command::ReadId, None, CommandData::Read(&mut response))?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
