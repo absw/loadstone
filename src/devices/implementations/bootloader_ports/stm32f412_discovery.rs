@@ -3,13 +3,13 @@ use crate::{
     drivers::{
         gpio::{GpioExt, *},
         qspi::{mode, QuadSpi, self},
-        rcc::RccExt,
-        serial::{self, UsartAf, UsartExt},
+        serial::{self, UsartExt}, rcc::Clocks,
     },
     hal::{self, serial::Write},
     pin_configuration::*,
     stm32pac::{Peripherals, USART6},
 };
+use cortex_m::asm::delay;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -17,7 +17,7 @@ type Qspi = QuadSpi<QspiPins, mode::Single>;
 type Flash = MicronN25q128a<Qspi>;
 
 // Serial pins and typedefs
-type UsartPins = (Pg14<UsartAf>, Pg9<UsartAf>);
+type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 
 /// Top level Bootloader type for the stm32f412 Discovery board
@@ -31,16 +31,7 @@ impl Bootloader {
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
-        let clocks = peripherals
-            .RCC
-            .constrain()
-            .use_hse(hal::time::MegaHertz(180))
-            .sysclk(hal::time::MegaHertz(180))
-            .hclk(hal::time::MegaHertz(84))
-            .pclk1(hal::time::MegaHertz(42))
-            .pclk2(hal::time::MegaHertz(84))
-            .require_pll48clk()
-            .freeze();
+        let clocks = Clocks::hardcoded(peripherals.FLASH, peripherals.RCC);
         let serial_config = serial::config::Config::default().baudrate(hal::time::Bps(115_200));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
         let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
@@ -54,7 +45,9 @@ impl Bootloader {
     }
 
     pub fn run(mut self) -> ! {
-        uprintln!(self.serial, "Secure Bootloader Startup");
-        loop {}
+        loop {
+            uprintln!(self.serial, "Hi!");
+            delay(200000);
+        }
     }
 }

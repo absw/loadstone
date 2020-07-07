@@ -8,8 +8,6 @@ use crate::{
 use core::{marker::PhantomData, ptr};
 use nb;
 
-pub type UsartAf = AF7;
-
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.
 pub trait UsartExt<PINS> {
@@ -50,14 +48,14 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // functions. NOTE: This is not configuration! there's no need
 // to remove items from these lists once complete.
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(TxPin<USART1>: [Pa9<UsartAf>, Pb6<UsartAf>,]);
+seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(TxPin<USART1>: [Pa9<UsartAf>, Pb6<UsartAf>, Pa15<AF6>,]);
+seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
 
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(RxPin<USART1>: [Pb7<UsartAf>, Pa10<UsartAf>,]);
+seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(RxPin<USART1>: [Pb3<UsartAf>, Pb7<UsartAf>, Pa10<UsartAf>,]);
+seal_pins!(RxPin<USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -65,7 +63,7 @@ seal_pins!(RxPin<USART1>: [Pb3<UsartAf>, Pb7<UsartAf>, Pa10<UsartAf>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(TxPin<USART2>: [Pa2<UsartAf>, Pd5<UsartAf>,]);
+seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
 
 #[cfg(any(
     feature = "stm32f469",
@@ -73,28 +71,12 @@ seal_pins!(TxPin<USART2>: [Pa2<UsartAf>, Pd5<UsartAf>,]);
     feature = "stm32f407",
     feature = "stm32f412"
 ))]
-seal_pins!(RxPin<USART2>: [Pa3<UsartAf>, Pd6<UsartAf>,]);
-
-#[cfg(any(
-    feature = "stm32f469",
-    feature = "stm32f429",
-    feature = "stm32f407",
-    feature = "stm32f412"
-))]
-seal_pins!(TxPin<USART3>: [Pb10<UsartAf>, Pd8<UsartAf>, Pc10<UsartAf>,]);
-
-#[cfg(any(
-    feature = "stm32f469",
-    feature = "stm32f429",
-    feature = "stm32f407",
-    feature = "stm32f412"
-))]
-seal_pins!(RxPin<USART3>: [Pb11<UsartAf>, Pd9<UsartAf>, Pc11<UsartAf>,]);
+seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
 
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(TxPin<USART6>: [Pc6<UsartAf>, Pa11<UsartAf>, Pg14<UsartAf>,]);
+seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
 #[cfg(any(feature = "stm32f412"))]
-seal_pins!(RxPin<USART6>: [Pc7<UsartAf>, Pa12<UsartAf>, Pg9<UsartAf>,]);
+seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
 
 /// Serial error
 #[derive(Debug)]
