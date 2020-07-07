@@ -95,12 +95,14 @@ pub struct Config<MODE> {
 /// Marker trait for a tuple of pins that work for a given QSPI in Single mode
 pub trait SingleModePins {}
 
-impl<CLK, CS, IO0, IO1> SingleModePins for (CLK, CS, IO0, IO1)
+impl<CLK, CS, IO0, IO1, IO2, IO3> SingleModePins for (CLK, CS, IO0, IO1, IO2, IO3)
 where
     CLK: ClkPin,
     CS: Bk1CsPin,
     IO0: Bk1Io0Pin,
     IO1: Bk1Io1Pin,
+    IO2: Bk1Io2Pin,
+    IO3: Bk1Io3Pin,
 {
 }
 
@@ -116,7 +118,6 @@ pub struct Instruction(u8);
 
 pub enum Error {
     DummyCyclesValueOutOfRange,
-    MisalignedData,
 }
 
 impl<MODE> Default for Config<MODE> {
@@ -255,14 +256,15 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
     fn read_byte(&mut self) -> nb::Result<u8, Error> {
         let status = self.status();
         if !status.fifo_threshold {
-            hprintln!("Status: {:?}", status).unwrap();
             Err(nb::Error::WouldBlock)
         } else {
             let pointer = Self::QSPI_DR_ADDRESS as *const u8;
             //NOTE(safety): We bypass the PAC here to perform a single byte
             //access to a 32 bit register. It is safe since access to
             //the register is gated behind self.qspi.
-            Ok(unsafe { *pointer })
+            let byte = unsafe { *pointer };
+            hprintln!("Value {:?}", byte).unwrap();
+            Ok(byte)
         }
     }
 }
@@ -344,11 +346,6 @@ impl<PINS> qspi::Indirect for QuadSpi<PINS, mode::Single> {
     ) -> nb::Result<(), Self::Error> {
         if dummy_cycles > MAX_DUMMY_CYCLES {
             return Err(nb::Error::Other(Error::DummyCyclesValueOutOfRange));
-        }
-
-        // TODO: Consider allowing misaligned reads.
-        if data.len() % 4 != 0 {
-            return Err(nb::Error::Other(Error::MisalignedData));
         }
 
         let adsize = match self.config.flash_size_bits {

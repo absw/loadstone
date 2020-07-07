@@ -25,7 +25,7 @@ mod pins {
 mod pins {
     use crate::drivers::serial::UsartAf;
     gpio!(b, [(2, AF9),]);
-    gpio!(f, [(8, AF10), (9, AF10),]);
+    gpio!(f, [(6, AF9), (7, AF9), (8, AF10), (9, AF10),]);
     gpio!(g, [(6, AF10), (14, super::UsartAf), (9, super::UsartAf),]);
 }
 

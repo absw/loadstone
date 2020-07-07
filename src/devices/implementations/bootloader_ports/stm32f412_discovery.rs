@@ -12,7 +12,7 @@ use crate::{
 };
 
 // Flash pins and typedefs
-type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>);
+type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
 type Qspi = QuadSpi<QspiPins, mode::Single>;
 type Flash = MicronN25q128a<Qspi>;
 
@@ -45,7 +45,7 @@ impl Bootloader {
         let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
 
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
-        let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9);
+        let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let flash = Flash::new(qspi).unwrap();
 
