@@ -87,12 +87,6 @@ impl Bootloader {
     }
 
     pub fn run(mut self) -> ! {
-        loop {
-            let mut magic_number_buffer = [0u8; 1];
-            self._flash
-                .read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer)
-                .unwrap();
-            delay(10_000_000);
-        }
+        loop {}
     }
 }
