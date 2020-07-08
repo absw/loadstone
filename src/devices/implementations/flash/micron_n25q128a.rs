@@ -3,7 +3,6 @@ use crate::{
     hal::qspi,
     utilities::bitwise::BitFlags,
 };
-use cortex_m_semihosting::hprintln;
 use nb::block;
 
 const MANUFACTURER_ID: u8 = 0x20;
@@ -11,25 +10,6 @@ const MANUFACTURER_ID: u8 = 0x20;
 /// Address into the micron chip memory map
 #[derive(Clone, Copy, Debug)]
 pub struct Address(pub u32);
-#[derive(Clone, Copy, Debug)]
-pub struct Sector {
-    pub address: Address,
-}
-#[derive(Clone, Copy, Debug)]
-pub struct Page {
-    pub address: Address,
-}
-#[derive(Clone, Copy, Debug)]
-pub struct Byte {
-    pub address: Address,
-}
-#[derive(Clone, Copy, Debug)]
-pub struct Range {
-    pub address: Address,
-    pub bytes: u32,
-}
-
-type PageData = [u8; 256];
 
 pub struct MicronN25q128a<QSPI>
 where

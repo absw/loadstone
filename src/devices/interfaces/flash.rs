@@ -11,6 +11,9 @@ pub trait Read<A> {
 }
 
 /// Writes a range of bytes, generic over an address
+/// This is a high level write that abstracts away
+/// the need to first erase, or to keep writes inside
+/// page boundaries
 pub trait Write<A> {
     type Error;
     fn write(&mut self, address: A, bytes: &[u8]) -> nb::Result<(), Self::Error>;

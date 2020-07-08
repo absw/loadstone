@@ -76,9 +76,9 @@ pub struct MonochromeLed<Pin: OutputPin> {
 
 #[derive(Copy, Clone)]
 pub enum LogicLevel {
-    /// LogicLevelal high equals "on"
+    /// LogicLevel high equals "on"
     Direct,
-    /// LogicLevelal high equals "off"
+    /// LogicLevel high equals "off"
     Inverted,
 }
 

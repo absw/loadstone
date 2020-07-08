@@ -5,7 +5,6 @@ use crate::{
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
 use core::marker::PhantomData;
-use cortex_m_semihosting::hprintln;
 use nb::block;
 
 mod private {
