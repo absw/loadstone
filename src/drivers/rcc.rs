@@ -4,7 +4,7 @@ use crate::{stm32pac::FLASH, stm32pac::RCC};
 /// Frozen clock frequencies
 ///
 /// The existence of this value indicates that the clock configuration can no longer be changed
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Clocks {
     hclk: Hertz,
     pclk1: Hertz,
@@ -46,7 +46,7 @@ impl Clocks {
             w.pllsrc().set_bit(); // HSE input to PLL
             w.pllm().bits(8);
             w.plln().bits(100);
-            w.pllp().bits(1); // Note this one is then doubled
+            w.pllp().bits(0); // pllp = (divider / 2) >> 1
             w.pllq().bits(3)
         });
 

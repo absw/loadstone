@@ -7,6 +7,7 @@ use crate::{
 };
 use core::{marker::PhantomData, ptr};
 use nb;
+use cortex_m_semihosting::hprintln;
 
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.
@@ -248,13 +249,13 @@ macro_rules! hal_usart_impl {
                     // Enable clock for USART
                     rcc.$apbXenr.modify(|_, w| w.$usartXen().set_bit());
 
-                    // Calculate correct baudrate divisor on the fly
-                    let div = (clocks.$pclkX().0 + config.baudrate.0 / 2)
-                        / config.baudrate.0;
+                    let extended_divider = (clocks.$pclkX().0 << 4) / config.baudrate.0;
+                    let mantissa = extended_divider >> 8;
+                    let fraction = (extended_divider - (mantissa << 8)) >> 4;
 
                     // NOTE(safety) uses .bits for ease of writing a whole word.
                     // No reserved or read-only bits in this register
-                    usart.brr.write(|w| unsafe { w.bits(div) });
+                    usart.brr.write(|w| unsafe { w.bits((mantissa << 4) | fraction) });
 
                     // Reset other registers to disable advanced USART features
                     usart.cr2.reset();

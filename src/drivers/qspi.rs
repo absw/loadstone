@@ -208,8 +208,8 @@ where
 
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Applies to all unsafe blocks in this function unless specified otherwise.
-        // Prescaler bypass (AHB clock frequency)
-        qspi.cr.modify(|_, w| unsafe { w.prescaler().bits(0) });
+        // Maximum prescaper (AHB clock frequency / 256)
+        qspi.cr.modify(|_, w| unsafe { w.prescaler().bits(255) });
 
         // Fifo threshold 1 (fifo flag up when 1 byte is free to write)
         qspi.cr.modify(|_, w| unsafe { w.fthres().bits(1) });
