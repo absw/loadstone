@@ -1,5 +1,6 @@
 use crate::{
-    devices::implementations::flash::micron_n25q128a::MicronN25q128a,
+    devices::implementations::{led::{LogicLevel, MonochromeLed}, flash::micron_n25q128a::MicronN25q128a},
+    devices::interfaces::led::Toggle,
     drivers::{
         gpio::{GpioExt, *},
         qspi::{mode, QuadSpi, self},
@@ -28,26 +29,35 @@ pub struct Bootloader {
 
 impl Bootloader {
     pub fn new(mut peripherals: Peripherals) -> Bootloader {
+
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
+        let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
+        let mut post_led = MonochromeLed::new(gpioe.pe1, LogicLevel::Inverted);
+        post_led.on();
+
         let clocks = Clocks::hardcoded(peripherals.FLASH, peripherals.RCC);
         let serial_config = serial::config::Config::default().baudrate(hal::time::Bps(115_200));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
-        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+        let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+        uprintln!(serial, "Initialising Secure Bootloader");
 
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let flash = Flash::new(qspi).unwrap();
 
+        let flash = Flash::new(qspi).unwrap_or_else(|_| {
+            uprintln!(serial, "* Flash manufacturer ID read failed!");
+            panic!()
+        });
+
+        post_led.off();
         Bootloader { flash, serial }
     }
 
     pub fn run(mut self) -> ! {
         loop {
-            uprintln!(self.serial, "Hi!");
-            delay(200000);
         }
     }
 }

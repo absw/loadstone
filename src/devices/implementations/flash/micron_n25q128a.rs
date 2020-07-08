@@ -1,5 +1,5 @@
 use crate::{
-    devices::interfaces::flash::BulkErase,
+    devices::interfaces::flash::{Write, BulkErase},
     hal::qspi,
     utilities::bitwise::BitFlags,
 };
@@ -8,10 +8,16 @@ use nb::block;
 const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip memory map
+#[derive(Clone, Copy, Debug)]
 pub struct Address(u32);
-pub struct Sector(Address);
-pub struct Page(Address);
-pub struct Word(Address);
+#[derive(Clone, Copy, Debug)]
+pub struct Sector { address: Address }
+#[derive(Clone, Copy, Debug)]
+pub struct Page{ address: Address }
+#[derive(Clone, Copy, Debug)]
+pub struct Word{ address: Address }
+
+type PageData = [u8; 256];
 
 pub struct MicronN25q128a<QSPI>
 where
@@ -29,6 +35,7 @@ pub enum Error {
 
 #[derive(Debug, Clone, Copy)]
 enum Command {
+    PageProgram = 0x02,
     WriteDisable = 0x04,
     ReadStatus = 0x05,
     WriteEnable = 0x06,
@@ -65,6 +72,26 @@ where
     }
 }
 
+impl<QSPI> Write<Page> for MicronN25q128a<QSPI>
+where
+    QSPI: qspi::Indirect,
+{
+    type Data = PageData;
+    type Error = Error;
+
+    fn write(&mut self, page: Page, data: Self::Data) -> nb::Result<(), Self::Error> {
+        if !self.can_write()? {
+            Err(nb::Error::WouldBlock)
+        } else {
+            self.execute_command(Command::WriteEnable, None, CommandData::None)?;
+            self.execute_command(Command::PageProgram, Some(page.address), CommandData::Write(&data))?;
+            self.execute_command(Command::WriteDisable, None, CommandData::None)?;
+            Ok(())
+        }
+
+    }
+}
+
 impl<QSPI> MicronN25q128a<QSPI>
 where
     QSPI: qspi::Indirect,
@@ -78,20 +105,20 @@ where
     fn execute_command(
         &mut self,
         command: Command,
-        address: Option<u32>,
+        address: Option<Address>,
         data: CommandData,
     ) -> nb::Result<(), Error> {
         match data {
             CommandData::Arguments(buffer) => {
-                block!(self.qspi.write(Some(command as u8), address, Some(buffer), 0))
+                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
             }
             CommandData::Write(buffer) => {
-                block!(self.qspi.write(Some(command as u8), address, Some(buffer), 0))
+                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
             }
             CommandData::Read(buffer) => {
-                block!(self.qspi.read(Some(command as u8), address, buffer, 0))
+                block!(self.qspi.read(Some(command as u8), address.map(|a| a.0), buffer, 0))
             }
-            CommandData::None => block!(self.qspi.write(Some(command as u8), address, None, 0)),
+            CommandData::None => block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), None, 0)),
         }
         .map_err(|_| nb::Error::Other(Error::QspiError))
     }
@@ -176,5 +203,26 @@ mod test {
 
         // Then
         assert_eq!(flash.erase(), Err(nb::Error::WouldBlock));
+    }
+
+    #[test]
+    fn page_program_command_sequence() {
+        // Given
+        let mut flash = flash_to_test();
+        let page = Page { address: Address(0x1234) };
+        let data = [0xAA; 256];
+
+        // When
+        flash.write(page, data).unwrap();
+
+        // Then
+        assert_eq!(flash.qspi.read_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.write_records[0].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.write_records[1].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(flash.qspi.write_records[2].instruction, Some(Command::WriteDisable as u8));
+
+        // And
+        assert_eq!(flash.qspi.write_records[1].address, Some(page.address.0));
+        assert_eq!(flash.qspi.write_records[1].data, data.iter().cloned().collect::<Vec<_>>());
     }
 }
