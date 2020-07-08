@@ -7,7 +7,6 @@ use crate::{
 };
 use core::{marker::PhantomData, ptr};
 use nb;
-use cortex_m_semihosting::hprintln;
 
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.

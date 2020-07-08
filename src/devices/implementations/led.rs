@@ -290,8 +290,12 @@ mod test {
     fn type_erasure_between_chromatic_and_non_chromatic_led() {
         // Given
         let mut monochrome = MonochromeLed::new(MockPin::default(), LogicLevel::Inverted);
-        let mut chromatic =
-            RgbLed::new(MockPin::default(), MockPin::default(), MockPin::default(), LogicLevel::Direct);
+        let mut chromatic = RgbLed::new(
+            MockPin::default(),
+            MockPin::default(),
+            MockPin::default(),
+            LogicLevel::Direct,
+        );
 
         chromatic.color(RgbPalette::Red);
 
