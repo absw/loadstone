@@ -63,6 +63,7 @@ enum Command {
 
 struct Status {
     write_in_progress: bool,
+    _write_enable_latch: bool,
 }
 
 enum CommandData<'a> {
@@ -184,7 +185,10 @@ where
         let mut response = [0u8; 1];
         self.execute_command(Command::ReadStatus, None, CommandData::Read(&mut response))?;
         let response = response[0];
-        Ok(Status { write_in_progress: response.is_set(0) })
+        Ok(Status {
+            write_in_progress: response.is_set(0),
+            _write_enable_latch: response.is_set(1),
+        })
     }
 
     /// Blocks until flash ID read checks out, or until timeout

@@ -107,10 +107,9 @@ where
 
 /// QuadSPI abstraction
 pub struct QuadSpi<PINS, MODE> {
-    _pins: PINS,
     qspi: QuadSpiPeripheral,
     config: Config<MODE>,
-    _marker: PhantomData<MODE>,
+    _marker: PhantomData<PINS>,
 }
 
 pub struct Instruction(u8);
@@ -204,7 +203,7 @@ where
 {
     pub fn from_config(
         qspi: QuadSpiPeripheral,
-        pins: PINS,
+        _: PINS,
         config: Config<mode::Single>,
     ) -> Result<Self, ConfigError> {
         if config.data_rate != DataRate::Single || config.flash_mode != FlashMode::Single {
@@ -220,7 +219,7 @@ where
 
         // NOTE(safety) The unsafe "bits" method is used to write multiple bits conveniently.
         // Applies to all unsafe blocks in this function unless specified otherwise.
-        // Maximum prescaper (AHB clock frequency / 256)
+        // Maximum prescaler (AHB clock frequency / 256)
         qspi.cr.modify(|_, w| unsafe { w.prescaler().bits(255) });
 
         // Fifo threshold 1 (fifo flag up when 1 byte is free to write)
@@ -234,7 +233,7 @@ where
         // Enable
         qspi.cr.modify(|_, w| w.en().set_bit());
 
-        Ok(Self { _pins: pins, config, qspi, _marker: PhantomData::default() })
+        Ok(Self { config, qspi, _marker: PhantomData::default() })
     }
 }
 

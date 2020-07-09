@@ -3,7 +3,7 @@
 #![cfg_attr(target_arch = "arm", no_main)]
 
 #[allow(unused_imports)]
-use cortex_m_rt::{exception, entry};
+use cortex_m_rt::{entry, exception};
 
 #[cfg(target_arch = "arm")]
 #[entry]
