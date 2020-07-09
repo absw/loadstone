@@ -82,7 +82,8 @@ impl Bootloader {
 
         delay(10_000_000); // Gives time for the flash chip to stabilize after powerup
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
-        let flash = Self::build_and_test_flash(&mut serial, qspi_pins, peripherals.QUADSPI).report_unwrap(&mut serial);
+        let flash = Self::build_and_test_flash(&mut serial, qspi_pins, peripherals.QUADSPI)
+            .report_unwrap(&mut serial);
 
         post_led.off();
         Bootloader { _flash: flash, _serial: serial }

@@ -1,21 +1,25 @@
+//! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
     devices::interfaces::flash::{BulkErase, Read, Write},
-    hal::qspi,
+    hal::{qspi, time},
     utilities::bitwise::BitFlags,
 };
 use nb::block;
 
+/// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
 
-/// Address into the micron chip memory map
+/// Address into the micron chip [memory map](../../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
 #[derive(Clone, Copy, Debug)]
 pub struct Address(pub u32);
 
+/// MicronN25q128a driver, generic over a QSPI programmed in indirect mode
 pub struct MicronN25q128a<QSPI>
 where
     QSPI: qspi::Indirect,
 {
     qspi: QSPI,
+    timeout: Option<time::Milliseconds>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -30,9 +34,15 @@ impl From<Error> for crate::error::Error {
     fn from(error: Error) -> Self {
         match error {
             Error::TimeOut => crate::error::Error::DeviceError("Micron n25q128a timed out"),
-            Error::QspiError => crate::error::Error::DeviceError("Micron n25q128a QSPI access error"),
-            Error::WrongManufacturerId => crate::error::Error::DeviceError("Micron n25q128a reported wrong manufacturer ID"),
-            Error::MisalignedAccess => crate::error::Error::DeviceError("Misaligned access to Micron n25q128a requested"),
+            Error::QspiError => {
+                crate::error::Error::DeviceError("Micron n25q128a QSPI access error")
+            }
+            Error::WrongManufacturerId => {
+                crate::error::Error::DeviceError("Micron n25q128a reported wrong manufacturer ID")
+            }
+            Error::MisalignedAccess => {
+                crate::error::Error::DeviceError("Misaligned access to Micron n25q128a requested")
+            }
         }
     }
 }
@@ -54,7 +64,6 @@ struct Status {
 }
 
 enum CommandData<'a> {
-    _Arguments(&'a [u8]),
     Read(&'a mut [u8]),
     Write(&'a [u8]),
     None,
@@ -86,7 +95,7 @@ where
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         // TODO remove page alignment limitations
-        if address.0 % 256 != 0 || bytes.len() > 256 {
+        if (address.0 % 256 != 0) || bytes.len() > 256 {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
@@ -126,9 +135,6 @@ where
         data: CommandData,
     ) -> nb::Result<(), Error> {
         match data {
-            CommandData::_Arguments(buffer) => {
-                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
-            }
             CommandData::Write(buffer) => {
                 block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
             }
@@ -160,7 +166,13 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi };
+        let mut flash = Self { qspi, timeout: None};
+        block!(flash.verify_id())?;
+        Ok(flash)
+    }
+
+    pub fn with_timeout(qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
+        let mut flash = Self { qspi, timeout: Some(timeout)};
         block!(flash.verify_id())?;
         Ok(flash)
     }
