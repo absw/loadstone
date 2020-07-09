@@ -1,10 +1,12 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
     devices::interfaces::flash::{BulkErase, Read, Write},
+    drivers::systick,
     hal::{qspi, time},
     utilities::bitwise::BitFlags,
 };
 use nb::block;
+use time::Now;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
@@ -19,7 +21,7 @@ where
     QSPI: qspi::Indirect,
 {
     qspi: QSPI,
-    timeout: Option<time::Milliseconds>,
+    timeout: Option<(time::Milliseconds, systick::SysTick)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -100,11 +102,15 @@ where
         }
 
         // TODO read subsector first before erasing (to preserve previous values)
-        self.execute_command(Command::WriteEnable, None, CommandData::None)?;
-        self.execute_command(Command::SubsectorErase, Some(address), CommandData::None)?;
-        while self.status()?.write_in_progress {}
-        self.execute_command(Command::WriteEnable, None, CommandData::None)?;
-        self.execute_command(Command::PageProgram, Some(address), CommandData::Write(&bytes))?;
+        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
+        block!(self.execute_command(Command::SubsectorErase, Some(address), CommandData::None))?;
+        block!(self.wait_until_write_complete())?;
+        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
+        block!(self.execute_command(
+            Command::PageProgram,
+            Some(address),
+            CommandData::Write(&bytes)
+        ))?;
         Ok(())
     }
 }
@@ -127,6 +133,23 @@ impl<QSPI> MicronN25q128a<QSPI>
 where
     QSPI: qspi::Indirect,
 {
+    fn wait_until_write_complete(&mut self) -> nb::Result<(), Error> {
+        if let Some((timeout, systick)) = self.timeout {
+            let start = systick.now();
+            while self.status()?.write_in_progress {
+                if systick.now() - start > timeout {
+                    return Err(nb::Error::Other(Error::TimeOut));
+                }
+            }
+        }
+
+        if self.status()?.write_in_progress {
+            Err(nb::Error::WouldBlock)
+        } else {
+            Ok(())
+        }
+    }
+
     // Low level helper for executing Micron commands
     fn execute_command(
         &mut self,
@@ -166,13 +189,17 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: None};
+        let mut flash = Self { qspi, timeout: None };
         block!(flash.verify_id())?;
         Ok(flash)
     }
 
-    pub fn with_timeout(qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: Some(timeout)};
+    pub fn with_timeout(
+        qspi: QSPI,
+        timeout: time::Milliseconds,
+        systick: systick::SysTick,
+    ) -> Result<Self, Error> {
+        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
         block!(flash.verify_id())?;
         Ok(flash)
     }

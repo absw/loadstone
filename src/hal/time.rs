@@ -1,6 +1,5 @@
 //! Time units.
-use core::ops::Sub as Subtracts;
-use core::ops::Add as Adds;
+use core::ops::{Add as Adds, Sub as Subtracts};
 
 /// Abstract point in time. Useful for time periods
 ///
@@ -10,37 +9,40 @@ use core::ops::Add as Adds;
 /// Any implementer of Instant can be added with
 /// milliseconds to obtain another instant.
 pub trait Instant
-where Self: Copy + Clone,
-      Self: Subtracts<Output=Milliseconds>,
-      Self: Adds<Milliseconds, Output=Self> {}
-
-pub trait Now<I: Instant> {
-    fn now() -> I;
+where
+    Self: Copy + Clone,
+    Self: Subtracts<Output = Milliseconds>,
+    Self: Adds<Milliseconds, Output = Self>,
+{
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub trait Now<I: Instant> {
+    fn now(&self) -> I;
+}
+
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Microseconds(pub u32);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Milliseconds(pub u32);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Seconds(pub u32);
 
 /// Bits per second
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Bps(pub u32);
 
 /// Hertz
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct Hertz(pub u32);
 
 /// KiloHertz
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct KiloHertz(pub u32);
 
 /// MegaHertz
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]
 pub struct MegaHertz(pub u32);
 
 /// Extension trait that adds convenience methods to the `u32` type
@@ -96,19 +98,13 @@ impl Into<KiloHertz> for MegaHertz {
 }
 
 impl Into<Milliseconds> for Seconds {
-    fn into(self) -> Milliseconds {
-        Milliseconds (self.0 * 1_000)
-    }
+    fn into(self) -> Milliseconds { Milliseconds(self.0 * 1_000) }
 }
 
 impl Into<Microseconds> for Seconds {
-    fn into(self) -> Microseconds {
-        Microseconds (self.0 * 1_000_000)
-    }
+    fn into(self) -> Microseconds { Microseconds(self.0 * 1_000_000) }
 }
 
 impl Into<Microseconds> for Milliseconds {
-    fn into(self) -> Microseconds {
-        Microseconds (self.0 * 1_000)
-    }
+    fn into(self) -> Microseconds { Microseconds(self.0 * 1_000) }
 }
