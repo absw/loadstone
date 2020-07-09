@@ -3,7 +3,7 @@ use crate::{
     drivers::{gpio::*, rcc},
     hal::serial,
     pin_configuration::*,
-    stm32pac::{RCC, USART1, USART2, USART3},
+    stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
 use core::{marker::PhantomData, ptr};
 use nb;
@@ -14,13 +14,16 @@ pub trait UsartExt<PINS> {
     /// The wrapping type
     type Serial;
 
-    fn wrap(
-        self, pins: PINS, config: config::Config, clocks: rcc::Clocks,
+    fn constrain(
+        self,
+        pins: PINS,
+        config: config::Config,
+        clocks: rcc::Clocks,
     ) -> Result<Self::Serial, config::InvalidConfig>;
 }
 
-#[doc(hidden)]
 mod private {
+    #[doc(hidden)]
     pub trait Sealed {}
 }
 
@@ -46,16 +49,34 @@ macro_rules! seal_pins { ($function:ty: [$($pin:ty,)+]) => {
 // to remove items from these lists once complete.
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>,]);
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(TxPin<USART1>: [Pa9<AF7>, Pb6<AF7>, Pa15<AF6>,]);
+
 #[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
 seal_pins!(RxPin<USART1>: [Pb7<AF7>, Pa10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(RxPin<USART1>: [Pb3<AF7>, Pb7<AF7>, Pa10<AF7>,]);
+
+#[cfg(any(
+    feature = "stm32f469",
+    feature = "stm32f429",
+    feature = "stm32f407",
+    feature = "stm32f412"
+))]
 seal_pins!(TxPin<USART2>: [Pa2<AF7>, Pd5<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
+
+#[cfg(any(
+    feature = "stm32f469",
+    feature = "stm32f429",
+    feature = "stm32f407",
+    feature = "stm32f412"
+))]
 seal_pins!(RxPin<USART2>: [Pa3<AF7>, Pd6<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(TxPin<USART3>: [Pb10<AF7>, Pd8<AF7>, Pc10<AF7>,]);
-#[cfg(any(feature = "stm32f469", feature = "stm32f429", feature = "stm32f407"))]
-seal_pins!(RxPin<USART3>: [Pb11<AF7>, Pd9<AF7>, Pc11<AF7>,]);
+
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
+#[cfg(any(feature = "stm32f412"))]
+seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
 
 /// Serial error
 #[derive(Debug)]
@@ -86,18 +107,10 @@ pub mod config {
     //! Configuration required to construct a new USART instance.
     //!
     //! # Example
-    //! ```no_run
-    //! # use secure_bootloader_lib::stm32pac;
-    //! # use secure_bootloader_lib::hal::time::{MegaHertz, Bps};
-    //! # use secure_bootloader_lib::drivers::{serial::{self, UsartExt}, gpio::GpioExt, rcc::{RccExt, RccWrapper}};
-    //! # let mut peripherals = stm32pac::Peripherals::take().unwrap();
-    //! # let rcc_wrapper: RccWrapper = stm32pac::Peripherals::take().unwrap().RCC.constrain();
-    //! # let clocks = rcc_wrapper.sysclk(MegaHertz(180)).freeze();
-    //! # let gpiod = peripherals.GPIOD.split(&mut peripherals.RCC);
-    //! #
+    //! ```ignore
     //! let (serial, tx, rx) = (peripherals.USART2, gpiod.pd5, gpiod.pd6);
     //! let serial_config = serial::config::Config::default().baudrate(Bps(115_200));
-    //! let mut serial = serial.wrap((tx,rx), serial_config, clocks).unwrap();
+    //! let mut serial = serial.constrain((tx,rx), serial_config, clocks).unwrap();
     //! ```
 
     use crate::hal::time::{Bps, U32Ext};
@@ -235,13 +248,13 @@ macro_rules! hal_usart_impl {
                     // Enable clock for USART
                     rcc.$apbXenr.modify(|_, w| w.$usartXen().set_bit());
 
-                    // Calculate correct baudrate divisor on the fly
-                    let div = (clocks.$pclkX().0 + config.baudrate.0 / 2)
-                        / config.baudrate.0;
+                    let extended_divider = (clocks.$pclkX().0 << 4) / config.baudrate.0;
+                    let mantissa = extended_divider >> 8;
+                    let fraction = (extended_divider - (mantissa << 8)) >> 4;
 
                     // NOTE(safety) uses .bits for ease of writing a whole word.
                     // No reserved or read-only bits in this register
-                    usart.brr.write(|w| unsafe { w.bits(div) });
+                    usart.brr.write(|w| unsafe { w.bits((mantissa << 4) | fraction) });
 
                     // Reset other registers to disable advanced USART features
                     usart.cr2.reset();
@@ -450,7 +463,7 @@ macro_rules! instances {
                 PINS: Pins<$USARTX>, {
                 type Serial = Serial<$USARTX, PINS>;
 
-                fn wrap(self,
+                fn constrain(self,
                     pins: PINS,
                     config: config::Config,
                     clocks: rcc::Clocks,
@@ -469,4 +482,5 @@ instances! {
     USART1: (usart1, apb2enr, usart1en, pclk2),
     USART2: (usart2, apb1enr, usart2en, pclk1),
     USART3: (usart3, apb1enr, usart3en, pclk1),
+    USART6: (usart6, apb2enr, usart6en, pclk2),
 }

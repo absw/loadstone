@@ -6,10 +6,11 @@ name = "secure_bootloader"
 version = "0.1.0"
 
 [features]
-default = ["stm32f429"]
+default = ["stm32f412"]
 stm32f429 = ["stm32f4/stm32f429"]
 stm32f469 = ["stm32f4/stm32f469"]
 stm32f407 = ["stm32f4/stm32f407"]
+stm32f412 = ["stm32f4/stm32f412"]
 
 [dependencies]
 cortex-m = "0.6.0"
@@ -33,6 +34,9 @@ bench = false
 name = "secure_bootloader"
 test = true
 bench = false
+
+[build]
+target = "thumbv7em-none-eabi"
 
 [profile.release]
 codegen-units = 1 # better optimizations

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cargo $@ --target thumbv7em-none-eabi --no-default-features --features "stm32f412"

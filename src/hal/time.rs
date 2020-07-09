@@ -1,19 +1,19 @@
 //! Time units.
 
 /// Bits per second
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Bps(pub u32);
 
 /// Hertz
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Hertz(pub u32);
 
 /// KiloHertz
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct KiloHertz(pub u32);
 
 /// MegaHertz
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct MegaHertz(pub u32);
 
 /// Extension trait that adds convenience methods to the `u32` type

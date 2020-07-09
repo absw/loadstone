@@ -179,6 +179,11 @@ macro_rules! gpio_inner {
                 GPIOF as GPIOf,
                 GPIOG as GPIOg,
                 GPIOH as GPIOh,
+            };
+
+            #[allow(unused_imports)]
+            #[cfg(not(feature = "stm32f412"))]
+            use crate::stm32pac::{
                 GPIOI as GPIOi,
                 GPIOJ as GPIOj,
                 GPIOK as GPIOk,
@@ -274,10 +279,10 @@ macro_rules! gpio_inner {
                     }
                 }
 
-                new_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+                new_af!($GPIOx, $i, $Pxi, $pxi, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                 impl<MODE> $Pxi<MODE> {
-                    into_af!($GPIOx, $i, $Pxi, $pxi, [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+                    into_af!($GPIOx, $i, $Pxi, $pxi, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                     /// Configures the pin to operate as a floating input pin
                     pub fn into_floating_input(
