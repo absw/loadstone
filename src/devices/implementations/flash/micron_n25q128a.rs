@@ -26,6 +26,17 @@ pub enum Error {
     MisalignedAccess,
 }
 
+impl From<Error> for crate::error::Error {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::TimeOut => crate::error::Error::DeviceError("Micron n25q128a timed out"),
+            Error::QspiError => crate::error::Error::DeviceError("Micron n25q128a QSPI access error"),
+            Error::WrongManufacturerId => crate::error::Error::DeviceError("Micron n25q128a reported wrong manufacturer ID"),
+            Error::MisalignedAccess => crate::error::Error::DeviceError("Misaligned access to Micron n25q128a requested"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 enum Command {
     PageProgram = 0x02,
@@ -148,9 +159,9 @@ where
     }
 
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(qspi: QSPI) -> nb::Result<Self, Error> {
+    pub fn new(qspi: QSPI) -> Result<Self, Error> {
         let mut flash = Self { qspi };
-        flash.verify_id()?;
+        block!(flash.verify_id())?;
         Ok(flash)
     }
 }

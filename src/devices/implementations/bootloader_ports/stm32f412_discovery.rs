@@ -15,6 +15,7 @@ use crate::{
         rcc::Clocks,
         serial::{self, UsartExt},
     },
+    error::{Error, ReportOnUnwrap},
     hal::{self, serial::Write as SerialWrite},
     pin_configuration::*,
     stm32pac::{Peripherals, USART6},
@@ -22,6 +23,7 @@ use crate::{
 
 use crate::stm32pac::QUADSPI;
 use cortex_m::asm::delay;
+use nb::block;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -39,30 +41,29 @@ pub struct Bootloader {
 }
 
 impl Bootloader {
-    fn build_and_test_flash(serial: &mut Serial, pins: QspiPins, qspi: QUADSPI) -> Flash {
-        let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
-        let qspi = Qspi::from_config(qspi, pins, qspi_config).unwrap();
-
-        let mut flash = Flash::new(qspi).unwrap_or_else(|_| {
-            uprintln!(serial, "* Flash manufacturer ID read failed!");
-            panic!()
-        });
+    fn build_and_test_flash(
+        serial: &mut Serial,
+        pins: QspiPins,
+        qspi: QUADSPI,
+    ) -> Result<Flash, Error> {
+        let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24)?;
+        let qspi = Qspi::from_config(qspi, pins, qspi_config)?;
+        let mut flash = Flash::new(qspi)?;
 
         // Read, increase, write and read a magic number
         let mut magic_number_buffer = [0u8; 1];
         let mut new_magic_number_buffer = [0u8; 1];
-        flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer).unwrap();
+        block!(flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
         new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        flash.write(micron_n25q128a::Address(0x0000_0000), &new_magic_number_buffer).unwrap();
-        flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer).unwrap();
+        block!(flash.write(micron_n25q128a::Address(0x0000_0000), &new_magic_number_buffer))?;
+        block!(flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
 
         if magic_number_buffer != new_magic_number_buffer {
-            uprintln!(serial, "* Flash read-write-read cycle failed!");
-            panic!();
+            return Err(Error::LogicError("Flash read-write-read cycle failed!"));
         }
 
         uprintln!(serial, "[POST]: Flash ID verification and RWR cycle passed");
-        flash
+        Ok(flash)
     }
 
     pub fn new(mut peripherals: Peripherals) -> Bootloader {
@@ -79,14 +80,13 @@ impl Bootloader {
         let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
         uprintln!(serial, "Initialising Secure Bootloader");
 
+        delay(10_000_000); // Gives time for the flash chip to stabilize after powerup
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
-        let flash = Self::build_and_test_flash(&mut serial, qspi_pins, peripherals.QUADSPI);
+        let flash = Self::build_and_test_flash(&mut serial, qspi_pins, peripherals.QUADSPI).report_unwrap(&mut serial);
 
         post_led.off();
         Bootloader { _flash: flash, _serial: serial }
     }
 
-    pub fn run(mut self) -> ! {
-        loop {}
-    }
+    pub fn run(self) -> ! { loop {} }
 }

@@ -9,7 +9,7 @@ use nb;
 
 /// UART read half
 pub trait Read<Word> {
-    type Error;
+    type Error: core::fmt::Debug;
 
     /// Reads a single word
     fn read(&mut self) -> nb::Result<Word, Self::Error>;
@@ -17,7 +17,7 @@ pub trait Read<Word> {
 
 /// UART write half
 pub trait Write<Word> {
-    type Error;
+    type Error: core::fmt::Debug;
 
     /// Writes a single word
     fn write(&mut self, word: Word) -> nb::Result<(), Self::Error>;

@@ -168,21 +168,34 @@ impl<MODE> Config<MODE> {
         self
     }
 
-    pub fn with_flash_size(mut self, bits: u8) -> nb::Result<Self, ConfigError> {
+    pub fn with_flash_size(mut self, bits: u8) -> Result<Self, ConfigError> {
         match bits {
             8 | 16 | 24 | 32 => {
                 self.flash_size_bits = bits;
                 Ok(self)
             }
-            _ => Err(nb::Error::Other(ConfigError::InvalidFlashSize)),
+            _ => Err(ConfigError::InvalidFlashSize),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ConfigError {
     NotYetImplemented,
     InvalidFlashSize,
+}
+
+impl From<ConfigError> for crate::error::Error {
+    fn from(config_error: ConfigError) -> Self {
+        match config_error {
+            ConfigError::NotYetImplemented => crate::error::Error::ConfigurationError(
+                "QSPI unimplemented features requested in configuration",
+            ),
+            ConfigError::InvalidFlashSize => crate::error::Error::ConfigurationError(
+                "QSPI invalid flash size requested in configuration",
+            ),
+        }
+    }
 }
 
 impl<PINS> QuadSpi<PINS, mode::Single>
@@ -193,9 +206,9 @@ where
         qspi: QuadSpiPeripheral,
         pins: PINS,
         config: Config<mode::Single>,
-    ) -> nb::Result<Self, ConfigError> {
+    ) -> Result<Self, ConfigError> {
         if config.data_rate != DataRate::Single || config.flash_mode != FlashMode::Single {
-            return Err(nb::Error::Other(ConfigError::NotYetImplemented));
+            return Err(ConfigError::NotYetImplemented);
         }
 
         // NOTE(safety) This executes only during initialisation, and only
