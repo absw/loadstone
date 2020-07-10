@@ -1,8 +1,7 @@
 pipeline {
-    // agent {
-    //     docker { image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1' }
-    // }
-    agent any
+    agent {
+        docker { image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1' }
+    }
     stages {
         stage('Checkout SCM') {
             steps {
