@@ -18,24 +18,30 @@ pub struct Address(u32);
 #[derive(Copy, Clone, Debug)]
 struct Range(Address, Address);
 
+/// Different address blocks as defined in [Table 5](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=58)
 #[derive(Copy, Clone, Debug, PartialEq)]
-enum Block {
-    Boot, // Main memory, but reserved for secure bootloader
+pub enum Block {
+    /// Main memory, but reserved for secure bootloader
+    Boot,
+    /// Main memory, where the application is written
     Main,
     SystemMemory,
     OtpArea,
     OptionBytes,
 }
 
+/// A memory map sector, with an associated block and an address range
 #[derive(Copy, Clone, Debug, PartialEq)]
-struct Sector {
-    block: Block,
-    start: Address,
-    end: Address,
+pub struct Sector {
+    pub block: Block,
+    pub start: Address,
+    pub end: Address,
+    _private: (),
 }
 
-struct MemoryMap {
-    sectors: &'static [Sector],
+pub struct MemoryMap {
+    pub sectors: [Sector; SECTOR_NUMBER],
+    _private: (),
 }
 
 ///From [section 3.5.1](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
@@ -45,32 +51,28 @@ const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 const_assert!(MEMORY_MAP.is_sound());
 
 #[cfg(feature = "stm32f412")]
-const MEMORY_MAP: MemoryMap = MemoryMap {
-    sectors: &[
-        Sector { block: Block::Boot, start: Address(0x0800_0000), end: Address(0x0800_4000) },
-        Sector { block: Block::Boot, start: Address(0x0800_4000), end: Address(0x0800_8000) },
-        Sector { block: Block::Boot, start: Address(0x0800_8000), end: Address(0x0800_C000) },
-        Sector { block: Block::Boot, start: Address(0x0800_C000), end: Address(0x0801_0000) },
-        Sector { block: Block::Main, start: Address(0x0801_0000), end: Address(0x0802_0000) },
-        Sector { block: Block::Main, start: Address(0x0802_0000), end: Address(0x0804_0000) },
-        Sector { block: Block::Main, start: Address(0x0804_0000), end: Address(0x0806_0000) },
-        Sector { block: Block::Main, start: Address(0x0806_0000), end: Address(0x0808_0000) },
-        Sector { block: Block::Main, start: Address(0x0808_0000), end: Address(0x080A_0000) },
-        Sector { block: Block::Main, start: Address(0x080A_0000), end: Address(0x080C_0000) },
-        Sector { block: Block::Main, start: Address(0x080C_0000), end: Address(0x080E_0000) },
-        Sector { block: Block::Main, start: Address(0x080E_0000), end: Address(0x0810_0000) },
-        Sector {
-            block: Block::SystemMemory,
-            start: Address(0x1FFF_0000),
-            end: Address(0x1FFF_7800),
-        },
-        Sector { block: Block::OtpArea, start: Address(0x1FFF_7800), end: Address(0x1FFF_7A0F) },
-        Sector {
-            block: Block::OptionBytes,
-            start: Address(0x1FFF_C000),
-            end: Address(0x1FFF_C010),
-        },
+pub const SECTOR_NUMBER: usize = 15;
+
+#[cfg(feature = "stm32f412")]
+pub const MEMORY_MAP: MemoryMap = MemoryMap {
+    sectors: [
+        Sector::new(Block::Boot, 0x0800_0000, 0x0800_4000),
+        Sector::new(Block::Boot, 0x0800_4000, 0x0800_8000),
+        Sector::new(Block::Boot, 0x0800_8000, 0x0800_C000),
+        Sector::new(Block::Boot, 0x0800_C000, 0x0801_0000),
+        Sector::new(Block::Main, 0x0801_0000, 0x0802_0000),
+        Sector::new(Block::Main, 0x0802_0000, 0x0804_0000),
+        Sector::new(Block::Main, 0x0804_0000, 0x0806_0000),
+        Sector::new(Block::Main, 0x0806_0000, 0x0808_0000),
+        Sector::new(Block::Main, 0x0808_0000, 0x080A_0000),
+        Sector::new(Block::Main, 0x080A_0000, 0x080C_0000),
+        Sector::new(Block::Main, 0x080C_0000, 0x080E_0000),
+        Sector::new(Block::Main, 0x080E_0000, 0x0810_0000),
+        Sector::new(Block::SystemMemory, 0x1FFF_0000,0x1FFF_7800),
+        Sector::new(Block::OtpArea, 0x1FFF_7800, 0x1FFF_7A0F),
+        Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
     ],
+    _private: (),
 };
 
 impl MemoryMap {
@@ -82,7 +84,7 @@ impl MemoryMap {
         // Verify all ranges are valid
         let mut index = 0usize;
         loop {
-            if index == self.sectors.len() {
+            if index == SECTOR_NUMBER {
                 break;
             }
 
@@ -138,7 +140,7 @@ impl Range {
 
     const fn is_valid(self) -> bool {
         let Range(Address(start), Address(end)) = self;
-        let after_map = start >= MEMORY_MAP.sectors[MEMORY_MAP.sectors.len() - 1].end.0;
+        let after_map = start >= MEMORY_MAP.sectors[SECTOR_NUMBER - 1].end.0;
         let before_map = end < MEMORY_MAP.sectors[0].start.0;
         let monotonic = end >= start;
         monotonic && !before_map && !after_map
@@ -149,6 +151,9 @@ impl Range {
 }
 
 impl Sector {
+    const fn new(block: Block, start: u32, end: u32) -> Self {
+        Sector { block, start: Address(start), end: Address(end), _private: () }
+    }
     fn number(&self) -> Option<u8> {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
             (sector.is_in_main_memory_area() && self == sector).then_some(index as u8)
