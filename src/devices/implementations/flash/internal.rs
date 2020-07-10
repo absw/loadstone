@@ -20,7 +20,7 @@ struct Range(Address, Address);
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum Block {
-    Boot, // Main memory, but reserver for secure bootloader
+    Boot, // Main memory, but reserved for secure bootloader
     Main,
     SystemMemory,
     OtpArea,
@@ -96,7 +96,7 @@ impl MemoryMap {
         // Verify main memory is consecutive
         let mut index = 0usize;
         loop {
-            let next = index.wrapping_add(1);
+            let next = index + 1;
             if !self.sectors[next].is_in_main_memory_area() {
                 break true;
             } else {
@@ -201,6 +201,8 @@ impl Write<Address> for InternalFlash {
         if address.0 % 4 != 0 {
             return Err(nb::Error::Other(Error::MisalignedAccess))
         }
+
+        // Adjust end for alignment
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if !range.is_writable() {
             return Err(nb::Error::Other(Error::MemoryNotWrittable));
@@ -226,6 +228,10 @@ impl Write<Address> for InternalFlash {
         self.flash.cr.modify(|_, w| w.pg().set_bit());
         let base_address = address.0 as *mut u32;
         for (index, word) in words.enumerate() {
+            // NOTE(Safety): Writing to a memory-mapped flash
+            // directly is naturally unsafe. We have to trust that
+            // the memory map is correct, and that these dereferences
+            // won't cause a hardfault or overlap with our firmware.
             unsafe { *base_address.offset(index as isize) = word; }
         }
         self.lock();
