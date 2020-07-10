@@ -25,7 +25,7 @@ impl Clocks {
 
     /// Harcoded values for the f412
     #[cfg(feature = "stm32f412")]
-    pub fn hardcoded(flash: &mut FLASH, rcc: RCC) -> Self {
+    pub fn hardcoded(flash: &FLASH, rcc: RCC) -> Self {
         // NOTE(Safety): All unsafe blocks in this function refer to using the "bits()"
         // method for easy writing.
         flash.acr.write(|w| {

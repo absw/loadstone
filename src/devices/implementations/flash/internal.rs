@@ -130,7 +130,7 @@ impl Range {
             .sectors
             .iter()
             .enumerate()
-            .skip_while(|(_, sector)| sector.end < start)
+            .skip_while(|(_, sector)| sector.end <= start)
             .take_while(|(_, sector)| sector.start < end)
             .map(|(index, _)| index);
         let start = span.next().unwrap_or_default();
