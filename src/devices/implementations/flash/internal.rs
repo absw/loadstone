@@ -1,7 +1,7 @@
 //! Internal Flash controller for the STM32F4 family
-#![allow(dead_code)]
 use crate::{devices::interfaces::flash::Write, stm32pac::FLASH};
 use static_assertions::const_assert;
+use nb::block;
 
 pub struct InternalFlash {
     flash: FLASH,
@@ -163,28 +163,27 @@ impl Sector {
 }
 
 impl InternalFlash {
-    pub fn new(flash: FLASH) -> Result<Self, Error> {
-        assert!(MEMORY_MAP.is_sound());
-        Ok(Self { flash })
-    }
+    pub fn new(flash: FLASH) -> Result<Self, Error> { Ok(Self { flash }) }
 
     /// Parallelism for 3v3 voltage from [table 7](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=63)
     /// (Word access parallelism)
-    fn unlock(&mut self) {
+    fn unlock(&mut self) -> nb::Result<(), Error> {
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
         // NOTE(Safety): Unsafe block to use the 'bits' convenience function.
         // Applies to all blocks in this file unless specified otherwise
-        self.flash.keyr.write(|w| unsafe { w.bits(UNLOCK_KEYS[0]).bits(UNLOCK_KEYS[1]) });
+        self.flash.keyr.write(|w| unsafe { w.bits(UNLOCK_KEYS[0]) });
+        self.flash.keyr.write(|w| unsafe { w.bits(UNLOCK_KEYS[1]) });
         self.flash.cr.modify(|_, w| unsafe { w.psize().bits(0b10) });
+        Ok(())
     }
 
     fn lock(&mut self) { self.flash.cr.modify(|_, w| w.lock().set_bit()); }
 
     fn erase(&mut self, sector: &Sector) -> nb::Result<(), Error> {
-        if self.is_busy() {
-            return Err(nb::Error::WouldBlock);
-        }
         let number = sector.number().ok_or(nb::Error::Other(Error::MemoryNotWrittable))?;
-        self.unlock();
+        self.unlock()?;
         self.flash
             .cr
             .modify(|_, w| unsafe { w.ser().set_bit().snb().bits(number).strt().set_bit() });
@@ -223,7 +222,7 @@ impl Write<Address> for InternalFlash {
                 bytes.get(3).cloned().unwrap_or(0),
             ])
         });
-        self.unlock();
+        block!(self.unlock())?;
         self.flash.cr.modify(|_, w| w.pg().set_bit());
         let base_address = address.0 as *mut u32;
         for (index, word) in words.enumerate() {
