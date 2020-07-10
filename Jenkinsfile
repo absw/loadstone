@@ -1,6 +1,10 @@
 pipeline {
     agent {
-        docker { image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1' }
+        node { label 'secure_bootloader_builder' }
+        docker {
+            image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1'
+            label 'secure_bootloader_builder'
+        }
     }
     stages {
         stage('Checkout SCM') {
