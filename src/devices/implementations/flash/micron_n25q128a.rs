@@ -1,21 +1,27 @@
+//! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
     devices::interfaces::flash::{BulkErase, Read, Write},
-    hal::qspi,
+    drivers::systick,
+    hal::{qspi, time},
     utilities::bitwise::BitFlags,
 };
 use nb::block;
+use time::Now;
 
+/// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
 
-/// Address into the micron chip memory map
+/// Address into the micron chip [memory map](../../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
 #[derive(Clone, Copy, Debug)]
 pub struct Address(pub u32);
 
+/// MicronN25q128a driver, generic over a QSPI programmed in indirect mode
 pub struct MicronN25q128a<QSPI>
 where
     QSPI: qspi::Indirect,
 {
     qspi: QSPI,
+    timeout: Option<(time::Milliseconds, systick::SysTick)>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -24,6 +30,23 @@ pub enum Error {
     QspiError,
     WrongManufacturerId,
     MisalignedAccess,
+}
+
+impl From<Error> for crate::error::Error {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::TimeOut => crate::error::Error::DeviceError("Micron n25q128a timed out"),
+            Error::QspiError => {
+                crate::error::Error::DeviceError("Micron n25q128a QSPI access error")
+            }
+            Error::WrongManufacturerId => {
+                crate::error::Error::DeviceError("Micron n25q128a reported wrong manufacturer ID")
+            }
+            Error::MisalignedAccess => {
+                crate::error::Error::DeviceError("Misaligned access to Micron n25q128a requested")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,10 +63,10 @@ enum Command {
 
 struct Status {
     write_in_progress: bool,
+    _write_enable_latch: bool,
 }
 
 enum CommandData<'a> {
-    _Arguments(&'a [u8]),
     Read(&'a mut [u8]),
     Write(&'a [u8]),
     None,
@@ -75,16 +98,20 @@ where
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         // TODO remove page alignment limitations
-        if address.0 % 256 != 0 || bytes.len() > 256 {
+        if (address.0 % 256 != 0) || bytes.len() > 256 {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
         // TODO read subsector first before erasing (to preserve previous values)
-        self.execute_command(Command::WriteEnable, None, CommandData::None)?;
-        self.execute_command(Command::SubsectorErase, Some(address), CommandData::None)?;
-        while self.status()?.write_in_progress {}
-        self.execute_command(Command::WriteEnable, None, CommandData::None)?;
-        self.execute_command(Command::PageProgram, Some(address), CommandData::Write(&bytes))?;
+        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
+        block!(self.execute_command(Command::SubsectorErase, Some(address), CommandData::None))?;
+        block!(self.wait_until_write_complete())?;
+        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
+        block!(self.execute_command(
+            Command::PageProgram,
+            Some(address),
+            CommandData::Write(&bytes)
+        ))?;
         Ok(())
     }
 }
@@ -107,6 +134,23 @@ impl<QSPI> MicronN25q128a<QSPI>
 where
     QSPI: qspi::Indirect,
 {
+    fn wait_until_write_complete(&mut self) -> nb::Result<(), Error> {
+        if let Some((timeout, systick)) = self.timeout {
+            let start = systick.now();
+            while self.status()?.write_in_progress {
+                if systick.now() - start > timeout {
+                    return Err(nb::Error::Other(Error::TimeOut));
+                }
+            }
+        }
+
+        if self.status()?.write_in_progress {
+            Err(nb::Error::WouldBlock)
+        } else {
+            Ok(())
+        }
+    }
+
     // Low level helper for executing Micron commands
     fn execute_command(
         &mut self,
@@ -115,9 +159,6 @@ where
         data: CommandData,
     ) -> nb::Result<(), Error> {
         match data {
-            CommandData::_Arguments(buffer) => {
-                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
-            }
             CommandData::Write(buffer) => {
                 block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
             }
@@ -144,13 +185,26 @@ where
         let mut response = [0u8; 1];
         self.execute_command(Command::ReadStatus, None, CommandData::Read(&mut response))?;
         let response = response[0];
-        Ok(Status { write_in_progress: response.is_set(0) })
+        Ok(Status {
+            write_in_progress: response.is_set(0),
+            _write_enable_latch: response.is_set(1),
+        })
     }
 
     /// Blocks until flash ID read checks out, or until timeout
-    pub fn new(qspi: QSPI) -> nb::Result<Self, Error> {
-        let mut flash = Self { qspi };
-        flash.verify_id()?;
+    pub fn new(qspi: QSPI) -> Result<Self, Error> {
+        let mut flash = Self { qspi, timeout: None };
+        block!(flash.verify_id())?;
+        Ok(flash)
+    }
+
+    pub fn with_timeout(
+        qspi: QSPI,
+        timeout: time::Milliseconds,
+        systick: systick::SysTick,
+    ) -> Result<Self, Error> {
+        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
+        block!(flash.verify_id())?;
         Ok(flash)
     }
 }

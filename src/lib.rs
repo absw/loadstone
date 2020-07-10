@@ -33,6 +33,7 @@ pub mod drivers;
 #[macro_use]
 pub mod hal;
 pub mod devices;
+pub mod error;
 pub mod pin_configuration;
 
 pub mod utilities {
