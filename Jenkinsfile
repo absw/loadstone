@@ -1,6 +1,8 @@
 pipeline {
     agent {
         node { label 'secure_bootloader_builder' }
+    }
+    agent {
         docker {
             image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1'
             label 'secure_bootloader_builder'
