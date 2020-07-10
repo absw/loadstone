@@ -32,16 +32,16 @@ pub enum Block {
 
 /// A memory map sector, with an associated block and an address range
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
 pub struct Sector {
     pub block: Block,
     pub start: Address,
     pub end: Address,
-    _private: (),
 }
 
+#[non_exhaustive]
 pub struct MemoryMap {
     pub sectors: [Sector; SECTOR_NUMBER],
-    _private: (),
 }
 
 ///From [section 3.5.1](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
@@ -72,7 +72,6 @@ pub const MEMORY_MAP: MemoryMap = MemoryMap {
         Sector::new(Block::OtpArea, 0x1FFF_7800, 0x1FFF_7A0F),
         Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
     ],
-    _private: (),
 };
 
 impl MemoryMap {
@@ -92,7 +91,7 @@ impl MemoryMap {
             if !range.is_valid() {
                 return false;
             }
-            index = index + 1;
+            index += 1;
         }
 
         // Verify main memory is consecutive
@@ -152,7 +151,7 @@ impl Range {
 
 impl Sector {
     const fn new(block: Block, start: u32, end: u32) -> Self {
-        Sector { block, start: Address(start), end: Address(end), _private: () }
+        Sector { block, start: Address(start), end: Address(end) }
     }
     fn number(&self) -> Option<u8> {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
@@ -237,7 +236,7 @@ impl Write<Address> for InternalFlash {
             // directly is naturally unsafe. We have to trust that
             // the memory map is correct, and that these dereferences
             // won't cause a hardfault or overlap with our firmware.
-            unsafe { *base_address.offset(index as isize) = word; }
+            unsafe { *base_address.add(index) = word; }
         }
         self.lock();
         Ok(())
