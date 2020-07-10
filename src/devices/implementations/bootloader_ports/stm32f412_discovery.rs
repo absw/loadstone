@@ -79,7 +79,7 @@ impl Bootloader {
         let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
         let mut post_led = MonochromeLed::new(gpioe.pe1, LogicLevel::Inverted);
         post_led.on();
-        let clocks = Clocks::hardcoded(peripherals.FLASH, peripherals.RCC);
+        let clocks = Clocks::hardcoded(&mut peripherals.FLASH, peripherals.RCC);
 
         let systick = SysTick::new(cortex_peripherals.SYST, clocks);
         systick.wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
@@ -98,8 +98,5 @@ impl Bootloader {
         Bootloader { _flash: flash, _serial: serial, _systick: systick }
     }
 
-    pub fn run(self) -> ! {
-        loop {}
-    }
-
+    pub fn run(self) -> ! { loop {} }
 }

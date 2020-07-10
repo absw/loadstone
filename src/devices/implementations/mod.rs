@@ -1,5 +1,6 @@
 pub mod led;
 pub mod flash {
+    pub mod internal;
     pub mod micron_n25q128a;
 }
 
