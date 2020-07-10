@@ -1,17 +1,20 @@
 pipeline {
-    agent {
-        docker { image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1' }
-    }
+    // agent {
+    //     docker { image 'rustembedded/cross:thumbv7em-none-eabihf-0.2.1' }
+    // }
+    agent any
     stages {
         stage('Checkout SCM') {
-            checkout([
-                $class: "GitSCM",
-                branches: scm.branches,
-                extensions: scm.extensions + [
-                    [$class: "GitLFSPull"]
-                ],
-                userRemoteConfigs: scm.userRemoteConfigs
-            ])
+            steps {
+                checkout([
+                    $class: "GitSCM",
+                    branches: scm.branches,
+                    extensions: scm.extensions + [
+                        [$class: "GitLFSPull"]
+                    ],
+                    userRemoteConfigs: scm.userRemoteConfigs
+                ])
+            }
         }
         stage('Test') {
             steps {
