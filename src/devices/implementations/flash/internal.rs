@@ -212,7 +212,7 @@ impl Write<Address> for InternalFlash {
         }
 
         //TODO smart read-write cycle
-        for sector in range.span() { self.erase(sector)?; }
+        for sector in range.span() { block!(self.erase(sector))?; }
 
         let words = bytes.chunks(4).map(|bytes| {
             u32::from_le_bytes([
