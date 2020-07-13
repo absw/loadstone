@@ -10,9 +10,10 @@ use cortex_m_rt::entry;
 fn main() -> ! {
     use secure_bootloader_lib::{
         self,
+        devices::{implementations::led, interfaces::led::Toggle},
         drivers::{gpio::GpioExt, rcc::RccExt, serial, serial::UsartExt},
         hal,
-        hal::{gpio::OutputPin, serial::Write, time::Bps},
+        hal::{serial::Write, time::Bps},
         stm32pac, uprint, uprintln,
     };
 
@@ -48,18 +49,20 @@ fn main() -> ! {
 
     // Bring up blinky
     #[cfg(feature = "stm32f429")]
-    let mut led_pin = gpiob.pb7;
+    let led_pin = gpiob.pb7;
     #[cfg(feature = "stm32f469")]
-    let mut led_pin = gpiod.pd4;
+    let led_pin = gpiod.pd4;
     #[cfg(feature = "stm32f407")]
-    let mut led_pin = gpiod.pd14;
+    let led_pin = gpiod.pd14;
+
+    let mut led = led::MonochromeLed::new(led_pin, led::Logic::Inverted);
 
     loop {
         cortex_m::asm::delay(20_000_000);
-        led_pin.set_high();
+        led.off();
         uprintln!(serial, "I switched the led off!");
         cortex_m::asm::delay(20_000_000);
+        led.on();
         uprintln!(serial, "I switched the led on!");
-        led_pin.set_low();
     }
 }
