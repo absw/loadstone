@@ -92,5 +92,7 @@ impl Bootloader {
         Bootloader { _flash: flash, _serial: serial, _systick: systick }
     }
 
-    pub fn run(self) -> ! { loop {} }
+    pub fn run(self) -> ! {
+        loop {}
+    }
 }

@@ -1,8 +1,8 @@
 //! Internal Flash controller for the STM32F4 family
 
 use crate::{hal::flash::Write, stm32pac::FLASH};
-use static_assertions::const_assert;
 use nb::block;
+use static_assertions::const_assert;
 
 pub struct InternalFlash {
     flash: FLASH,
@@ -69,7 +69,7 @@ pub const MEMORY_MAP: MemoryMap = MemoryMap {
         Sector::new(Block::Main, 0x080A_0000, 0x080C_0000),
         Sector::new(Block::Main, 0x080C_0000, 0x080E_0000),
         Sector::new(Block::Main, 0x080E_0000, 0x0810_0000),
-        Sector::new(Block::SystemMemory, 0x1FFF_0000,0x1FFF_7800),
+        Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x1FFF_7800),
         Sector::new(Block::OtpArea, 0x1FFF_7800, 0x1FFF_7A0F),
         Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
     ],
@@ -204,13 +204,14 @@ impl Write<Address> for InternalFlash {
 
     fn writable_range() -> (Address, Address) {
         let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let range = Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
+        let range =
+            Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
         (range.0, range.1)
     }
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address.0 % 4 != 0 {
-            return Err(nb::Error::Other(Error::MisalignedAccess))
+            return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
         // Adjust end for alignment
@@ -225,7 +226,9 @@ impl Write<Address> for InternalFlash {
         }
 
         //TODO smart read-write cycle
-        for sector in range.span() { block!(self.erase(sector))?; }
+        for sector in range.span() {
+            block!(self.erase(sector))?;
+        }
 
         let words = bytes.chunks(4).map(|bytes| {
             u32::from_le_bytes([
@@ -243,7 +246,9 @@ impl Write<Address> for InternalFlash {
             // directly is naturally unsafe. We have to trust that
             // the memory map is correct, and that these dereferences
             // won't cause a hardfault or overlap with our firmware.
-            unsafe { *base_address.add(index) = word; }
+            unsafe {
+                *base_address.add(index) = word;
+            }
         }
         self.lock();
         Ok(())

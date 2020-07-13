@@ -1,11 +1,13 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
-    hal::flash::{BulkErase, Read, Write},
-    hal::{qspi, time},
+    hal::{
+        flash::{BulkErase, Read, Write},
+        qspi, time,
+    },
     utilities::bitwise::BitFlags,
 };
-use nb::block;
 use core::marker::PhantomData;
+use nb::block;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
@@ -109,10 +111,25 @@ where
         }
 
         // TODO read subsector first before erasing (to preserve previous values)
-        block!(Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None))?;
-        block!(Self::execute_command(&mut self.qspi, Command::SubsectorErase, Some(address), CommandData::None))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::WriteEnable,
+            None,
+            CommandData::None
+        ))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::SubsectorErase,
+            Some(address),
+            CommandData::None
+        ))?;
         block!(self.wait_until_write_complete())?;
-        block!(Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::WriteEnable,
+            None,
+            CommandData::None
+        ))?;
         block!(Self::execute_command(
             &mut self.qspi,
             Command::PageProgram,
@@ -138,7 +155,12 @@ where
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
         } else {
-            Self::execute_command(&mut self.qspi, Command::Read, Some(address), CommandData::Read(bytes))
+            Self::execute_command(
+                &mut self.qspi,
+                Command::Read,
+                Some(address),
+                CommandData::Read(bytes),
+            )
         }
     }
 
@@ -193,7 +215,12 @@ where
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
         let mut response = [0u8; 1];
-        Self::execute_command(&mut self.qspi, Command::ReadId, None, CommandData::Read(&mut response))?;
+        Self::execute_command(
+            &mut self.qspi,
+            Command::ReadId,
+            None,
+            CommandData::Read(&mut response),
+        )?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
             _ => Err(nb::Error::Other(Error::WrongManufacturerId)),
@@ -212,7 +239,7 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: None, _marker: PhantomData::default()};
+        let mut flash = Self { qspi, timeout: None, _marker: PhantomData::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -222,7 +249,8 @@ where
         timeout: time::Milliseconds,
         systick: NOW,
     ) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: Some((timeout, systick)), _marker: PhantomData::default() };
+        let mut flash =
+            Self { qspi, timeout: Some((timeout, systick)), _marker: PhantomData::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }

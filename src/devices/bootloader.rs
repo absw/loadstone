@@ -8,24 +8,26 @@
 use crate::hal::flash;
 
 struct Flash<I, E>
-where I: flash::Write<u8>,
-      E: flash::Write<u8> + flash::Read<u8>,
+where
+    I: flash::Write<u8>,
+    E: flash::Write<u8> + flash::Read<u8>,
 {
     internal: I,
     external: E,
 }
 
-
 pub struct Bootloader<I, E>
-where I: flash::Write<u8>,
-      E: flash::Write<u8> + flash::Read<u8>,
+where
+    I: flash::Write<u8>,
+    E: flash::Write<u8> + flash::Read<u8>,
 {
-    flash: Flash<I, E>
+    flash: Flash<I, E>,
 }
 
 impl<I, E> Bootloader<I, E>
-where I: flash::Write<u8>,
-      E: flash::Write<u8> + flash::Read<u8>,
+where
+    I: flash::Write<u8>,
+    E: flash::Write<u8> + flash::Read<u8>,
 {
     pub fn run(self) -> ! { loop {} }
 }

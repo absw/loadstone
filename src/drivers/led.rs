@@ -2,9 +2,9 @@
 //! on every kind of board, as they're generic over OutputPins
 //! and support both logic levels.
 
-use crate::{
-    hal::led::{self, Chromatic, Toggle},
-    hal::gpio::OutputPin,
+use crate::hal::{
+    gpio::OutputPin,
+    led::{self, Chromatic, Toggle},
 };
 
 /// Multi-color type for RGB LEDs
