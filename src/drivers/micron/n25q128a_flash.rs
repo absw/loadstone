@@ -231,7 +231,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hal::mock::{gpio::*, qspi::*, time::*};
+    use crate::hal::doubles::{gpio::*, qspi::*, time::*};
 
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick, MockInstant>;
     fn flash_to_test() -> FlashToTest {

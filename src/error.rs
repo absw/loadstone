@@ -1,4 +1,4 @@
-//! Error type for the Secure Bootloader project as a whole.
+//! Error types and methods for the Secure Bootloader project.
 
 use crate::hal::serial::Write;
 

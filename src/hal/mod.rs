@@ -12,4 +12,4 @@ pub mod flash;
 
 #[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
-pub mod mock;
+pub mod doubles;

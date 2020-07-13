@@ -1,4 +1,4 @@
-//! Bootloader port for the [stm32f412 discovery](../../../../../../documentation/hardware/discovery.pdf).
+//! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
 
 use crate::{
     drivers::{
@@ -12,7 +12,7 @@ use crate::{
     },
     error::{Error, ReportOnUnwrap},
     hal::{self, led::Toggle, serial::Write as SerialWrite, flash::{Write, Read}},
-    ports::pin_configuration::*,
+    pin_configuration::*,
     stm32pac::{self, USART6},
 };
 

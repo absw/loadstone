@@ -21,7 +21,7 @@ pub enum RgbPalette {
 /// ```
 /// # use secure_bootloader_lib::hal::led::*;
 /// # use secure_bootloader_lib::drivers::led::*;
-/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # use secure_bootloader_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
 /// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, LogicLevel::Direct);
@@ -62,7 +62,7 @@ pub struct RgbLed<Pin: OutputPin> {
 /// ```
 /// # use secure_bootloader_lib::hal::led::*;
 /// # use secure_bootloader_lib::drivers::led::*;
-/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # use secure_bootloader_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// let mut led = MonochromeLed::new(pin, LogicLevel::Direct);
 ///
@@ -208,9 +208,9 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
 
 #[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
-pub mod mock {
+pub mod doubles {
     use super::*;
-    use crate::hal::mock::gpio::*;
+    use crate::hal::doubles::gpio::*;
 
     #[doc(hidden)]
     impl MonochromeLed<MockPin> {
@@ -231,8 +231,8 @@ pub mod mock {
 
 #[cfg(test)]
 mod test {
-    use super::{mock::*, *};
-    use crate::hal::mock::gpio::*;
+    use super::{doubles::*, *};
+    use crate::hal::doubles::gpio::*;
 
     #[test]
     fn monochrome_led_defaults_to_logic_low_with_direct_logic() {
