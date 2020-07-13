@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
   - name: cross
-    image: rustembedded/cross:thumbv7em-none-eabihf-0.2.1
+    image: docker/rust:nightly
     command:
     - cat
     tty: true
@@ -38,8 +38,7 @@ spec:
                 sh 'cargo test'
             }
             stage('Build') {
-                sh 'export CROSS_DOCKER_IN_DOCKER=true'
-                sh 'cross build --target thumbv7em-none-eabihf'
+                sh './build 1'
             }
         }
     }
