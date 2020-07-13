@@ -8,8 +8,9 @@ use cortex_m_rt::{entry, exception};
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
-    use secure_bootloader_lib::stm32pac;
-    loop {}
+    use secure_bootloader_lib::devices::bootloader::Bootloader;
+    let bootloader = Bootloader::new();
+    bootloader.run();
 }
 
 #[cfg(not(target_arch = "arm"))]

@@ -6,6 +6,7 @@ use crate::{
     },
     utilities::bitwise::BitFlags,
 };
+use crate::error::Error as BootloaderError;
 use core::marker::PhantomData;
 use nb::block;
 
@@ -36,18 +37,18 @@ pub enum Error {
     MisalignedAccess,
 }
 
-impl From<Error> for crate::error::Error {
+impl From<Error> for BootloaderError {
     fn from(error: Error) -> Self {
         match error {
-            Error::TimeOut => crate::error::Error::DeviceError("Micron n25q128a timed out"),
+            Error::TimeOut => BootloaderError::DriverError("Micron n25q128a timed out"),
             Error::QspiError => {
-                crate::error::Error::DeviceError("Micron n25q128a QSPI access error")
+                BootloaderError::DriverError("Micron n25q128a QSPI access error")
             }
             Error::WrongManufacturerId => {
-                crate::error::Error::DeviceError("Micron n25q128a reported wrong manufacturer ID")
+                BootloaderError::DriverError("Micron n25q128a reported wrong manufacturer ID")
             }
             Error::MisalignedAccess => {
-                crate::error::Error::DeviceError("Misaligned access to Micron n25q128a requested")
+                BootloaderError::DriverError("Misaligned access to Micron n25q128a requested")
             }
         }
     }

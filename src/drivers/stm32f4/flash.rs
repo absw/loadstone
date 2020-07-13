@@ -1,6 +1,7 @@
 //! Internal Flash controller for the STM32F4 family
 
 use crate::{hal::flash::Write, stm32pac::FLASH};
+use crate::error::Error as BootloaderError;
 use nb::block;
 use static_assertions::const_assert;
 
@@ -11,6 +12,17 @@ pub struct McuFlash {
 pub enum Error {
     MemoryNotWrittable,
     MisalignedAccess,
+}
+
+impl Into<BootloaderError> for Error {
+    fn into(self) -> BootloaderError {
+        BootloaderError::DriverError(
+            match self {
+                Error::MemoryNotWrittable => "MCU flash memory not writtable",
+                Error::MisalignedAccess => "MCU flash memory access misaligned",
+            }
+        )
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
