@@ -18,25 +18,16 @@ pub use stm32f4::stm32f469 as stm32pac;
 
 #[cfg(target_arch = "arm")]
 extern crate panic_abort;
-
-#[macro_use]
-extern crate derive_is_enum_variant;
 extern crate static_assertions;
 
 #[macro_use]
 pub mod utilities {
     pub mod bitwise;
-    #[macro_use]
-    pub mod macros;
+    mod macros;
 }
 
-/// Hardware Abstraction Layer, containing interfaces
-/// for low level drivers.
-#[macro_use]
 pub mod hal;
 pub mod devices;
-#[macro_use]
 pub mod drivers;
 pub mod ports;
 pub mod error;
-pub mod pin_configuration;

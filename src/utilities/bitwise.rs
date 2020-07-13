@@ -1,10 +1,12 @@
-/// Simple check for particular bits being set or cleared
+//! Convenience bitwise operations.
+
+/// Simple check for particular bits being set or cleared.
 pub trait BitFlags {
     fn is_set(&self, bit: u8) -> bool;
     fn is_clear(&self, bit: u8) -> bool;
 }
 
-/// Blanket implementation for any types convertible to u32
+/// Blanket implementation for any types convertible to u32.
 impl<U: Copy + Into<u32>> BitFlags for U {
     fn is_set(&self, bit: u8) -> bool {
         assert!(bit < 32);

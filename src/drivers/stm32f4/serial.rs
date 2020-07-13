@@ -2,7 +2,7 @@
 use crate::{
     drivers::{stm32f4::gpio::*, stm32f4::rcc},
     hal::serial,
-    pin_configuration::*,
+    ports::pin_configuration::*,
     stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
 use core::{marker::PhantomData, ptr};

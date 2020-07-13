@@ -2,4 +2,5 @@
 //! provide a method to construct a generic bootloader from
 //! specific parts.
 
-//port!(stm32f412_discovery as bootloader);
+#[cfg(feature = "stm32f412_discovery")]
+port!(stm32f412_discovery: [bootloader, pin_configuration,]);

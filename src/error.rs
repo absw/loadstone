@@ -1,4 +1,5 @@
 //! Error type for the Secure Bootloader project as a whole.
+
 use crate::hal::serial::Write;
 
 /// Top level error type for the bootloader. Unlike the specific

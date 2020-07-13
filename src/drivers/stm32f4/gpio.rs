@@ -3,6 +3,8 @@
 //! Pin configuration is encoded in the type system through typestates,
 //! making it statically impossible to misuse a pin (e.g. there's
 //! no "write" operation on a pin that has been configured as input).
+#![macro_use]
+
 use crate::stm32pac;
 use core::marker::PhantomData;
 
@@ -165,7 +167,7 @@ macro_rules! gpio_inner {
         pub mod $gpiox {
             use core::marker::PhantomData;
             use crate::hal::gpio::OutputPin;
-            use crate::pin_configuration::*;
+            use crate::ports::pin_configuration::*;
 
             // Lower case for identifier concatenation
             #[allow(unused_imports)]

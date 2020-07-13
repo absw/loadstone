@@ -1,7 +1,9 @@
+//! Quadspi driver for the stm32f412.
+
 use crate::{
     drivers::stm32f4::gpio::*,
     hal::qspi,
-    pin_configuration::*,
+    ports::pin_configuration::*,
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
 };
 use core::marker::PhantomData;

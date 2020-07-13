@@ -1,5 +1,8 @@
+//! Hardware Abstraction Layer, containing interfaces
+//! for low level drivers.
+#![macro_use]
+
 pub mod gpio;
-#[macro_use]
 pub mod serial;
 pub mod qspi;
 pub mod spi;

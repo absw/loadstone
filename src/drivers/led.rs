@@ -1,11 +1,14 @@
-//! Various generic LED device implementations.
+//! Various generic LED device implementations. Assumed to work
+//! on every kind of board, as they're generic over OutputPins
+//! and support both logic levels.
+
 use crate::{
     hal::led::{self, Chromatic, Toggle},
     hal::gpio::OutputPin,
 };
 
 /// Multi-color type for RGB LEDs
-#[derive(Copy, Clone, Debug, is_enum_variant)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RgbPalette {
     Red,
     Green,
@@ -33,7 +36,7 @@ pub enum RgbPalette {
 /// # assert!(led.pin(RgbPalette::Red).is_low());
 /// # assert!(led.pin(RgbPalette::Green).is_high());
 /// # assert!(led.pin(RgbPalette::Blue).is_low());
-/// assert!(led.get_color().is_green());
+/// assert_eq!(RgbPalette::Green, led.get_color());
 /// assert!(led.is_on());
 ///
 /// led.color(RgbPalette::Blue);
@@ -41,7 +44,7 @@ pub enum RgbPalette {
 /// # assert!(led.pin(RgbPalette::Red).is_low());
 /// # assert!(led.pin(RgbPalette::Green).is_low());
 /// # assert!(led.pin(RgbPalette::Blue).is_low());
-/// assert!(led.get_color().is_blue());
+/// assert_eq!(RgbPalette::Blue, led.get_color());
 /// assert!(!led.is_on());
 /// ```
 pub struct RgbLed<Pin: OutputPin> {

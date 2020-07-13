@@ -1,7 +1,7 @@
 use crate::{
     drivers::stm32f4::gpio::*,
     hal::spi::FullDuplex,
-    pin_configuration::*,
+    ports::pin_configuration::*,
     stm32pac::{RCC, SPI1},
 };
 use core::{marker::PhantomData, mem::size_of};

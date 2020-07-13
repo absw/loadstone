@@ -1,4 +1,5 @@
 //! Internal Flash controller for the STM32F4 family
+
 use crate::{hal::flash::Write, stm32pac::FLASH};
 use static_assertions::const_assert;
 use nb::block;

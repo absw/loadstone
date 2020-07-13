@@ -1,24 +1,16 @@
 use crate::{
-    devices::{
-        implementations::{
-            flash::micron::n25q128a::{self, MicronN25q128a},
-            led::{LogicLevel, MonochromeLed},
-        },
-        interfaces::{
-            flash::{Read, Write},
-            led::Toggle,
-        },
-    },
     drivers::{
-        gpio::{GpioExt, *},
-        qspi::{self, mode, QuadSpi},
-        rcc::Clocks,
-        serial::{self, UsartExt},
-        systick::SysTick,
+        stm32f4::gpio::{GpioExt, *},
+        stm32f4::qspi::{self, mode, QuadSpi},
+        stm32f4::rcc::Clocks,
+        led::{MonochromeLed, LogicLevel},
+        stm32f4::serial::{self, UsartExt},
+        stm32f4::systick::{Tick, SysTick},
+        micron::n25q128a_flash::{self, MicronN25q128a},
     },
     error::{Error, ReportOnUnwrap},
-    hal::{self, serial::Write as SerialWrite},
-    pin_configuration::*,
+    hal::{self, led::Toggle, serial::Write as SerialWrite, flash::{Write, Read}},
+    ports::pin_configuration::*,
     stm32pac::{self, USART6},
 };
 
@@ -29,7 +21,7 @@ use nb::block;
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
 type Qspi = QuadSpi<QspiPins, mode::Single>;
-type Flash = MicronN25q128a<Qspi>;
+type Flash = MicronN25q128a<Qspi, SysTick, Tick>;
 
 // Serial pins and typedefs
 type UsartPins = (Pg14<AF8>, Pg9<AF8>);
@@ -56,10 +48,10 @@ impl Bootloader {
         // Read, increase, write and read a magic number
         let mut magic_number_buffer = [0u8; 1];
         let mut new_magic_number_buffer = [0u8; 1];
-        block!(flash.read(n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
+        block!(flash.read(n25q128a_flash::Address(0x0000_0000), &mut magic_number_buffer))?;
         new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        block!(flash.write(n25q128a::Address(0x0000_0000), &new_magic_number_buffer))?;
-        block!(flash.read(n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
+        block!(flash.write(n25q128a_flash::Address(0x0000_0000), &new_magic_number_buffer))?;
+        block!(flash.read(n25q128a_flash::Address(0x0000_0000), &mut magic_number_buffer))?;
 
         if magic_number_buffer != new_magic_number_buffer {
             return Err(Error::LogicError("Flash read-write-read cycle failed!"));
