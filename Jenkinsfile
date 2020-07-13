@@ -35,15 +35,11 @@ spec:
         }
         container('cross') {
             stage('Test') {
-                steps {
-                    sh 'cargo test'
-                }
+                sh 'cargo test'
             }
             stage('Build') {
-                steps {
-                    sh 'export CROSS_DOCKER_IN_DOCKER=true'
-                    sh 'cross build --target thumbv7em-none-eabihf'
-                }
+                sh 'export CROSS_DOCKER_IN_DOCKER=true'
+                sh 'cross build --target thumbv7em-none-eabihf'
             }
         }
     }
