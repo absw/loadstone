@@ -8,6 +8,7 @@ pub trait BulkErase {
 pub trait Read<A> {
     type Error;
     fn read(&mut self, address: A, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
+    fn readable_range() -> (A, A);
 }
 
 /// Writes a range of bytes, generic over an address
@@ -17,4 +18,5 @@ pub trait Read<A> {
 pub trait Write<A> {
     type Error;
     fn write(&mut self, address: A, bytes: &[u8]) -> nb::Result<(), Self::Error>;
+    fn writable_range() -> (A, A);
 }

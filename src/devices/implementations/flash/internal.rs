@@ -201,6 +201,12 @@ impl InternalFlash {
 impl Write<Address> for InternalFlash {
     type Error = Error;
 
+    fn writable_range() -> (Address, Address) {
+        let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
+        let range = Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
+        (range.0, range.1)
+    }
+
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address.0 % 4 != 0 {
             return Err(nb::Error::Other(Error::MisalignedAccess))
