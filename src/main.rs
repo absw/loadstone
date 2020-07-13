@@ -1,5 +1,5 @@
 #![cfg_attr(test, allow(unused_attributes))]
-#![cfg_attr(target_arch = "arm", no_std)]
+#![cfg_attr(all(not(test), target_arch = "arm"), no_std)]
 #![cfg_attr(target_arch = "arm", no_main)]
 
 #[allow(unused_imports)]

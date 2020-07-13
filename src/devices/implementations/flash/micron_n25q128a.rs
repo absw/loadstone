@@ -114,6 +114,10 @@ where
         ))?;
         Ok(())
     }
+
+    fn writable_range() -> (Address, Address) {
+        unimplemented!();
+    }
 }
 
 impl<QSPI> Read<Address> for MicronN25q128a<QSPI>
@@ -127,6 +131,10 @@ where
         } else {
             self.execute_command(Command::Read, Some(address), CommandData::Read(bytes))
         }
+    }
+
+    fn readable_range() -> (Address, Address) {
+        unimplemented!();
     }
 }
 
