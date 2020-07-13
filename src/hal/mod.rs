@@ -4,6 +4,8 @@ pub mod serial;
 pub mod qspi;
 pub mod spi;
 pub mod time;
+pub mod led;
+pub mod flash;
 
 #[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]

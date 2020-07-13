@@ -1,7 +1,7 @@
 use crate::{
     devices::{
         implementations::{
-            flash::micron_n25q128a::{self, MicronN25q128a},
+            flash::micron::n25q128a::{self, MicronN25q128a},
             led::{LogicLevel, MonochromeLed},
         },
         interfaces::{
@@ -56,10 +56,10 @@ impl Bootloader {
         // Read, increase, write and read a magic number
         let mut magic_number_buffer = [0u8; 1];
         let mut new_magic_number_buffer = [0u8; 1];
-        block!(flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
+        block!(flash.read(n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
         new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        block!(flash.write(micron_n25q128a::Address(0x0000_0000), &new_magic_number_buffer))?;
-        block!(flash.read(micron_n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
+        block!(flash.write(n25q128a::Address(0x0000_0000), &new_magic_number_buffer))?;
+        block!(flash.read(n25q128a::Address(0x0000_0000), &mut magic_number_buffer))?;
 
         if magic_number_buffer != new_magic_number_buffer {
             return Err(Error::LogicError("Flash read-write-read cycle failed!"));

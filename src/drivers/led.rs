@@ -1,7 +1,6 @@
-//! Various LED device implementations.
-
+//! Various generic LED device implementations.
 use crate::{
-    devices::interfaces::led::{self, Chromatic, Toggle},
+    hal::led::{self, Chromatic, Toggle},
     hal::gpio::OutputPin,
 };
 
@@ -17,8 +16,8 @@ pub enum RgbPalette {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::devices::implementations::led::*;
-/// # use secure_bootloader_lib::devices::interfaces::led::*;
+/// # use secure_bootloader_lib::hal::led::*;
+/// # use secure_bootloader_lib::drivers::led::*;
 /// # use secure_bootloader_lib::hal::mock::gpio::*;
 /// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
@@ -58,8 +57,8 @@ pub struct RgbLed<Pin: OutputPin> {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::devices::implementations::led::*;
-/// # use secure_bootloader_lib::devices::interfaces::led::*;
+/// # use secure_bootloader_lib::hal::led::*;
+/// # use secure_bootloader_lib::drivers::led::*;
 /// # use secure_bootloader_lib::hal::mock::gpio::*;
 /// # let pin = MockPin::default();
 /// let mut led = MonochromeLed::new(pin, LogicLevel::Direct);

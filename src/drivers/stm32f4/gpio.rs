@@ -84,7 +84,6 @@ macro_rules! pin_row {
 /// This makes the wrapper struct gpiob have the members gpiob.pb7 in
 /// Output + Push/Pull mode, gpiob.pb8 in alternate function 4, and
 /// gpiob.pb3 as a floating input.
-#[macro_export]
 macro_rules! gpio {
     ($x: ident, [
         $( ($i:expr, $default_mode:ty), )+
@@ -189,7 +188,7 @@ macro_rules! gpio_inner {
                 GPIOK as GPIOk,
             };
 
-            use crate::drivers::gpio::*;
+            use crate::drivers::stm32f4::gpio::*;
 
             /// GPIO parts
             pub struct GpioWrapper {

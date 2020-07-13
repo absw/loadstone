@@ -1,12 +1,11 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
-    devices::interfaces::flash::{BulkErase, Read, Write},
-    drivers::systick,
+    hal::flash::{BulkErase, Read, Write},
     hal::{qspi, time},
     utilities::bitwise::BitFlags,
 };
 use nb::block;
-use time::Now;
+use core::marker::PhantomData;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
@@ -16,12 +15,15 @@ const MANUFACTURER_ID: u8 = 0x20;
 pub struct Address(pub u32);
 
 /// MicronN25q128a driver, generic over a QSPI programmed in indirect mode
-pub struct MicronN25q128a<QSPI>
+pub struct MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
+    NOW: time::Now<I>,
+    I: time::Instant,
 {
     qspi: QSPI,
-    timeout: Option<(time::Milliseconds, systick::SysTick)>,
+    timeout: Option<(time::Milliseconds, NOW)>,
+    _marker: PhantomData<I>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -72,27 +74,31 @@ enum CommandData<'a> {
     None,
 }
 
-impl<QSPI> BulkErase for MicronN25q128a<QSPI>
+impl<QSPI, NOW, I> BulkErase for MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
+    NOW: time::Now<I>,
+    I: time::Instant,
 {
     type Error = Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
         // Early yield if flash is not ready for writing
-        if self.status()?.write_in_progress {
+        if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
         } else {
-            self.execute_command(Command::WriteEnable, None, CommandData::None)?;
-            self.execute_command(Command::BulkErase, None, CommandData::None)?;
-            self.execute_command(Command::WriteDisable, None, CommandData::None)?;
+            Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None)?;
+            Self::execute_command(&mut self.qspi, Command::BulkErase, None, CommandData::None)?;
+            Self::execute_command(&mut self.qspi, Command::WriteDisable, None, CommandData::None)?;
             Ok(())
         }
     }
 }
 
-impl<QSPI> Write<Address> for MicronN25q128a<QSPI>
+impl<QSPI, NOW, I> Write<Address> for MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
+    NOW: time::Now<I>,
+    I: time::Instant,
 {
     type Error = Error;
 
@@ -103,11 +109,12 @@ where
         }
 
         // TODO read subsector first before erasing (to preserve previous values)
-        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
-        block!(self.execute_command(Command::SubsectorErase, Some(address), CommandData::None))?;
+        block!(Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None))?;
+        block!(Self::execute_command(&mut self.qspi, Command::SubsectorErase, Some(address), CommandData::None))?;
         block!(self.wait_until_write_complete())?;
-        block!(self.execute_command(Command::WriteEnable, None, CommandData::None))?;
-        block!(self.execute_command(
+        block!(Self::execute_command(&mut self.qspi, Command::WriteEnable, None, CommandData::None))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
             Command::PageProgram,
             Some(address),
             CommandData::Write(&bytes)
@@ -120,16 +127,18 @@ where
     }
 }
 
-impl<QSPI> Read<Address> for MicronN25q128a<QSPI>
+impl<QSPI, NOW, I> Read<Address> for MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
+    NOW: time::Now<I>,
+    I: time::Instant,
 {
     type Error = Error;
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
-        if self.status()?.write_in_progress {
+        if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
         } else {
-            self.execute_command(Command::Read, Some(address), CommandData::Read(bytes))
+            Self::execute_command(&mut self.qspi, Command::Read, Some(address), CommandData::Read(bytes))
         }
     }
 
@@ -138,21 +147,23 @@ where
     }
 }
 
-impl<QSPI> MicronN25q128a<QSPI>
+impl<QSPI, NOW, I> MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
+    NOW: time::Now<I>,
+    I: time::Instant,
 {
     fn wait_until_write_complete(&mut self) -> nb::Result<(), Error> {
-        if let Some((timeout, systick)) = self.timeout {
+        if let Some((timeout, systick)) = &self.timeout {
             let start = systick.now();
-            while self.status()?.write_in_progress {
-                if systick.now() - start > timeout {
+            while Self::status(&mut self.qspi)?.write_in_progress {
+                if systick.now() - start > *timeout {
                     return Err(nb::Error::Other(Error::TimeOut));
                 }
             }
         }
 
-        if self.status()?.write_in_progress {
+        if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
         } else {
             Ok(())
@@ -161,20 +172,20 @@ where
 
     // Low level helper for executing Micron commands
     fn execute_command(
-        &mut self,
+        qspi: &mut QSPI,
         command: Command,
         address: Option<Address>,
         data: CommandData,
     ) -> nb::Result<(), Error> {
         match data {
             CommandData::Write(buffer) => {
-                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
+                block!(qspi.write(Some(command as u8), address.map(|a| a.0), Some(buffer), 0))
             }
             CommandData::Read(buffer) => {
-                block!(self.qspi.read(Some(command as u8), address.map(|a| a.0), buffer, 0))
+                block!(qspi.read(Some(command as u8), address.map(|a| a.0), buffer, 0))
             }
             CommandData::None => {
-                block!(self.qspi.write(Some(command as u8), address.map(|a| a.0), None, 0))
+                block!(qspi.write(Some(command as u8), address.map(|a| a.0), None, 0))
             }
         }
         .map_err(|_| nb::Error::Other(Error::QspiError))
@@ -182,16 +193,16 @@ where
 
     fn verify_id(&mut self) -> nb::Result<(), Error> {
         let mut response = [0u8; 1];
-        self.execute_command(Command::ReadId, None, CommandData::Read(&mut response))?;
+        Self::execute_command(&mut self.qspi, Command::ReadId, None, CommandData::Read(&mut response))?;
         match response[0] {
             MANUFACTURER_ID => Ok(()),
             _ => Err(nb::Error::Other(Error::WrongManufacturerId)),
         }
     }
 
-    fn status(&mut self) -> nb::Result<Status, Error> {
+    fn status(qspi: &mut QSPI) -> nb::Result<Status, Error> {
         let mut response = [0u8; 1];
-        self.execute_command(Command::ReadStatus, None, CommandData::Read(&mut response))?;
+        Self::execute_command(qspi, Command::ReadStatus, None, CommandData::Read(&mut response))?;
         let response = response[0];
         Ok(Status {
             write_in_progress: response.is_set(0),
@@ -201,7 +212,7 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: None };
+        let mut flash = Self { qspi, timeout: None, _marker: PhantomData::default()};
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -209,9 +220,9 @@ where
     pub fn with_timeout(
         qspi: QSPI,
         timeout: time::Milliseconds,
-        systick: systick::SysTick,
+        systick: NOW,
     ) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
+        let mut flash = Self { qspi, timeout: Some((timeout, systick)), _marker: PhantomData::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -220,9 +231,10 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hal::mock::{gpio::*, qspi::*};
+    use crate::hal::mock::{gpio::*, qspi::*, time::*};
 
-    fn flash_to_test() -> MicronN25q128a<MockQspi> {
+    type FlashToTest = MicronN25q128a<MockQspi, MockSysTick, MockInstant>;
+    fn flash_to_test() -> FlashToTest {
         let mut qspi = MockQspi::default();
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
         let mut flash = MicronN25q128a::new(qspi).unwrap();
@@ -239,14 +251,14 @@ mod test {
         qspi.to_read.push_back(vec![WRONG_MANUFACTURER_ID]);
 
         // Then
-        assert!(MicronN25q128a::new(qspi).is_err());
+        assert!(FlashToTest::new(qspi).is_err());
 
         // Given
         let mut qspi = MockQspi::default();
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
 
         // Then
-        assert!(MicronN25q128a::new(qspi).is_ok());
+        assert!(FlashToTest::new(qspi).is_ok());
     }
 
     #[test]

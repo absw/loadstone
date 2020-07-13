@@ -1,4 +1,4 @@
-use crate::{drivers::rcc, hal::time};
+use crate::{drivers::stm32f4::rcc, hal::time};
 use core::sync::atomic::{AtomicU32, Ordering};
 use cortex_m::peripheral::{syst::SystClkSource, SYST};
 use cortex_m_rt::exception;

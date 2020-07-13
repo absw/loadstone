@@ -5,12 +5,21 @@ readme = "README.md"
 name = "secure_bootloader"
 version = "0.1.0"
 
+# The features below reflect the hierarchy of stm32 families.
+# Choosing a f4 family implies f4, which implies stm32, which
+# implies cortex M...
+
 [features]
-default = ["stm32f412"]
-stm32f429 = ["stm32f4/stm32f429"]
-stm32f469 = ["stm32f4/stm32f469"]
-stm32f407 = ["stm32f4/stm32f407"]
-stm32f412 = ["stm32f4/stm32f412"]
+default = ["stm32f412_discovery"]
+stm32f412_discovery = ["stm32f412"]
+stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
+stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
+stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
+stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
+stm32f4_any = ["stm32_any"]
+stm32_any = ["cortex_m_any"]
+cortex_m_any = []
+
 
 [dependencies]
 cortex-m = "0.6.0"

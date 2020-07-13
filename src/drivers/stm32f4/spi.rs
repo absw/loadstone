@@ -1,5 +1,5 @@
 use crate::{
-    drivers::gpio::*,
+    drivers::stm32f4::gpio::*,
     hal::spi::FullDuplex,
     pin_configuration::*,
     stm32pac::{RCC, SPI1},

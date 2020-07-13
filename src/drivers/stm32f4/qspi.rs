@@ -1,5 +1,5 @@
 use crate::{
-    drivers::gpio::*,
+    drivers::stm32f4::gpio::*,
     hal::qspi,
     pin_configuration::*,
     stm32pac::{QUADSPI as QuadSpiPeripheral, RCC},
