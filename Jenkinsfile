@@ -9,7 +9,7 @@ metadata:
 spec:
   containers:
   - name: cross
-    image: docker/rust:nightly
+    image: rustdocker/rust:nightly
     command:
     - cat
     tty: true
