@@ -9,7 +9,7 @@ use nb;
 
 /// UART read half
 pub trait Read<Word> {
-    type Error;
+    type Error: core::fmt::Debug;
 
     /// Reads a single word
     fn read(&mut self) -> nb::Result<Word, Self::Error>;
@@ -17,7 +17,7 @@ pub trait Read<Word> {
 
 /// UART write half
 pub trait Write<Word> {
-    type Error;
+    type Error: core::fmt::Debug;
 
     /// Writes a single word
     fn write(&mut self, word: Word) -> nb::Result<(), Self::Error>;
@@ -44,7 +44,7 @@ macro_rules! uprint {
 macro_rules! uprintln {
     ($serial:expr, $arg:tt) => {
         uprint!($serial, $arg);
-        uprint!($serial, "\n");
+        uprint!($serial, "\r\n");
     };
 }
 
@@ -94,9 +94,9 @@ mod test {
         // Given
         let mut mock_usart = MockUsart::default();
         let arbitrary_message = "Hello world with newline!";
-        let newline = '\n';
+        let newline = "\r\n";
         let mut expected_message: Vec<u8> = arbitrary_message.as_bytes().iter().cloned().collect();
-        expected_message.push(newline as u8);
+        expected_message.append(&mut newline.as_bytes().iter().cloned().collect());
 
         // When
         uprintln!(mock_usart, arbitrary_message);

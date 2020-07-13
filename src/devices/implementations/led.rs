@@ -19,9 +19,10 @@ pub enum RgbPalette {
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
 /// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # let pin = mock::MockPin::default();
+/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
-/// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, Logic::Direct);
+/// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, LogicLevel::Direct);
 ///
 /// // By default, the LED starts on an off, green state
 /// # assert!(led.pin(RgbPalette::Red).is_low());
@@ -50,7 +51,7 @@ pub struct RgbLed<Pin: OutputPin> {
     blue: Pin,
     color: RgbPalette,
     is_on: bool,
-    logic: Logic,
+    logic: LogicLevel,
 }
 
 /// Solid (non-blinking) monochrome LED
@@ -59,8 +60,9 @@ pub struct RgbLed<Pin: OutputPin> {
 /// ```
 /// # use secure_bootloader_lib::devices::implementations::led::*;
 /// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # let pin = mock::MockPin::default();
-/// let mut led = MonochromeLed::new(pin, Logic::Direct);
+/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # let pin = MockPin::default();
+/// let mut led = MonochromeLed::new(pin, LogicLevel::Direct);
 ///
 /// led.toggle();
 /// assert!(led.is_on());
@@ -69,30 +71,30 @@ pub struct RgbLed<Pin: OutputPin> {
 pub struct MonochromeLed<Pin: OutputPin> {
     pin: Pin,
     is_on: bool,
-    logic: Logic,
+    logic: LogicLevel,
 }
 
 #[derive(Copy, Clone)]
-pub enum Logic {
-    /// Logical high equals "on"
+pub enum LogicLevel {
+    /// LogicLevel high equals "on"
     Direct,
-    /// Logical high equals "off"
+    /// LogicLevel high equals "off"
     Inverted,
 }
 
 // Extension trait to ensure LED pins are correctly
 // operated based on the led's direct or inverted logic
 trait LedPin: OutputPin {
-    fn off(&mut self, logic: Logic) {
-        if let Logic::Direct = logic {
+    fn off(&mut self, logic: LogicLevel) {
+        if let LogicLevel::Direct = logic {
             self.set_low();
         } else {
             self.set_high();
         }
     }
 
-    fn on(&mut self, logic: Logic) {
-        if let Logic::Direct = logic {
+    fn on(&mut self, logic: LogicLevel) {
+        if let LogicLevel::Direct = logic {
             self.set_high();
         } else {
             self.set_low();
@@ -104,7 +106,7 @@ trait LedPin: OutputPin {
 impl<Pin: OutputPin> LedPin for Pin {}
 
 impl<Pin: OutputPin> MonochromeLed<Pin> {
-    pub fn new(mut pin: Pin, logic: Logic) -> Self {
+    pub fn new(mut pin: Pin, logic: LogicLevel) -> Self {
         pin.off(logic);
         Self { pin, is_on: false, logic }
     }
@@ -141,7 +143,7 @@ impl<Pin: OutputPin> led::Toggle for MonochromeLed<Pin> {
 }
 
 impl<Pin: OutputPin> RgbLed<Pin> {
-    pub fn new(mut red: Pin, mut green: Pin, mut blue: Pin, logic: Logic) -> Self {
+    pub fn new(mut red: Pin, mut green: Pin, mut blue: Pin, logic: LogicLevel) -> Self {
         red.off(logic);
         green.off(logic);
         blue.off(logic);
@@ -202,25 +204,11 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
     }
 }
 
-#[cfg(not(target = "arm"))]
+#[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
 pub mod mock {
     use super::*;
-    #[derive(Clone, Debug, Default)]
-    #[doc(hidden)]
-    pub struct MockPin {
-        state: bool,
-    }
-    impl MockPin {
-        pub fn is_high(&self) -> bool { self.state }
-        pub fn is_low(&self) -> bool { !self.state }
-    }
-
-    #[doc(hidden)]
-    impl OutputPin for MockPin {
-        fn set_low(&mut self) { self.state = false }
-        fn set_high(&mut self) { self.state = true }
-    }
+    use crate::hal::mock::gpio::*;
 
     #[doc(hidden)]
     impl MonochromeLed<MockPin> {
@@ -242,11 +230,12 @@ pub mod mock {
 #[cfg(test)]
 mod test {
     use super::{mock::*, *};
+    use crate::hal::mock::gpio::*;
 
     #[test]
     fn monochrome_led_defaults_to_logic_low_with_direct_logic() {
         // Given
-        let led = MonochromeLed::new(MockPin::default(), Logic::Direct);
+        let led = MonochromeLed::new(MockPin::default(), LogicLevel::Direct);
 
         // then
         assert!(led.pin.is_low());
@@ -255,7 +244,7 @@ mod test {
     #[test]
     fn monochrome_led_defaults_to_logic_high_with_inverted_logic() {
         // Given
-        let led = MonochromeLed::new(MockPin::default(), Logic::Inverted);
+        let led = MonochromeLed::new(MockPin::default(), LogicLevel::Inverted);
 
         // then
         assert!(led.pin.is_high());
@@ -264,7 +253,7 @@ mod test {
     #[test]
     fn monochrome_pin_setting() {
         // Given
-        let mut led = MonochromeLed::new(MockPin::default(), Logic::Direct);
+        let mut led = MonochromeLed::new(MockPin::default(), LogicLevel::Direct);
 
         // When
         led.off();
@@ -282,7 +271,7 @@ mod test {
     #[test]
     fn monochrome_pin_toggling() {
         // Given
-        let mut led = MonochromeLed::new(MockPin::default(), Logic::Direct);
+        let mut led = MonochromeLed::new(MockPin::default(), LogicLevel::Direct);
 
         // When
         led.toggle();
@@ -300,9 +289,13 @@ mod test {
     #[test]
     fn type_erasure_between_chromatic_and_non_chromatic_led() {
         // Given
-        let mut monochrome = MonochromeLed::new(MockPin::default(), Logic::Inverted);
-        let mut chromatic =
-            RgbLed::new(MockPin::default(), MockPin::default(), MockPin::default(), Logic::Direct);
+        let mut monochrome = MonochromeLed::new(MockPin::default(), LogicLevel::Inverted);
+        let mut chromatic = RgbLed::new(
+            MockPin::default(),
+            MockPin::default(),
+            MockPin::default(),
+            LogicLevel::Direct,
+        );
 
         chromatic.color(RgbPalette::Red);
 

@@ -8,3 +8,6 @@ pub mod gpio;
 pub mod rcc;
 #[macro_use]
 pub mod serial;
+pub mod qspi;
+pub mod spi;
+pub mod systick;
