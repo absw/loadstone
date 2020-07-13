@@ -4,7 +4,7 @@ use crate::{hal::flash::Write, stm32pac::FLASH};
 use nb::block;
 use static_assertions::const_assert;
 
-pub struct InternalFlash {
+pub struct McuFlash {
     flash: FLASH,
 }
 
@@ -27,7 +27,7 @@ pub enum Block {
     /// Main memory, where the application is written
     Main,
     SystemMemory,
-    OtpArea,
+    OneTimeProgrammable,
     OptionBytes,
 }
 
@@ -70,7 +70,7 @@ pub const MEMORY_MAP: MemoryMap = MemoryMap {
         Sector::new(Block::Main, 0x080C_0000, 0x080E_0000),
         Sector::new(Block::Main, 0x080E_0000, 0x0810_0000),
         Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x1FFF_7800),
-        Sector::new(Block::OtpArea, 0x1FFF_7800, 0x1FFF_7A0F),
+        Sector::new(Block::OneTimeProgrammable, 0x1FFF_7800, 0x1FFF_7A0F),
         Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
     ],
 };
@@ -114,7 +114,7 @@ impl MemoryMap {
 
 impl Address {
     const fn is_inside(self, sector: &Sector) -> bool {
-        self.0 >= sector.start.0 && self.0 < sector.end.0
+        (self.0 >= sector.start.0) && (self.0 < sector.end.0)
     }
 
     fn sector(&self) -> Option<Sector> {
@@ -167,7 +167,7 @@ impl Sector {
     }
 }
 
-impl InternalFlash {
+impl McuFlash {
     pub fn new(flash: FLASH) -> Result<Self, Error> { Ok(Self { flash }) }
 
     /// Parallelism for 3v3 voltage from [table 7](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=63)
@@ -199,7 +199,7 @@ impl InternalFlash {
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
 }
 
-impl Write<Address> for InternalFlash {
+impl Write<Address> for McuFlash {
     type Error = Error;
 
     fn writable_range() -> (Address, Address) {

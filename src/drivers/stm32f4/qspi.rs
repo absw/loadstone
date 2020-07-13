@@ -260,9 +260,12 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
             Err(nb::Error::WouldBlock)
         } else {
             let pointer = Self::QSPI_DR_ADDRESS as *mut u8;
-            //NOTE(safety): We bypass the PAC here to perform a single byte
-            //access to a 32 bit register. It is safe since write access to
-            //the register is gated behind self.qspi.
+            // NOTE(safety): We bypass the PAC here to perform a single byte
+            // access to a 32 bit register. The PAC won't let you do this since
+            // it's generated from the SVD file, which just represents the register
+            // as a single chunk of 32 bits. Bypassing the PAC here is safe since access to
+            // the register is gated behind self.qspi, which we own and nothing else
+            // writes to it.
             unsafe { *pointer = byte };
             Ok(())
         }
@@ -274,9 +277,12 @@ impl<PINS, MODE> QuadSpi<PINS, MODE> {
             Err(nb::Error::WouldBlock)
         } else {
             let pointer = Self::QSPI_DR_ADDRESS as *const u8;
-            //NOTE(safety): We bypass the PAC here to perform a single byte
-            //access to a 32 bit register. It is safe since access to
-            //the register is gated behind self.qspi.
+            // NOTE(safety): We bypass the PAC here to perform a single byte
+            // access to a 32 bit register. The PAC won't let you do this since
+            // it's generated from the SVD file, which just represents the register
+            // as a single chunk of 32 bits. Bypassing the PAC here is safe since access to
+            // the register is gated behind self.qspi, which we own and nothing else
+            // writes to it.
             let byte = unsafe { *pointer };
             Ok(byte)
         }

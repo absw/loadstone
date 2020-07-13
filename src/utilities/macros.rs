@@ -16,10 +16,10 @@
 /// pub use self::stm32::*;
 ///
 /// #[cfg(feature = "stm32_any")]
-/// port!(stm32::flash as internal_flash);
+/// port!(stm32::flash as mcu_flash);
 /// // Expands into:
 /// pub mod stm32 { pub mod flash };
-/// pub use self::stm32::flash as internal_flash;
+/// pub use self::stm32::flash as mcu_flash;
 /// ```
 #[macro_export]
 macro_rules! port {
