@@ -38,7 +38,8 @@ spec:
                 sh 'cargo test'
             }
             stage('Build') {
-                sh './build 1'
+                sh 'rustup target add thumbv7em-none-eabihf'
+                sh './cargo_emb build'
             }
         }
     }
