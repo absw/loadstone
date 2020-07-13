@@ -14,10 +14,10 @@ pub enum Error {
     MisalignedAccess,
 }
 
-impl Into<BootloaderError> for Error {
-    fn into(self) -> BootloaderError {
+impl From<Error> for BootloaderError {
+    fn from(error: Error) -> Self {
         BootloaderError::DriverError(
-            match self {
+            match error {
                 Error::MemoryNotWrittable => "MCU flash memory not writtable",
                 Error::MisalignedAccess => "MCU flash memory access misaligned",
             }

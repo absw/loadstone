@@ -7,16 +7,26 @@
 use core::convert::Into;
 use crate::{
     error::Error,
-    hal::{serial, flash::{self, Read, Write}, led},
+    hal::{serial, flash, led},
 };
-use core::marker::PhantomData;
+use core::{fmt, marker::PhantomData};
 use nb::block;
 
 pub struct Bootloader<E, A, S, L>
 where
+    // E is some writable and readable external flash
     E: flash::Write<A> + flash::Read<A>,
+    // A is some memory address for the external flash,
+    // that can be copied, cloned and displayed for debug
+    A: Copy + Clone + fmt::Debug,
+    // S is some serial that can write bytes, for CLI and logging
     S: serial::Write<u8>,
+    // L is some LED that can display POST progress
     L: led::Toggle,
+    // Errors associated to the flash can be converted to Bootloader
+    // errors for further display
+    Error: From<<E as flash::Write<A>>::Error>,
+    Error: From<<E as flash::Read<A>>::Error>,
 {
     pub(crate) flash: E,
     pub(crate) post_led: L,
@@ -27,9 +37,11 @@ where
 impl<E, A, S, L> Bootloader<E, A, S, L>
 where
     E: flash::Write<A> + flash::Read<A>,
-    A: Copy + Clone,
+    A: Copy + Clone + fmt::Debug,
     S: serial::Write<u8>,
     L: led::Toggle,
+    Error: From<<E as flash::Write<A>>::Error>,
+    Error: From<<E as flash::Read<A>>::Error>,
 {
     pub fn power_on_self_test(&mut self) -> Result<(), Error> {
         let mut magic_number_buffer = [0u8; 1];
@@ -37,10 +49,10 @@ where
 
         self.post_led.on();
         let (start, _) = E::writable_range();
-        block!(self.flash.read(start, &mut magic_number_buffer)).map_err(Into::into)?;
+        block!(self.flash.read(start, &mut magic_number_buffer))?;
         new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        block!(self.flash.write(start, &mut new_magic_number_buffer)).map_err(Into::into)?;
-        block!(self.flash.read(start, &mut magic_number_buffer)).map_err(Into::into)?;
+        block!(self.flash.write(start, &mut new_magic_number_buffer))?;
+        block!(self.flash.read(start, &mut magic_number_buffer))?;
         self.post_led.off();
 
         if magic_number_buffer != new_magic_number_buffer {
@@ -50,5 +62,7 @@ where
         Ok(())
     }
 
-    pub fn run(self) -> ! { loop {} }
+    pub fn run(self) -> ! {
+        loop {}
+    }
 }

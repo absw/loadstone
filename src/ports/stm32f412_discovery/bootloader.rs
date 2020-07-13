@@ -53,4 +53,3 @@ impl Bootloader<ExternalFlash, ExternalAddress, Serial, PostLed> {
         Bootloader { flash, post_led, serial, _marker: PhantomData::default()}
     }
 }
-
