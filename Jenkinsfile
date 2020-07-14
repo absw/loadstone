@@ -8,8 +8,8 @@ metadata:
   labels:
 spec:
   containers:
-  - name: cross
-    image: rustdocker/rust:nightly
+  - name: rust
+    image: rustlang/rust:nightly-stretch
     command:
     - cat
     tty: true
@@ -33,7 +33,7 @@ spec:
                 userRemoteConfigs: scm.userRemoteConfigs
             ])
         }
-        container('cross') {
+        container('rust') {
             stage('Test') {
                 sh 'cargo test'
             }
