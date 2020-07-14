@@ -23,11 +23,12 @@ extern crate static_assertions;
 #[macro_use]
 pub mod utilities {
     pub mod bitwise;
+    pub mod guard;
     mod macros;
 }
 
+pub mod drivers;
 pub mod hal;
 pub mod devices;
-pub mod drivers;
 pub mod error;
 pub mod ports;

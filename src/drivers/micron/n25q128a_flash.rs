@@ -1,13 +1,12 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
+    error::Error as BootloaderError,
     hal::{
         flash::{BulkErase, Read, Write},
         qspi, time,
     },
     utilities::bitwise::BitFlags,
 };
-use crate::error::Error as BootloaderError;
-use core::marker::PhantomData;
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
@@ -18,18 +17,16 @@ const MANUFACTURER_ID: u8 = 0x20;
 pub struct Address(pub u32);
 
 /// MicronN25q128a driver, generic over a QSPI programmed in indirect mode
-pub struct MicronN25q128a<QSPI, NOW, I>
+pub struct MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
-    NOW: time::Now<I>,
-    I: time::Instant,
+    NOW: time::Now,
 {
     qspi: QSPI,
     timeout: Option<(time::Milliseconds, NOW)>,
-    _marker: PhantomData<I>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     TimeOut,
     QspiError,
@@ -41,9 +38,7 @@ impl From<Error> for BootloaderError {
     fn from(error: Error) -> Self {
         match error {
             Error::TimeOut => BootloaderError::DriverError("Micron n25q128a timed out"),
-            Error::QspiError => {
-                BootloaderError::DriverError("Micron n25q128a QSPI access error")
-            }
+            Error::QspiError => BootloaderError::DriverError("Micron n25q128a QSPI access error"),
             Error::WrongManufacturerId => {
                 BootloaderError::DriverError("Micron n25q128a reported wrong manufacturer ID")
             }
@@ -77,11 +72,10 @@ enum CommandData<'a> {
     None,
 }
 
-impl<QSPI, NOW, I> BulkErase for MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW> BulkErase for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
-    NOW: time::Now<I>,
-    I: time::Instant,
+    NOW: time::Now,
 {
     type Error = Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
@@ -97,13 +91,13 @@ where
     }
 }
 
-impl<QSPI, NOW, I> Write<Address> for MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW> Write for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
-    NOW: time::Now<I>,
-    I: time::Instant,
+    NOW: time::Now,
 {
     type Error = Error;
+    type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         // TODO remove page alignment limitations
@@ -141,17 +135,18 @@ where
     }
 
     fn writable_range() -> (Address, Address) {
-        unimplemented!();
+        // TODO write a proper table instead of hardcoding it
+        (Address(0x0000_0000), Address(0x00FF_0000))
     }
 }
 
-impl<QSPI, NOW, I> Read<Address> for MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW> Read for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
-    NOW: time::Now<I>,
-    I: time::Instant,
+    NOW: time::Now,
 {
     type Error = Error;
+    type Address = Address;
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
@@ -166,15 +161,15 @@ where
     }
 
     fn readable_range() -> (Address, Address) {
-        unimplemented!();
+        // TODO write a proper table instead of hardcoding it
+        (Address(0x0000_0000), Address(0x00FF_0000))
     }
 }
 
-impl<QSPI, NOW, I> MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
-    NOW: time::Now<I>,
-    I: time::Instant,
+    NOW: time::Now,
 {
     fn wait_until_write_complete(&mut self) -> nb::Result<(), Error> {
         if let Some((timeout, systick)) = &self.timeout {
@@ -240,7 +235,7 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: None, _marker: PhantomData::default() };
+        let mut flash = Self { qspi, timeout: None };
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -250,8 +245,7 @@ where
         timeout: time::Milliseconds,
         systick: NOW,
     ) -> Result<Self, Error> {
-        let mut flash =
-            Self { qspi, timeout: Some((timeout, systick)), _marker: PhantomData::default() };
+        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -262,7 +256,7 @@ mod test {
     use super::*;
     use crate::hal::doubles::{gpio::*, qspi::*, time::*};
 
-    type FlashToTest = MicronN25q128a<MockQspi, MockSysTick, MockInstant>;
+    type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
         let mut qspi = MockQspi::default();
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);

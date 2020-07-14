@@ -16,8 +16,9 @@ where
 {
 }
 
-pub trait Now<I: Instant> {
-    fn now(&self) -> I;
+pub trait Now {
+    type I: Instant;
+    fn now(&self) -> Self::I;
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]

@@ -6,22 +6,23 @@
 //! crate documentation for details.
 #![macro_use]
 
+use core::fmt::Debug;
 use nb;
 
 /// UART read half
-pub trait Read<Word> {
-    type Error: core::fmt::Debug;
+pub trait Read {
+    type Error: Copy + Clone + Debug;
 
-    /// Reads a single word
-    fn read(&mut self) -> nb::Result<Word, Self::Error>;
+    /// Reads a single byte
+    fn read(&mut self) -> nb::Result<u8, Self::Error>;
 }
 
 /// UART write half
-pub trait Write<Word> {
-    type Error: core::fmt::Debug;
+pub trait Write {
+    type Error: Copy + Clone + Debug;
 
-    /// Writes a single word
-    fn write(&mut self, word: Word) -> nb::Result<(), Self::Error>;
+    /// Writes a single byte
+    fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error>;
 }
 
 /// Prints to an abstract serial device.
@@ -30,7 +31,7 @@ pub trait Write<Word> {
 /// ```
 #[macro_export]
 macro_rules! uprint {
-    ($serial:expr, $arg:tt) => {
+    ($serial:expr, $arg:expr) => {
         $arg.as_bytes().iter().for_each(|&b| nb::block!($serial.write(b)).unwrap());
     };
 }
@@ -43,7 +44,7 @@ macro_rules! uprint {
 /// ```
 #[macro_export]
 macro_rules! uprintln {
-    ($serial:expr, $arg:tt) => {
+    ($serial:expr, $arg:expr) => {
         uprint!($serial, $arg);
         uprint!($serial, "\r\n");
     };
@@ -57,7 +58,7 @@ mod test {
         pub write_record: Vec<u8>,
     }
 
-    impl Write<u8> for MockUsart {
+    impl Write for MockUsart {
         type Error = ();
 
         fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
@@ -66,7 +67,7 @@ mod test {
         }
     }
 
-    impl Read<u8> for MockUsart {
+    impl Read for MockUsart {
         type Error = ();
 
         /// Reads a single word

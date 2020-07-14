@@ -1,7 +1,10 @@
 //! Internal Flash controller for the STM32F4 family
 
-use crate::{hal::flash::Write, stm32pac::FLASH};
-use crate::error::Error as BootloaderError;
+use crate::{
+    error::Error as BootloaderError,
+    hal::flash::{Read, Write},
+    stm32pac::FLASH,
+};
 use nb::block;
 use static_assertions::const_assert;
 
@@ -9,19 +12,18 @@ pub struct McuFlash {
     flash: FLASH,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Error {
-    MemoryNotWrittable,
+    MemoryNotReachable,
     MisalignedAccess,
 }
 
 impl From<Error> for BootloaderError {
     fn from(error: Error) -> Self {
-        BootloaderError::DriverError(
-            match error {
-                Error::MemoryNotWrittable => "MCU flash memory not writtable",
-                Error::MisalignedAccess => "MCU flash memory access misaligned",
-            }
-        )
+        BootloaderError::DriverError(match error {
+            Error::MemoryNotReachable => "MCU flash memory not reachable",
+            Error::MisalignedAccess => "MCU flash memory access misaligned",
+        })
     }
 }
 
@@ -61,7 +63,7 @@ pub struct MemoryMap {
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
 // Compile time check that the memory map below is correct.
-const_assert!(MEMORY_MAP.is_sound());
+const_assert!(MEMORY_MAP._is_sound());
 
 #[cfg(feature = "stm32f412")]
 pub const SECTOR_NUMBER: usize = 15;
@@ -92,7 +94,7 @@ impl MemoryMap {
     // NOTE: Some of the control flow here is necessarily awkward,
     // since this is a compile-time function and it doesn't have
     // access to complex constructs.
-    const fn is_sound(&self) -> bool {
+    const fn _is_sound(&self) -> bool {
         // Verify all ranges are valid
         let mut index = 0usize;
         loop {
@@ -101,7 +103,7 @@ impl MemoryMap {
             }
 
             let range = Range(self.sectors[index].start, self.sectors[index].end);
-            if !range.is_valid() {
+            if !range._is_valid() {
                 return false;
             }
             index += 1;
@@ -124,38 +126,37 @@ impl MemoryMap {
     }
 }
 
-impl Address {
-    const fn is_inside(self, sector: &Sector) -> bool {
-        (self.0 >= sector.start.0) && (self.0 < sector.end.0)
-    }
-
-    fn sector(&self) -> Option<Sector> {
-        MEMORY_MAP.sectors.iter().cloned().find(|sector| self.is_inside(&sector))
-    }
-}
-
 impl Range {
     /// Sectors spanned by this range of addresses
     fn span(self) -> &'static [Sector] {
-        let Range(start, end) = self;
-        let mut span = MEMORY_MAP
+        let first = MEMORY_MAP
             .sectors
             .iter()
             .enumerate()
-            .skip_while(|(_, sector)| sector.end <= start)
-            .take_while(|(_, sector)| sector.start < end)
-            .map(|(index, _)| index);
-        let start = span.next().unwrap_or_default();
-        let end = span.last().unwrap_or_default();
-        &MEMORY_MAP.sectors[start..end]
+            .find_map(|(i, sector)| self.overlaps(sector).then_some(i));
+        let last = MEMORY_MAP
+            .sectors
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, sector)| self.overlaps(sector).then_some(i));
+        match (first, last) {
+            (Some(first), Some(last)) if (last >= first) => &MEMORY_MAP.sectors[first..(last + 1)],
+            _ => &MEMORY_MAP.sectors[0..1],
+        }
     }
 
-    const fn is_valid(self) -> bool {
+    const fn _is_valid(self) -> bool {
         let Range(Address(start), Address(end)) = self;
         let after_map = start >= MEMORY_MAP.sectors[SECTOR_NUMBER - 1].end.0;
         let before_map = end < MEMORY_MAP.sectors[0].start.0;
         let monotonic = end >= start;
         monotonic && !before_map && !after_map
+    }
+
+    fn overlaps(self, sector: &Sector) -> bool {
+        (self.0 <= sector.start) && (self.1 > sector.start)
+            || (self.0 < sector.end) && (self.1 > sector.end)
     }
 
     /// Verify that all sectors spanned by this range are writable
@@ -171,8 +172,6 @@ impl Sector {
             (sector.is_in_main_memory_area() && self == sector).then_some(index as u8)
         })
     }
-
-    const fn size(&self) -> usize { (self.end.0 - self.start.0) as usize }
     const fn is_writable(&self) -> bool { self.block as u8 == Block::Main as u8 }
     const fn is_in_main_memory_area(&self) -> bool {
         self.block as u8 == Block::Main as u8 || self.block as u8 == Block::Boot as u8
@@ -199,7 +198,7 @@ impl McuFlash {
     fn lock(&mut self) { self.flash.cr.modify(|_, w| w.lock().set_bit()); }
 
     fn erase(&mut self, sector: &Sector) -> nb::Result<(), Error> {
-        let number = sector.number().ok_or(nb::Error::Other(Error::MemoryNotWrittable))?;
+        let number = sector.number().ok_or(nb::Error::Other(Error::MemoryNotReachable))?;
         self.unlock()?;
         self.flash
             .cr
@@ -211,8 +210,9 @@ impl McuFlash {
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
 }
 
-impl Write<Address> for McuFlash {
+impl Write for McuFlash {
     type Error = Error;
+    type Address = Address;
 
     fn writable_range() -> (Address, Address) {
         let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
@@ -229,7 +229,7 @@ impl Write<Address> for McuFlash {
         // Adjust end for alignment
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotWrittable));
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
         }
 
         // Early yield if busy
@@ -259,11 +259,44 @@ impl Write<Address> for McuFlash {
             // the memory map is correct, and that these dereferences
             // won't cause a hardfault or overlap with our firmware.
             unsafe {
-                *base_address.add(index) = word;
+                *(base_address.add(index)) = word;
             }
         }
         self.lock();
         Ok(())
+    }
+}
+
+impl Read for McuFlash {
+    type Error = Error;
+    type Address = Address;
+
+    fn readable_range() -> (Address, Address) {
+        let mut readable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
+        let range =
+            Range(readable_sectors.next().unwrap().start, readable_sectors.last().unwrap().end);
+        (range.0, range.1)
+    }
+
+    fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
+        let range = Range(address, Address(address.0 + bytes.len() as u32));
+        if address.0 % 4 != 0 {
+            Err(nb::Error::Other(Error::MisalignedAccess))
+        } else if !range.is_writable() {
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
+        } else {
+            let base = address.0 as *const u8;
+            for (index, byte) in bytes.iter_mut().enumerate() {
+                // NOTE(Safety) we are reading directly from raw memory locations,
+                // which is inherently unsafe. In this case, safety is guaranteed
+                // because we can only read main memory blocks that don't contain
+                // the bootloader image, and any direct write to them is handled through
+                // a mutable reference to this same Flash struct, so there can't be
+                // a data race.
+                *byte = unsafe { *(base.add(index)) };
+            }
+            Ok(())
+        }
     }
 }
 
@@ -274,7 +307,7 @@ mod test {
     #[test]
     fn ranges_span_the_correct_sectors() {
         let range = Range(Address(0x0801_1234), Address(0x0804_5678));
-        let expected_sectors = &MEMORY_MAP.sectors[4..6];
+        let expected_sectors = &MEMORY_MAP.sectors[4..7];
 
         assert_eq!(expected_sectors, range.span());
     }
