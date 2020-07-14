@@ -18,7 +18,7 @@ use core::marker::PhantomData;
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
 type Qspi = QuadSpi<QspiPins, mode::Single>;
-type ExternalFlash = MicronN25q128a<Qspi, SysTick, Tick>;
+type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
 type ExternalAddress = n25q128a_flash::Address;
 
 // Serial pins and typedefs

@@ -6,7 +6,8 @@ pub struct MockSysTick {}
 
 impl time::Instant for MockInstant {}
 
-impl time::Now<MockInstant> for MockSysTick {
+impl time::Now for MockSysTick {
+    type I = MockInstant;
     fn now(&self) -> MockInstant { MockInstant {} }
 }
 

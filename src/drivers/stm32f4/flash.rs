@@ -147,9 +147,9 @@ impl Range {
             .skip_while(|(_, sector)| sector.end <= start)
             .take_while(|(_, sector)| sector.start < end)
             .map(|(index, _)| index);
-        let start = span.next().unwrap_or_default();
-        let end = span.last().unwrap_or_default();
-        &MEMORY_MAP.sectors[start..end]
+        let a = span.next().unwrap_or_default();
+        let b = span.last().unwrap_or_default();
+        &MEMORY_MAP.sectors[a..b]
     }
 
     const fn is_valid(self) -> bool {

@@ -21,11 +21,17 @@ pub enum Error {
 
 /// Exposes a report_unwrap() method that behaves like
 /// unwrap(), but also reports any errors via serial before panicking.
-pub trait ReportOnUnwrap<T, S: Write<u8>> {
+pub trait ReportOnUnwrap<T, S: Write> {
     fn report_unwrap(self, serial: &mut S) -> T;
 }
 
-impl<T, S: Write<u8>> ReportOnUnwrap<T, S> for Result<T, Error> {
+/// Exposes a report_unwrap() method that behaves like
+/// unwrap(), but also reports any errors via serial before panicking.
+pub trait ReportOnUnwrapWithPrefix<T, S: Write> {
+    fn report_unwrap(self, prefix: &'static str, serial: &mut S) -> T;
+}
+
+impl<T, S: Write> ReportOnUnwrap<T, S> for Result<T, Error> {
     fn report_unwrap(self, serial: &mut S) -> T {
         match self {
             Ok(value) => value,
@@ -37,9 +43,22 @@ impl<T, S: Write<u8>> ReportOnUnwrap<T, S> for Result<T, Error> {
     }
 }
 
+impl<T, S: Write> ReportOnUnwrapWithPrefix<T, S> for Result<T, Error> {
+    fn report_unwrap(self, prefix: &'static str, serial: &mut S) -> T {
+        match self {
+            Ok(value) => value,
+            Err(error) => {
+                uprint!(serial, prefix);
+                error.report(serial);
+                panic!();
+            }
+        }
+    }
+}
+
 impl Error {
     /// Reports error via abstract serial device
-    pub fn report<S: Write<u8>>(&self, serial: &mut S) {
+    pub fn report<S: Write>(&self, serial: &mut S) {
         match self {
             Error::DriverError(text) => {
                 uprint!(serial, "[DriverError] -> ");

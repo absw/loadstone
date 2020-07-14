@@ -36,7 +36,8 @@ impl SysTick {
     }
 }
 
-impl Now<Tick> for SysTick {
+impl Now for SysTick {
+    type I = Tick;
     fn now(&self) -> Tick { Tick { counter: TICK_COUNTER.load(Ordering::Relaxed) } }
 }
 

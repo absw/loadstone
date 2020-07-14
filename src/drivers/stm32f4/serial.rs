@@ -78,7 +78,7 @@ seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
 seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
 
 /// Serial error
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[non_exhaustive]
 pub enum Error {
     /// Framing error
@@ -350,7 +350,7 @@ macro_rules! hal_usart_impl {
                 }
             }
 
-            impl<PINS> serial::Read<u8> for Serial<$USARTX, PINS> {
+            impl<PINS> serial::Read for Serial<$USARTX, PINS> {
                 type Error = Error;
 
                 fn read(&mut self) -> nb::Result<u8, Error> {
@@ -361,7 +361,7 @@ macro_rules! hal_usart_impl {
                 }
             }
 
-            impl serial::Read<u8> for Rx<$USARTX> {
+            impl serial::Read for Rx<$USARTX> {
                 type Error = Error;
 
                 fn read(&mut self) -> nb::Result<u8, Error> {
@@ -395,7 +395,7 @@ macro_rules! hal_usart_impl {
                 }
             }
 
-            impl<PINS> serial::Write<u8> for Serial<$USARTX, PINS> {
+            impl<PINS> serial::Write for Serial<$USARTX, PINS> {
                 type Error = Error;
 
                 fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {
@@ -406,7 +406,7 @@ macro_rules! hal_usart_impl {
                 }
             }
 
-            impl serial::Write<u8> for Tx<$USARTX> {
+            impl serial::Write for Tx<$USARTX> {
                 type Error = Error;
 
                 fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {

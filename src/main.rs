@@ -10,7 +10,7 @@ use cortex_m_rt::{entry, exception};
 fn main() -> ! {
     use secure_bootloader_lib::devices::bootloader::Bootloader;
     let mut bootloader = Bootloader::new();
-    bootloader.power_on_self_test().unwrap();
+    bootloader.power_on_self_test();
     loop {}
 }
 
