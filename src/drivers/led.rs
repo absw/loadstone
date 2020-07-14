@@ -1,12 +1,14 @@
-//! Various LED device implementations.
+//! Various generic LED device implementations. Assumed to work
+//! on every kind of board, as they're generic over OutputPins
+//! and support both logic levels.
 
-use crate::{
-    devices::interfaces::led::{self, Chromatic, Toggle},
-    hal::gpio::OutputPin,
+use crate::hal::{
+    gpio::OutputPin,
+    led::{self, Chromatic, Toggle},
 };
 
 /// Multi-color type for RGB LEDs
-#[derive(Copy, Clone, Debug, is_enum_variant)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RgbPalette {
     Red,
     Green,
@@ -17,9 +19,9 @@ pub enum RgbPalette {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::devices::implementations::led::*;
-/// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # use secure_bootloader_lib::hal::led::*;
+/// # use secure_bootloader_lib::drivers::led::*;
+/// # use secure_bootloader_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
 /// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, LogicLevel::Direct);
@@ -34,7 +36,7 @@ pub enum RgbPalette {
 /// # assert!(led.pin(RgbPalette::Red).is_low());
 /// # assert!(led.pin(RgbPalette::Green).is_high());
 /// # assert!(led.pin(RgbPalette::Blue).is_low());
-/// assert!(led.get_color().is_green());
+/// assert_eq!(RgbPalette::Green, led.get_color());
 /// assert!(led.is_on());
 ///
 /// led.color(RgbPalette::Blue);
@@ -42,7 +44,7 @@ pub enum RgbPalette {
 /// # assert!(led.pin(RgbPalette::Red).is_low());
 /// # assert!(led.pin(RgbPalette::Green).is_low());
 /// # assert!(led.pin(RgbPalette::Blue).is_low());
-/// assert!(led.get_color().is_blue());
+/// assert_eq!(RgbPalette::Blue, led.get_color());
 /// assert!(!led.is_on());
 /// ```
 pub struct RgbLed<Pin: OutputPin> {
@@ -58,9 +60,9 @@ pub struct RgbLed<Pin: OutputPin> {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::devices::implementations::led::*;
-/// # use secure_bootloader_lib::devices::interfaces::led::*;
-/// # use secure_bootloader_lib::hal::mock::gpio::*;
+/// # use secure_bootloader_lib::hal::led::*;
+/// # use secure_bootloader_lib::drivers::led::*;
+/// # use secure_bootloader_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// let mut led = MonochromeLed::new(pin, LogicLevel::Direct);
 ///
@@ -206,9 +208,9 @@ impl<Pin: OutputPin> Chromatic<RgbPalette> for RgbLed<Pin> {
 
 #[cfg(not(target_arch = "arm"))]
 #[doc(hidden)]
-pub mod mock {
+pub mod doubles {
     use super::*;
-    use crate::hal::mock::gpio::*;
+    use crate::hal::doubles::gpio::*;
 
     #[doc(hidden)]
     impl MonochromeLed<MockPin> {
@@ -229,8 +231,8 @@ pub mod mock {
 
 #[cfg(test)]
 mod test {
-    use super::{mock::*, *};
-    use crate::hal::mock::gpio::*;
+    use super::{doubles::*, *};
+    use crate::hal::doubles::gpio::*;
 
     #[test]
     fn monochrome_led_defaults_to_logic_low_with_direct_logic() {

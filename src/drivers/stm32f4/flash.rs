@@ -1,15 +1,28 @@
 //! Internal Flash controller for the STM32F4 family
-use crate::{devices::interfaces::flash::Write, stm32pac::FLASH};
-use static_assertions::const_assert;
-use nb::block;
 
-pub struct InternalFlash {
+use crate::{hal::flash::Write, stm32pac::FLASH};
+use crate::error::Error as BootloaderError;
+use nb::block;
+use static_assertions::const_assert;
+
+pub struct McuFlash {
     flash: FLASH,
 }
 
 pub enum Error {
     MemoryNotWrittable,
     MisalignedAccess,
+}
+
+impl From<Error> for BootloaderError {
+    fn from(error: Error) -> Self {
+        BootloaderError::DriverError(
+            match error {
+                Error::MemoryNotWrittable => "MCU flash memory not writtable",
+                Error::MisalignedAccess => "MCU flash memory access misaligned",
+            }
+        )
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
@@ -26,7 +39,7 @@ pub enum Block {
     /// Main memory, where the application is written
     Main,
     SystemMemory,
-    OtpArea,
+    OneTimeProgrammable,
     OptionBytes,
 }
 
@@ -68,8 +81,8 @@ pub const MEMORY_MAP: MemoryMap = MemoryMap {
         Sector::new(Block::Main, 0x080A_0000, 0x080C_0000),
         Sector::new(Block::Main, 0x080C_0000, 0x080E_0000),
         Sector::new(Block::Main, 0x080E_0000, 0x0810_0000),
-        Sector::new(Block::SystemMemory, 0x1FFF_0000,0x1FFF_7800),
-        Sector::new(Block::OtpArea, 0x1FFF_7800, 0x1FFF_7A0F),
+        Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x1FFF_7800),
+        Sector::new(Block::OneTimeProgrammable, 0x1FFF_7800, 0x1FFF_7A0F),
         Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
     ],
 };
@@ -113,7 +126,7 @@ impl MemoryMap {
 
 impl Address {
     const fn is_inside(self, sector: &Sector) -> bool {
-        self.0 >= sector.start.0 && self.0 < sector.end.0
+        (self.0 >= sector.start.0) && (self.0 < sector.end.0)
     }
 
     fn sector(&self) -> Option<Sector> {
@@ -166,7 +179,7 @@ impl Sector {
     }
 }
 
-impl InternalFlash {
+impl McuFlash {
     pub fn new(flash: FLASH) -> Result<Self, Error> { Ok(Self { flash }) }
 
     /// Parallelism for 3v3 voltage from [table 7](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=63)
@@ -198,18 +211,19 @@ impl InternalFlash {
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
 }
 
-impl Write<Address> for InternalFlash {
+impl Write<Address> for McuFlash {
     type Error = Error;
 
     fn writable_range() -> (Address, Address) {
         let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let range = Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
+        let range =
+            Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
         (range.0, range.1)
     }
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address.0 % 4 != 0 {
-            return Err(nb::Error::Other(Error::MisalignedAccess))
+            return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
         // Adjust end for alignment
@@ -224,7 +238,9 @@ impl Write<Address> for InternalFlash {
         }
 
         //TODO smart read-write cycle
-        for sector in range.span() { block!(self.erase(sector))?; }
+        for sector in range.span() {
+            block!(self.erase(sector))?;
+        }
 
         let words = bytes.chunks(4).map(|bytes| {
             u32::from_le_bytes([
@@ -242,7 +258,9 @@ impl Write<Address> for InternalFlash {
             // directly is naturally unsafe. We have to trust that
             // the memory map is correct, and that these dereferences
             // won't cause a hardfault or overlap with our firmware.
-            unsafe { *base_address.add(index) = word; }
+            unsafe {
+                *base_address.add(index) = word;
+            }
         }
         self.lock();
         Ok(())

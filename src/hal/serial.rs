@@ -4,6 +4,7 @@
 //! means it can be used in a blocking manner (through the block! macro)
 //! or in a manner compatible with schedulers, RTOS, etc. See the **nb**
 //! crate documentation for details.
+#![macro_use]
 
 use nb;
 
