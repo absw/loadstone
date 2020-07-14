@@ -16,7 +16,7 @@
 //!     // Led is toggled on as soon as guard is constructed, and
 //!     // held protected by the guard (as it has exclusive access
 //!     // to it)
-//!     Guard::new(&mut led, Toggle::on, Toggle::off);
+//!     let _guard = Guard::new(&mut led, Toggle::on, Toggle::off);
 //! }
 //! // Guard has dropped out of scope here, so led is toggled off
 //! assert!(!led.is_on());
@@ -42,6 +42,7 @@ where
     F: FnOnce(&mut T),
     G: FnOnce(&mut T),
 {
+    #[must_use]
     pub fn new(item: &'a mut T, on_entry: F, on_exit: G) -> Self {
         on_entry(item);
         Self { item, on_exit: Some(on_exit), _marker: PhantomData::default() }
