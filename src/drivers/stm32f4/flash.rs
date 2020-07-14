@@ -63,7 +63,7 @@ pub struct MemoryMap {
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
 // Compile time check that the memory map below is correct.
-const_assert!(MEMORY_MAP.is_sound());
+const_assert!(MEMORY_MAP._is_sound());
 
 #[cfg(feature = "stm32f412")]
 pub const SECTOR_NUMBER: usize = 15;
@@ -94,7 +94,7 @@ impl MemoryMap {
     // NOTE: Some of the control flow here is necessarily awkward,
     // since this is a compile-time function and it doesn't have
     // access to complex constructs.
-    const fn is_sound(&self) -> bool {
+    const fn _is_sound(&self) -> bool {
         // Verify all ranges are valid
         let mut index = 0usize;
         loop {
@@ -139,17 +139,22 @@ impl Address {
 impl Range {
     /// Sectors spanned by this range of addresses
     fn span(self) -> &'static [Sector] {
-        let Range(start, end) = self;
-        let mut span = MEMORY_MAP
+        let first = MEMORY_MAP
             .sectors
             .iter()
             .enumerate()
-            .skip_while(|(_, sector)| sector.end <= start)
-            .take_while(|(_, sector)| sector.start < end)
-            .map(|(index, _)| index);
-        let a = span.next().unwrap_or_default();
-        let b = span.last().unwrap_or_default();
-        &MEMORY_MAP.sectors[a..b]
+            .find_map(|(i, sector)| self.overlaps(sector).then_some(i));
+        let last = MEMORY_MAP
+            .sectors
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(i, sector)| self.overlaps(sector).then_some(i));
+        match (first, last) {
+            (Some(first), Some(last)) if (last >= first) => &MEMORY_MAP.sectors[first..(last+1)],
+            _ => &MEMORY_MAP.sectors[0..1],
+        }
+
     }
 
     const fn is_valid(self) -> bool {
@@ -159,6 +164,12 @@ impl Range {
         let monotonic = end >= start;
         monotonic && !before_map && !after_map
     }
+
+    fn overlaps(self, sector: &Sector) -> bool {
+        (self.0 <= sector.start) && (self.1 > sector.start)
+            || (self.0 < sector.end) && (self.1 > sector.end)
+    }
+
 
     /// Verify that all sectors spanned by this range are writable
     fn is_writable(self) -> bool { self.span().iter().all(Sector::is_writable) }
@@ -172,6 +183,9 @@ impl Sector {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
             (sector.is_in_main_memory_area() && self == sector).then_some(index as u8)
         })
+    }
+    const fn contains(&self, address: &Address) -> bool {
+        address.is_inside(&self)
     }
 
     const fn size(&self) -> usize { (self.end.0 - self.start.0) as usize }
@@ -262,7 +276,7 @@ impl Write for McuFlash {
             // the memory map is correct, and that these dereferences
             // won't cause a hardfault or overlap with our firmware.
             unsafe {
-                *base_address.add(index) = word;
+                *(base_address.add(index)) = word;
             }
         }
         self.lock();
@@ -310,7 +324,7 @@ mod test {
     #[test]
     fn ranges_span_the_correct_sectors() {
         let range = Range(Address(0x0801_1234), Address(0x0804_5678));
-        let expected_sectors = &MEMORY_MAP.sectors[4..6];
+        let expected_sectors = &MEMORY_MAP.sectors[4..7];
 
         assert_eq!(expected_sectors, range.span());
     }

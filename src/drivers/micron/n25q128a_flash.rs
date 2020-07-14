@@ -7,7 +7,6 @@ use crate::{
     },
     utilities::bitwise::BitFlags,
 };
-use core::marker::PhantomData;
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
