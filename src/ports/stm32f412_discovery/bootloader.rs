@@ -8,6 +8,7 @@ use crate::drivers::{
     led::{MonochromeLed, LogicLevel},
     stm32f4::serial::{self, UsartExt},
     stm32f4::systick::{Tick, SysTick},
+    stm32f4::flash,
     micron::n25q128a_flash::{self, MicronN25q128a},
 };
 use crate::stm32pac::{self, USART6};
@@ -25,9 +26,8 @@ type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 type PostLed = MonochromeLed<Pe1<Output<PushPull>>>;
 
-impl Bootloader<ExternalFlash, ExternalAddress, Serial, PostLed> {
-    pub fn new(
-    ) -> Self {
+impl Bootloader<ExternalFlash, flash::McuFlash, Serial, PostLed> {
+    pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
@@ -48,8 +48,9 @@ impl Bootloader<ExternalFlash, ExternalAddress, Serial, PostLed> {
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
+        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
+        let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
-        Bootloader { flash, post_led, serial, _marker: PhantomData::default()}
+        Bootloader { external_flash, mcu_flash, post_led, serial }
     }
 }

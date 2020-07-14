@@ -1,7 +1,10 @@
 //! Internal Flash controller for the STM32F4 family
 
-use crate::{hal::flash::Write, stm32pac::FLASH};
-use crate::error::Error as BootloaderError;
+use crate::{
+    error::Error as BootloaderError,
+    hal::flash::{Read, Write},
+    stm32pac::FLASH,
+};
 use nb::block;
 use static_assertions::const_assert;
 
@@ -9,19 +12,18 @@ pub struct McuFlash {
     flash: FLASH,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Error {
-    MemoryNotWrittable,
+    MemoryNotReachable,
     MisalignedAccess,
 }
 
 impl From<Error> for BootloaderError {
     fn from(error: Error) -> Self {
-        BootloaderError::DriverError(
-            match error {
-                Error::MemoryNotWrittable => "MCU flash memory not writtable",
-                Error::MisalignedAccess => "MCU flash memory access misaligned",
-            }
-        )
+        BootloaderError::DriverError(match error {
+            Error::MemoryNotReachable => "MCU flash memory not reachable",
+            Error::MisalignedAccess => "MCU flash memory access misaligned",
+        })
     }
 }
 
@@ -199,7 +201,7 @@ impl McuFlash {
     fn lock(&mut self) { self.flash.cr.modify(|_, w| w.lock().set_bit()); }
 
     fn erase(&mut self, sector: &Sector) -> nb::Result<(), Error> {
-        let number = sector.number().ok_or(nb::Error::Other(Error::MemoryNotWrittable))?;
+        let number = sector.number().ok_or(nb::Error::Other(Error::MemoryNotReachable))?;
         self.unlock()?;
         self.flash
             .cr
@@ -211,8 +213,9 @@ impl McuFlash {
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
 }
 
-impl Write<Address> for McuFlash {
+impl Write for McuFlash {
     type Error = Error;
+    type Address = Address;
 
     fn writable_range() -> (Address, Address) {
         let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
@@ -229,7 +232,7 @@ impl Write<Address> for McuFlash {
         // Adjust end for alignment
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotWrittable));
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
         }
 
         // Early yield if busy
@@ -264,6 +267,39 @@ impl Write<Address> for McuFlash {
         }
         self.lock();
         Ok(())
+    }
+}
+
+impl Read for McuFlash {
+    type Error = Error;
+    type Address = Address;
+
+    fn readable_range() -> (Address, Address) {
+        let mut readable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
+        let range =
+            Range(readable_sectors.next().unwrap().start, readable_sectors.last().unwrap().end);
+        (range.0, range.1)
+    }
+
+    fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
+        let range = Range(address, Address(address.0 + bytes.len() as u32));
+        if address.0 % 4 != 0 {
+            Err(nb::Error::Other(Error::MisalignedAccess))
+        } else if !range.is_writable() {
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
+        } else {
+            let base = address.0 as *const u8;
+            for (index, byte) in bytes.iter_mut().enumerate() {
+                // NOTE(Safety) we are reading directly from raw memory locations,
+                // which is inherently unsafe. In this case, safety is guaranteed
+                // because we can only read main memory blocks that don't contain
+                // the bootloader image, and any direct write to them is handled through
+                // a mutable reference to this same Flash struct, so there can't be
+                // a data race.
+                *byte = unsafe { *(base.add(index)) };
+            }
+            Ok(())
+        }
     }
 }
 

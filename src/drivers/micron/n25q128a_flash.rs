@@ -1,12 +1,12 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
+    error::Error as BootloaderError,
     hal::{
         flash::{BulkErase, Read, Write},
         qspi, time,
     },
     utilities::bitwise::BitFlags,
 };
-use crate::error::Error as BootloaderError;
 use core::marker::PhantomData;
 use nb::block;
 
@@ -29,7 +29,7 @@ where
     _marker: PhantomData<I>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Error {
     TimeOut,
     QspiError,
@@ -41,9 +41,7 @@ impl From<Error> for BootloaderError {
     fn from(error: Error) -> Self {
         match error {
             Error::TimeOut => BootloaderError::DriverError("Micron n25q128a timed out"),
-            Error::QspiError => {
-                BootloaderError::DriverError("Micron n25q128a QSPI access error")
-            }
+            Error::QspiError => BootloaderError::DriverError("Micron n25q128a QSPI access error"),
             Error::WrongManufacturerId => {
                 BootloaderError::DriverError("Micron n25q128a reported wrong manufacturer ID")
             }
@@ -97,13 +95,14 @@ where
     }
 }
 
-impl<QSPI, NOW, I> Write<Address> for MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW, I> Write for MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
     NOW: time::Now<I>,
     I: time::Instant,
 {
     type Error = Error;
+    type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         // TODO remove page alignment limitations
@@ -141,17 +140,19 @@ where
     }
 
     fn writable_range() -> (Address, Address) {
-        unimplemented!();
+        // TODO write a proper table instead of hardcoding it
+        (Address(0x0000_0000), Address(0x00FF_0000))
     }
 }
 
-impl<QSPI, NOW, I> Read<Address> for MicronN25q128a<QSPI, NOW, I>
+impl<QSPI, NOW, I> Read for MicronN25q128a<QSPI, NOW, I>
 where
     QSPI: qspi::Indirect,
     NOW: time::Now<I>,
     I: time::Instant,
 {
     type Error = Error;
+    type Address = Address;
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
@@ -166,7 +167,8 @@ where
     }
 
     fn readable_range() -> (Address, Address) {
-        unimplemented!();
+        // TODO write a proper table instead of hardcoding it
+        (Address(0x0000_0000), Address(0x00FF_0000))
     }
 }
 

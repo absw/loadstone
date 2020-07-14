@@ -30,7 +30,7 @@ pub trait Write<Word> {
 /// ```
 #[macro_export]
 macro_rules! uprint {
-    ($serial:expr, $arg:tt) => {
+    ($serial:expr, $arg:expr) => {
         $arg.as_bytes().iter().for_each(|&b| nb::block!($serial.write(b)).unwrap());
     };
 }
@@ -43,7 +43,7 @@ macro_rules! uprint {
 /// ```
 #[macro_export]
 macro_rules! uprintln {
-    ($serial:expr, $arg:tt) => {
+    ($serial:expr, $arg:expr) => {
         uprint!($serial, $arg);
         uprint!($serial, "\r\n");
     };

@@ -1,27 +1,50 @@
 use crate::error::Error as BootloaderError;
+use core::fmt;
 
 /// Abstract mass erase
 pub trait BulkErase
-where BootloaderError: From<Self::Error> {
+where
+    BootloaderError: From<Self::Error>,
+{
     type Error;
     fn erase(&mut self) -> nb::Result<(), Self::Error>;
 }
 
 /// Reads a range of bytes, generic over an address
-pub trait Read<A>
-where BootloaderError: From<Self::Error> {
-    type Error;
-    fn read(&mut self, address: A, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
-    fn readable_range() -> (A, A);
+pub trait Read
+where
+    BootloaderError: From<Self::Error>,
+{
+    type Error: Clone + Copy + fmt::Debug;
+    type Address: Clone + Copy + fmt::Debug;
+    fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
+    fn readable_range() -> (Self::Address, Self::Address);
 }
 
 /// Writes a range of bytes, generic over an address
 /// This is a high level write that abstracts away
 /// the need to first erase, or to keep writes inside
 /// page boundaries
-pub trait Write<A>
-where BootloaderError: From<Self::Error> {
-    type Error;
-    fn write(&mut self, address: A, bytes: &[u8]) -> nb::Result<(), Self::Error>;
-    fn writable_range() -> (A, A);
+pub trait Write
+where
+    BootloaderError: From<Self::Error>,
+{
+    type Error: Clone + Copy + fmt::Debug;
+    type Address: Clone + Copy + fmt::Debug;
+    fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
+    fn writable_range() -> (Self::Address, Self::Address);
 }
+
+pub trait ReadWrite: Read + Write
+where
+    BootloaderError: From<<Self as Write>::Error>,
+    BootloaderError: From<<Self as Read>::Error>,
+{
+}
+
+impl<F> ReadWrite for F
+where
+    F: Read + Write,
+    BootloaderError: From<<Self as Write>::Error>,
+    BootloaderError: From<<Self as Read>::Error>,
+{}

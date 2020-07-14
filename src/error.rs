@@ -15,6 +15,8 @@ pub enum Error {
     DeviceError(&'static str),
     /// Error caused by faulty business logic
     LogicError(&'static str),
+    /// Error caused at Power On Self Test
+    PostError(&'static str),
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -53,6 +55,10 @@ impl Error {
             }
             Error::LogicError(text) => {
                 uprint!(serial, "[LogicError] -> ");
+                uprintln!(serial, text);
+            }
+            Error::PostError(text) => {
+                uprint!(serial, "[POSTError] -> ");
                 uprintln!(serial, text);
             }
         };
