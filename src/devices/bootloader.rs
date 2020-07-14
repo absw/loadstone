@@ -33,12 +33,12 @@ where
     LED: led::Toggle,
 {
     pub fn power_on_self_test(&mut self) {
-        Guard::new(&mut self.post_led, Toggle::on, Toggle::off);
-        Self::post_test_flash(&mut self.external_flash)
-            .report_unwrap("[External Flash] ", &mut self.serial);
-        uprintln!(self.serial, "External flash ID verification and RWR cycle passed");
-        Self::post_test_flash(&mut self.mcu_flash).report_unwrap("[Mcu Flash] ", &mut self.serial);
-        uprintln!(self.serial, "Mcu flash ID verification and RWR cycle passed");
+        let Self { external_flash, mcu_flash, post_led, serial } = self;
+        let guard = Guard::new(post_led, Toggle::on, Toggle::off);
+        Self::post_test_flash(external_flash) .report_unwrap("[External Flash] ", serial);
+        uprintln!(serial, "External flash ID verification and RWR cycle passed");
+        Self::post_test_flash(mcu_flash).report_unwrap("[Mcu Flash] ", serial);
+        uprintln!(serial, "Mcu flash ID verification and RWR cycle passed");
     }
 
     pub fn run(self) -> ! { loop {} }
