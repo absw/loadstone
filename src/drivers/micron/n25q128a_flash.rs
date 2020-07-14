@@ -245,8 +245,7 @@ where
         timeout: time::Milliseconds,
         systick: NOW,
     ) -> Result<Self, Error> {
-        let mut flash =
-            Self { qspi, timeout: Some((timeout, systick))};
+        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
         block!(flash.verify_id())?;
         Ok(flash)
     }

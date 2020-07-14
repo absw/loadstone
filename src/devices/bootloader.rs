@@ -8,44 +8,34 @@ use crate::{
     error::{Error, ReportOnUnwrapWithPrefix},
     hal::{flash, led, serial},
     utilities::guard::Guard,
-
 };
 use led::Toggle;
 use nb::block;
 
-pub struct Bootloader<E, M, S, L>
+pub struct Bootloader<EXTF, MCUF, SRL, LED>
 where
-    E: flash::ReadWrite,
-    M: flash::ReadWrite,
-    S: serial::Write,
-    L: led::Toggle,
-    // Errors associated to the flashes can be converted to
-    // Bootloader errors for further display
-    Error: From<<E as flash::Write>::Error>,
-    Error: From<<E as flash::Read>::Error>,
-    Error: From<<M as flash::Write>::Error>,
-    Error: From<<M as flash::Read>::Error>,
+    EXTF: flash::ReadWrite,
+    MCUF: flash::ReadWrite,
+    SRL: serial::Write,
+    LED: led::Toggle,
 {
-    pub(crate) external_flash: E,
-    pub(crate) mcu_flash: M,
-    pub(crate) post_led: L,
-    pub(crate) serial: S,
+    pub(crate) external_flash: EXTF,
+    pub(crate) mcu_flash: MCUF,
+    pub(crate) post_led: LED,
+    pub(crate) serial: SRL,
 }
 
-impl<E, M, S, L> Bootloader<E, M, S, L>
+impl<EXTF, MCUF, SRL, LED> Bootloader<EXTF, MCUF, SRL, LED>
 where
-    E: flash::ReadWrite,
-    M: flash::ReadWrite,
-    S: serial::Write,
-    L: led::Toggle,
-    Error: From<<E as flash::Write>::Error>,
-    Error: From<<E as flash::Read>::Error>,
-    Error: From<<M as flash::Write>::Error>,
-    Error: From<<M as flash::Read>::Error>,
+    EXTF: flash::ReadWrite,
+    MCUF: flash::ReadWrite,
+    SRL: serial::Write,
+    LED: led::Toggle,
 {
     pub fn power_on_self_test(&mut self) {
         Guard::new(&mut self.post_led, Toggle::on, Toggle::off);
-        Self::post_test_flash(&mut self.external_flash).report_unwrap("[External Flash] ", &mut self.serial);
+        Self::post_test_flash(&mut self.external_flash)
+            .report_unwrap("[External Flash] ", &mut self.serial);
         uprintln!(self.serial, "External flash ID verification and RWR cycle passed");
         Self::post_test_flash(&mut self.mcu_flash).report_unwrap("[Mcu Flash] ", &mut self.serial);
         uprintln!(self.serial, "Mcu flash ID verification and RWR cycle passed");
@@ -56,20 +46,19 @@ where
     fn post_test_flash<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
-        Error: From<<F as flash::Write>::Error>,
-        Error: From<<F as flash::Read>::Error>,
     {
+        let post_failed = Error::PostError("Flash Read Write cycle failed");
         let mut magic_number_buffer = [0u8; 1];
         let mut new_magic_number_buffer = [0u8; 1];
         let (write_start, _) = F::writable_range();
         let (read_start, _) = F::readable_range();
-        block!(flash.read(read_start, &mut magic_number_buffer))?;
+        block!(flash.read(read_start, &mut magic_number_buffer)).map_err(|_| post_failed)?;
         new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        block!(flash.write(write_start, &mut new_magic_number_buffer))?;
-        block!(flash.read(read_start, &mut magic_number_buffer))?;
+        block!(flash.write(write_start, &mut new_magic_number_buffer)).map_err(|_| post_failed)?;
+        block!(flash.read(read_start, &mut magic_number_buffer)).map_err(|_| post_failed)?;
         if magic_number_buffer != new_magic_number_buffer {
             Err(Error::PostError("Flash Read Write cycle failed"))
-        } else  {
+        } else {
             Ok(())
         }
     }

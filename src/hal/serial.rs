@@ -6,8 +6,8 @@
 //! crate documentation for details.
 #![macro_use]
 
-use nb;
 use core::fmt::Debug;
+use nb;
 
 /// UART read half
 pub trait Read {

@@ -103,7 +103,7 @@ impl MemoryMap {
             }
 
             let range = Range(self.sectors[index].start, self.sectors[index].end);
-            if !range.is_valid() {
+            if !range._is_valid() {
                 return false;
             }
             index += 1;
@@ -126,16 +126,6 @@ impl MemoryMap {
     }
 }
 
-impl Address {
-    const fn is_inside(self, sector: &Sector) -> bool {
-        (self.0 >= sector.start.0) && (self.0 < sector.end.0)
-    }
-
-    fn sector(&self) -> Option<Sector> {
-        MEMORY_MAP.sectors.iter().cloned().find(|sector| self.is_inside(&sector))
-    }
-}
-
 impl Range {
     /// Sectors spanned by this range of addresses
     fn span(self) -> &'static [Sector] {
@@ -151,13 +141,12 @@ impl Range {
             .rev()
             .find_map(|(i, sector)| self.overlaps(sector).then_some(i));
         match (first, last) {
-            (Some(first), Some(last)) if (last >= first) => &MEMORY_MAP.sectors[first..(last+1)],
+            (Some(first), Some(last)) if (last >= first) => &MEMORY_MAP.sectors[first..(last + 1)],
             _ => &MEMORY_MAP.sectors[0..1],
         }
-
     }
 
-    const fn is_valid(self) -> bool {
+    const fn _is_valid(self) -> bool {
         let Range(Address(start), Address(end)) = self;
         let after_map = start >= MEMORY_MAP.sectors[SECTOR_NUMBER - 1].end.0;
         let before_map = end < MEMORY_MAP.sectors[0].start.0;
@@ -169,7 +158,6 @@ impl Range {
         (self.0 <= sector.start) && (self.1 > sector.start)
             || (self.0 < sector.end) && (self.1 > sector.end)
     }
-
 
     /// Verify that all sectors spanned by this range are writable
     fn is_writable(self) -> bool { self.span().iter().all(Sector::is_writable) }
@@ -184,11 +172,6 @@ impl Sector {
             (sector.is_in_main_memory_area() && self == sector).then_some(index as u8)
         })
     }
-    const fn contains(&self, address: &Address) -> bool {
-        address.is_inside(&self)
-    }
-
-    const fn size(&self) -> usize { (self.end.0 - self.start.0) as usize }
     const fn is_writable(&self) -> bool { self.block as u8 == Block::Main as u8 }
     const fn is_in_main_memory_area(&self) -> bool {
         self.block as u8 == Block::Main as u8 || self.block as u8 == Block::Boot as u8
