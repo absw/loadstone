@@ -27,28 +27,25 @@ where
 
 impl<'a, A, S> Iterator for BlockAndSectorIterator<'a, A, S>
 where
-    A: Address + core::fmt::Debug,
+    A: Address,
     S: Sector<A>,
 {
     type Item = (&'a [u8], &'a S, A);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.sector_index >= self.sectors.len() {
-            return None;
-        }
-        let current_sector = &self.sectors[self.sector_index];
-        let mut block_range = (0..self.memory.len())
-            .skip_while(|index| !current_sector.contains(self.base_address + *index))
-            .take_while(|index| current_sector.contains(self.base_address + *index));
-        let result = match (block_range.next(), block_range.last()) {
-            (Some(start), Some(end)) if start < end => {
-                println!("{:?}-{:?} with address {:?}", start, end, self.base_address + start);
-                Some((&self.memory[start..(end + 1)], current_sector, self.base_address + start))
+        while self.sector_index < self.sectors.len() {
+            let current_sector = &self.sectors[self.sector_index];
+            self.sector_index += 1;
+            let mut block_range = (0..self.memory.len())
+                .skip_while(|index| !current_sector.contains(self.base_address + *index))
+                .take_while(|index| current_sector.contains(self.base_address + *index));
+
+            if let Some(start) = block_range.next() {
+                let end = block_range.last().unwrap_or(start) + 1;
+                return Some((&self.memory[start..end], current_sector, self.base_address + start));
             }
-            _ => None,
-        };
-        self.sector_index += 1;
-        result
+        }
+        None
     }
 }
 
@@ -116,6 +113,8 @@ mod test {
         let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
 
         // Then
+        assert_eq!(pairs.len(), 2);
+
         let (block, sector, address) = pairs[0];
         assert_eq!(block, &memory[0x10..0x20]);
         assert_eq!(sector, &sectors[0]);
@@ -140,6 +139,8 @@ mod test {
         let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
 
         // Then
+        assert_eq!(pairs.len(), 2);
+
         let (block, sector, address) = pairs[0];
         assert_eq!(block, &memory[0..15]);
         assert_eq!(sector, &sectors[0]);
@@ -149,5 +150,27 @@ mod test {
         assert_eq!(block, &memory[15..30]);
         assert_eq!(sector, &sectors[1]);
         assert_eq!(address, sectors[1].start);
+    }
+
+    #[test]
+    fn single_byte() {
+        // Given
+        const MEMORY_SIZE: usize = 1;
+        let memory = [0; MEMORY_SIZE];
+        let memory_slice = &memory[..];
+        let base_address = 15;
+
+        let sectors = [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
+
+        // When
+        let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
+
+        // Then
+        assert_eq!(pairs.len(), 1);
+
+        let (block, sector, address) = pairs[0];
+        assert_eq!(block, &memory[0..1]);
+        assert_eq!(sector, &sectors[0]);
+        assert_eq!(address, base_address);
     }
 }

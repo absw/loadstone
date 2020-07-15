@@ -261,7 +261,6 @@ impl Write for McuFlash {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
-        // Adjust end for alignment
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if !range.is_writable() {
             return Err(nb::Error::Other(Error::MemoryNotReachable));
