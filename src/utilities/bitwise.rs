@@ -30,10 +30,12 @@ impl<U: Copy + Into<u32>> BitFlags for U {
     fn is_clear(&self, bit: u8) -> bool { !self.is_set(bit) }
 }
 
+/// Blanket implementation for any type with a `bitwise or` operation
 impl<U: Copy + BitOr<Output = Self> + PartialEq> BitSubset for U {
     fn is_subset_of(self, rhs: Self) -> bool { (self | rhs) == rhs }
 }
 
+/// Blanket implementation for any slices of types that can be bitwise subsets
 impl<T: BitSubset> SliceBitSubset for &[T] {
     fn is_subset_of(self, rhs: Self) -> bool {
         if self.len() > rhs.len() {

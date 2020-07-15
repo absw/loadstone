@@ -105,9 +105,9 @@ impl MemoryMap {
     fn is_sound(&self) -> bool {
         let main_sectors = self.sectors.iter().filter(|s| s.is_in_main_memory_area());
         let mut consecutive_pairs = main_sectors.clone().zip(main_sectors.skip(1));
-        let consecutive = consecutive_pairs.all(|(a, b)| a.start() + a.size == b.start());
+        let consecutive = consecutive_pairs.all(|(a, b)| a.end() == b.start());
         let ranges_valid =
-            self.sectors.iter().map(|s| Range(s.start(), s.start() + s.size)).all(Range::is_valid);
+            self.sectors.iter().map(|s| Range(s.start(), s.end())).all(Range::is_valid);
         consecutive && ranges_valid
     }
 }
@@ -151,7 +151,7 @@ impl Range {
 
 impl memory::Sector<Address> for Sector {
     fn contains(&self, address: Address) -> bool {
-        (self.start() <= address) && ((self.start() + self.size) > address)
+        (self.start() <= address) && (self.end() > address)
     }
     fn location(&self) -> Address { self.start() }
 }

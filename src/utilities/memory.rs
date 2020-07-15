@@ -1,8 +1,8 @@
 //! Utilities to manipulate generic memory
 
-/// Generic address for the purpose of the
-/// methods of this file. Anything that can be offset
-/// by a usize and yield another  address works as an address.
+/// Generic address for the purpose of this module's methods.
+/// Anything that can be offset by a usize and yield another
+/// address works as an address.
 pub trait Address: Copy + core::ops::Add<usize, Output = Self> {}
 impl<A> Address for A where A: Copy + core::ops::Add<usize, Output = A> {}
 
