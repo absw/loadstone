@@ -9,6 +9,7 @@ impl<A> Address for A where A: Copy + core::ops::Add<usize, Output = A> {}
 /// Abstract sector that can contain addresses
 pub trait Sector<A: Address> {
     fn contains(&self, address: A) -> bool;
+    fn location(&self) -> A;
 }
 
 /// Iterator producing block-sector pairs,
@@ -26,10 +27,10 @@ where
 
 impl<'a, A, S> Iterator for BlockAndSectorIterator<'a, A, S>
 where
-    A: Address,
+    A: Address + core::fmt::Debug,
     S: Sector<A>,
 {
-    type Item = (&'a [u8], &'a S);
+    type Item = (&'a [u8], &'a S, A);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.sector_index >= self.sectors.len() {
@@ -41,7 +42,8 @@ where
             .take_while(|index| current_sector.contains(self.base_address + *index));
         let result = match (block_range.next(), block_range.last()) {
             (Some(start), Some(end)) if start < end => {
-                Some((&self.memory[start..(end + 1)], current_sector))
+                println!("{:?}-{:?} with address {:?}", start, end, self.base_address + start);
+                Some((&self.memory[start..(end + 1)], current_sector, self.base_address + start))
             }
             _ => None,
         };
@@ -91,6 +93,9 @@ pub mod doubles {
         fn contains(&self, address: FakeAddress) -> bool {
             (self.start <= address) && ((self.start + self.size) > address)
         }
+        fn location(&self) -> FakeAddress {
+            self.start
+        }
     }
 }
 
@@ -99,7 +104,7 @@ mod test {
     use super::{doubles::*, *};
 
     #[test]
-    fn iterating_over_sectors() {
+    fn iterating_over_sectors_starting_before_them() {
         // Given
         const MEMORY_SIZE: usize = 0x50;
         let memory = [0xFFu8; MEMORY_SIZE];
@@ -113,11 +118,39 @@ mod test {
         let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
 
         // Then
-        let (block, sector) = pairs[0];
+        let (block, sector, address) = pairs[0];
         assert_eq!(block, &memory[0x10..0x20]);
         assert_eq!(sector, &sectors[0]);
-        let (block, sector) = pairs[1];
+        assert_eq!(address, sectors[0].start);
+        let (block, sector, address) = pairs[1];
         assert_eq!(block, &memory[0x20..0x25]);
         assert_eq!(sector, &sectors[1]);
+        assert_eq!(address, sectors[1].start);
+    }
+
+    #[test]
+    fn iterating_over_sectors_starting_in_the_middle() {
+        // Given
+        const MEMORY_SIZE: usize = 30;
+        let memory = [0; MEMORY_SIZE];
+        let memory_slice = &memory[..];
+        let base_address = 15;
+
+        let sectors =
+            [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
+
+        // When
+        let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
+
+        // Then
+        let (block, sector, address) = pairs[0];
+        assert_eq!(block, &memory[0..15]);
+        assert_eq!(sector, &sectors[0]);
+        assert_eq!(address, base_address);
+
+        let (block, sector, address) = pairs[1];
+        assert_eq!(block, &memory[15..30]);
+        assert_eq!(sector, &sectors[1]);
+        assert_eq!(address, sectors[1].start);
     }
 }

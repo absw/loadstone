@@ -4,6 +4,8 @@ use crate::{
     error::Error as BootloaderError,
     hal::flash::{Read, Write},
     stm32pac::FLASH,
+    utilities::memory::{self, IterableByBlocksAndSectors},
+    utilities::bitwise::SliceBitSubset,
 };
 use core::ops::Add;
 use nb::block;
@@ -29,9 +31,9 @@ impl From<Error> for BootloaderError {
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Address(u32);
-impl Add<u32> for Address {
+impl Add<usize> for Address {
     type Output = Self;
-    fn add(self, rhs: u32) -> Address { Address(self.0 + rhs) }
+    fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -55,7 +57,7 @@ pub enum Block {
 pub struct Sector {
     pub block: Block,
     pub start: Address,
-    pub size: u32,
+    pub size: usize,
 }
 
 #[non_exhaustive]
@@ -72,23 +74,33 @@ pub const SECTOR_NUMBER: usize = 15;
 #[cfg(feature = "stm32f412")]
 pub const MEMORY_MAP: MemoryMap = MemoryMap {
     sectors: [
-        Sector::new(Block::Boot, 0x0800_0000, 0x4000),
-        Sector::new(Block::Boot, 0x0800_4000, 0x4000),
-        Sector::new(Block::Boot, 0x0800_8000, 0x4000),
-        Sector::new(Block::Boot, 0x0800_C000, 0x4000),
-        Sector::new(Block::Main, 0x0801_0000, 0x10000),
-        Sector::new(Block::Main, 0x0802_0000, 0x20000),
-        Sector::new(Block::Main, 0x0804_0000, 0x20000),
-        Sector::new(Block::Main, 0x0806_0000, 0x20000),
-        Sector::new(Block::Main, 0x0808_0000, 0x20000),
-        Sector::new(Block::Main, 0x080A_0000, 0x20000),
-        Sector::new(Block::Main, 0x080C_0000, 0x20000),
-        Sector::new(Block::Main, 0x080E_0000, 0x20000),
-        Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x7800),
-        Sector::new(Block::OneTimeProgrammable, 0x1FFF_7800, 0x210),
-        Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x10),
+        Sector::new(Block::Boot, Address(0x0800_0000), 0x4000),
+        Sector::new(Block::Boot, Address(0x0800_4000), 0x4000),
+        Sector::new(Block::Boot, Address(0x0800_8000), 0x4000),
+        Sector::new(Block::Boot, Address(0x0800_C000), 0x4000),
+        Sector::new(Block::Main, Address(0x0801_0000), 0x10000),
+        Sector::new(Block::Main, Address(0x0802_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x0804_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x0806_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x0808_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x080A_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x080C_0000), 0x20000),
+        Sector::new(Block::Main, Address(0x080E_0000), 0x20000),
+        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), 0x7800),
+        Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 0x210),
+        Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 0x10),
     ],
 };
+
+const fn max_sector_size() -> usize {
+    let (mut index, mut size) = (0, 0usize);
+    loop {
+        let sector_size = MEMORY_MAP.sectors[index].size;
+        size = if sector_size > size { sector_size } else { size };
+        index += 1;
+        if index == SECTOR_NUMBER { break size }
+    }
+}
 
 impl MemoryMap {
     // Verifies that the memory map is consecutive and well formed
@@ -141,9 +153,16 @@ impl Range {
     fn is_writable(self) -> bool { self.span().iter().all(Sector::is_writable) }
 }
 
+impl memory::Sector<Address> for Sector {
+    fn contains(&self, address: Address) -> bool {
+        (self.start <= address) && ((self.start + self.size) > address)
+    }
+    fn location(&self) -> Address { self.start }
+}
+
 impl Sector {
-    const fn new(block: Block, start: u32, size: u32) -> Self {
-        Sector { block, start: Address(start), size }
+    const fn new(block: Block, start: Address, size: usize) -> Self {
+        Sector { block, start, size }
     }
     fn number(&self) -> Option<u8> {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
@@ -189,6 +208,8 @@ impl McuFlash {
     }
 
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
+
+    //fn write_sector(&mut self, sector: &sector, bytes: &[u8])
 }
 
 impl Write for McuFlash {
@@ -217,6 +238,18 @@ impl Write for McuFlash {
         if self.is_busy() {
             return Err(nb::Error::WouldBlock);
         }
+
+        //for (block, sector) in bytes.blocks_per_sector(address, &MEMORY_MAP.sectors) {
+        //    // Get a mutable slice on the stack that can fit the sector
+        //    let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
+
+        //    block!(self.read(sector.start, sector_data))?;
+        //    if block.is_subset_of(&sector_data) {
+
+        //    } else {
+        //        block!(self.erase(sector))?;
+        //    }
+        //}
 
         //TODO smart read-write cycle
         for sector in range.span() {
