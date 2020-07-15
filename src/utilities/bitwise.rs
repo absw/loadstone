@@ -30,10 +30,8 @@ impl<U: Copy + Into<u32>> BitFlags for U {
     fn is_clear(&self, bit: u8) -> bool { !self.is_set(bit) }
 }
 
-impl<U: Copy + BitOr<Output=Self> + PartialEq> BitSubset for U {
-    fn is_subset_of(self, rhs: Self) -> bool {
-        (self | rhs) == rhs
-    }
+impl<U: Copy + BitOr<Output = Self> + PartialEq> BitSubset for U {
+    fn is_subset_of(self, rhs: Self) -> bool { (self | rhs) == rhs }
 }
 
 impl<T: BitSubset> SliceBitSubset for &[T] {

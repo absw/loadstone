@@ -23,6 +23,7 @@ extern crate static_assertions;
 #[macro_use]
 pub mod utilities {
     pub mod bitwise;
+    pub mod memory;
     pub mod guard;
     mod macros;
 }

@@ -5,8 +5,8 @@ use crate::{
     hal::flash::{Read, Write},
     stm32pac::FLASH,
 };
+use core::ops::Add;
 use nb::block;
-use static_assertions::const_assert;
 
 pub struct McuFlash {
     flash: FLASH,
@@ -29,6 +29,10 @@ impl From<Error> for BootloaderError {
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Address(u32);
+impl Add<u32> for Address {
+    type Output = Self;
+    fn add(self, rhs: u32) -> Address { Address(self.0 + rhs) }
+}
 
 #[derive(Copy, Clone, Debug)]
 struct Range(Address, Address);
@@ -51,7 +55,7 @@ pub enum Block {
 pub struct Sector {
     pub block: Block,
     pub start: Address,
-    pub end: Address,
+    pub size: u32,
 }
 
 #[non_exhaustive]
@@ -62,67 +66,39 @@ pub struct MemoryMap {
 ///From [section 3.5.1](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
-// Compile time check that the memory map below is correct.
-const_assert!(MEMORY_MAP._is_sound());
-
 #[cfg(feature = "stm32f412")]
 pub const SECTOR_NUMBER: usize = 15;
 
 #[cfg(feature = "stm32f412")]
 pub const MEMORY_MAP: MemoryMap = MemoryMap {
     sectors: [
-        Sector::new(Block::Boot, 0x0800_0000, 0x0800_4000),
-        Sector::new(Block::Boot, 0x0800_4000, 0x0800_8000),
-        Sector::new(Block::Boot, 0x0800_8000, 0x0800_C000),
-        Sector::new(Block::Boot, 0x0800_C000, 0x0801_0000),
-        Sector::new(Block::Main, 0x0801_0000, 0x0802_0000),
-        Sector::new(Block::Main, 0x0802_0000, 0x0804_0000),
-        Sector::new(Block::Main, 0x0804_0000, 0x0806_0000),
-        Sector::new(Block::Main, 0x0806_0000, 0x0808_0000),
-        Sector::new(Block::Main, 0x0808_0000, 0x080A_0000),
-        Sector::new(Block::Main, 0x080A_0000, 0x080C_0000),
-        Sector::new(Block::Main, 0x080C_0000, 0x080E_0000),
-        Sector::new(Block::Main, 0x080E_0000, 0x0810_0000),
-        Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x1FFF_7800),
-        Sector::new(Block::OneTimeProgrammable, 0x1FFF_7800, 0x1FFF_7A0F),
-        Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x1FFF_C010),
+        Sector::new(Block::Boot, 0x0800_0000, 0x4000),
+        Sector::new(Block::Boot, 0x0800_4000, 0x4000),
+        Sector::new(Block::Boot, 0x0800_8000, 0x4000),
+        Sector::new(Block::Boot, 0x0800_C000, 0x4000),
+        Sector::new(Block::Main, 0x0801_0000, 0x10000),
+        Sector::new(Block::Main, 0x0802_0000, 0x20000),
+        Sector::new(Block::Main, 0x0804_0000, 0x20000),
+        Sector::new(Block::Main, 0x0806_0000, 0x20000),
+        Sector::new(Block::Main, 0x0808_0000, 0x20000),
+        Sector::new(Block::Main, 0x080A_0000, 0x20000),
+        Sector::new(Block::Main, 0x080C_0000, 0x20000),
+        Sector::new(Block::Main, 0x080E_0000, 0x20000),
+        Sector::new(Block::SystemMemory, 0x1FFF_0000, 0x7800),
+        Sector::new(Block::OneTimeProgrammable, 0x1FFF_7800, 0x210),
+        Sector::new(Block::OptionBytes, 0x1FFF_C000, 0x10),
     ],
 };
 
 impl MemoryMap {
-    // Verifies that the memory map is consecutive at compile time
-    // NOTE: Some of the control flow here is necessarily awkward,
-    // since this is a compile-time function and it doesn't have
-    // access to complex constructs.
-    const fn _is_sound(&self) -> bool {
-        // Verify all ranges are valid
-        let mut index = 0usize;
-        loop {
-            if index == SECTOR_NUMBER {
-                break;
-            }
-
-            let range = Range(self.sectors[index].start, self.sectors[index].end);
-            if !range._is_valid() {
-                return false;
-            }
-            index += 1;
-        }
-
-        // Verify main memory is consecutive
-        let mut index = 0usize;
-        loop {
-            let next = index + 1;
-            if !self.sectors[next].is_in_main_memory_area() {
-                break true;
-            } else {
-                let (end, start) = (self.sectors[index].end, self.sectors[next].start);
-                if end.0 != start.0 {
-                    break false;
-                }
-            }
-            index = next;
-        }
+    // Verifies that the memory map is consecutive and well formed
+    fn is_sound(&self) -> bool {
+        let main_sectors = self.sectors.iter().filter(|s| s.is_in_main_memory_area());
+        let mut consecutive_pairs = main_sectors.clone().zip(main_sectors.skip(1));
+        let consecutive = consecutive_pairs.all(|(a, b)| a.start + a.size == b.start);
+        let ranges_valid =
+            self.sectors.iter().map(|s| Range(s.start, s.start + s.size)).all(Range::is_valid);
+        consecutive && ranges_valid
     }
 }
 
@@ -146,9 +122,11 @@ impl Range {
         }
     }
 
-    const fn _is_valid(self) -> bool {
+    const fn is_valid(self) -> bool {
         let Range(Address(start), Address(end)) = self;
-        let after_map = start >= MEMORY_MAP.sectors[SECTOR_NUMBER - 1].end.0;
+        let after_map = start
+            >= (MEMORY_MAP.sectors[SECTOR_NUMBER - 1].start.0
+                + MEMORY_MAP.sectors[SECTOR_NUMBER - 1].size as u32);
         let before_map = end < MEMORY_MAP.sectors[0].start.0;
         let monotonic = end >= start;
         monotonic && !before_map && !after_map
@@ -156,7 +134,7 @@ impl Range {
 
     fn overlaps(self, sector: &Sector) -> bool {
         (self.0 <= sector.start) && (self.1 > sector.start)
-            || (self.0 < sector.end) && (self.1 > sector.end)
+            || (self.0 < (sector.start + sector.size)) && (self.1 > (sector.start + sector.size))
     }
 
     /// Verify that all sectors spanned by this range are writable
@@ -164,8 +142,8 @@ impl Range {
 }
 
 impl Sector {
-    const fn new(block: Block, start: u32, end: u32) -> Self {
-        Sector { block, start: Address(start), end: Address(end) }
+    const fn new(block: Block, start: u32, size: u32) -> Self {
+        Sector { block, start: Address(start), size }
     }
     fn number(&self) -> Option<u8> {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
@@ -179,7 +157,10 @@ impl Sector {
 }
 
 impl McuFlash {
-    pub fn new(flash: FLASH) -> Result<Self, Error> { Ok(Self { flash }) }
+    pub fn new(flash: FLASH) -> Result<Self, Error> {
+        assert!(MEMORY_MAP.is_sound());
+        Ok(Self { flash })
+    }
 
     /// Parallelism for 3v3 voltage from [table 7](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=63)
     /// (Word access parallelism)
@@ -216,8 +197,8 @@ impl Write for McuFlash {
 
     fn writable_range() -> (Address, Address) {
         let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let range =
-            Range(writable_sectors.next().unwrap().start, writable_sectors.last().unwrap().end);
+        let (first, last) = (writable_sectors.next().unwrap(), writable_sectors.last().unwrap());
+        let range = Range(first.start, last.start + last.size);
         (range.0, range.1)
     }
 
@@ -271,13 +252,7 @@ impl Read for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn readable_range() -> (Address, Address) {
-        let mut readable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let range =
-            Range(readable_sectors.next().unwrap().start, readable_sectors.last().unwrap().end);
-        (range.0, range.1)
-    }
-
+    fn readable_range() -> (Address, Address) { Self::writable_range() }
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if address.0 % 4 != 0 {
