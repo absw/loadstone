@@ -37,8 +37,8 @@ where
         let _guard = Guard::new(post_led, Toggle::on, Toggle::off);
         Self::post_test_flash(external_flash).report_unwrap("[External Flash] ", serial);
         uprintln!(serial, "External flash ID verification and RWR cycle passed");
-        Self::post_test_flash(mcu_flash).report_unwrap("[Mcu Flash] ", serial);
-        uprintln!(serial, "Mcu flash ID verification and RWR cycle passed");
+        Self::post_test_flash(mcu_flash).report_unwrap("[MCU Flash] ", serial);
+        uprintln!(serial, "MCU flash ID verification and RWR cycle passed");
     }
 
     pub fn run(self) -> ! { loop {} }
