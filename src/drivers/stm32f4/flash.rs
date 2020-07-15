@@ -1,13 +1,13 @@
 //! Internal Flash controller for the STM32F4 family
-
 use crate::{
-    error::Error as BootloaderError,
     hal::flash::{Read, Write},
     stm32pac::FLASH,
-    utilities::memory::{self, IterableByBlocksAndSectors},
-    utilities::bitwise::SliceBitSubset,
+    utilities::{
+        bitwise::SliceBitSubset,
+        memory::{self, IterableByBlocksAndSectors},
+    },
 };
-use core::ops::Add;
+use core::ops::{Add, Sub};
 use nb::block;
 
 pub struct McuFlash {
@@ -20,20 +20,16 @@ pub enum Error {
     MisalignedAccess,
 }
 
-impl From<Error> for BootloaderError {
-    fn from(error: Error) -> Self {
-        BootloaderError::DriverError(match error {
-            Error::MemoryNotReachable => "MCU flash memory not reachable",
-            Error::MisalignedAccess => "MCU flash memory access misaligned",
-        })
-    }
-}
-
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Address(u32);
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
+}
+
+impl Sub<usize> for Address {
+    type Output = Self;
+    fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -56,7 +52,7 @@ pub enum Block {
 #[non_exhaustive]
 pub struct Sector {
     pub block: Block,
-    pub start: Address,
+    pub location: Address,
     pub size: usize,
 }
 
@@ -98,7 +94,9 @@ const fn max_sector_size() -> usize {
         let sector_size = MEMORY_MAP.sectors[index].size;
         size = if sector_size > size { sector_size } else { size };
         index += 1;
-        if index == SECTOR_NUMBER { break size }
+        if index == SECTOR_NUMBER {
+            break size;
+        }
     }
 }
 
@@ -107,9 +105,9 @@ impl MemoryMap {
     fn is_sound(&self) -> bool {
         let main_sectors = self.sectors.iter().filter(|s| s.is_in_main_memory_area());
         let mut consecutive_pairs = main_sectors.clone().zip(main_sectors.skip(1));
-        let consecutive = consecutive_pairs.all(|(a, b)| a.start + a.size == b.start);
+        let consecutive = consecutive_pairs.all(|(a, b)| a.start() + a.size == b.start());
         let ranges_valid =
-            self.sectors.iter().map(|s| Range(s.start, s.start + s.size)).all(Range::is_valid);
+            self.sectors.iter().map(|s| Range(s.start(), s.start() + s.size)).all(Range::is_valid);
         consecutive && ranges_valid
     }
 }
@@ -136,17 +134,15 @@ impl Range {
 
     const fn is_valid(self) -> bool {
         let Range(Address(start), Address(end)) = self;
-        let after_map = start
-            >= (MEMORY_MAP.sectors[SECTOR_NUMBER - 1].start.0
-                + MEMORY_MAP.sectors[SECTOR_NUMBER - 1].size as u32);
-        let before_map = end < MEMORY_MAP.sectors[0].start.0;
+        let after_map = start >= MEMORY_MAP.sectors[SECTOR_NUMBER - 1].end().0;
+        let before_map = end < MEMORY_MAP.sectors[0].end().0;
         let monotonic = end >= start;
         monotonic && !before_map && !after_map
     }
 
     fn overlaps(self, sector: &Sector) -> bool {
-        (self.0 <= sector.start) && (self.1 > sector.start)
-            || (self.0 < (sector.start + sector.size)) && (self.1 > (sector.start + sector.size))
+        (self.0 <= sector.start()) && (self.1 > sector.start())
+            || (self.0 < sector.end()) && (self.1 > sector.end())
     }
 
     /// Verify that all sectors spanned by this range are writable
@@ -155,14 +151,16 @@ impl Range {
 
 impl memory::Sector<Address> for Sector {
     fn contains(&self, address: Address) -> bool {
-        (self.start <= address) && ((self.start + self.size) > address)
+        (self.start() <= address) && ((self.start() + self.size) > address)
     }
-    fn location(&self) -> Address { self.start }
+    fn location(&self) -> Address { self.start() }
 }
 
 impl Sector {
-    const fn new(block: Block, start: Address, size: usize) -> Self {
-        Sector { block, start, size }
+    const fn start(&self) -> Address { self.location }
+    const fn end(&self) -> Address { Address(self.start().0 + self.size as u32) }
+    const fn new(block: Block, location: Address, size: usize) -> Self {
+        Sector { block, location, size }
     }
     fn number(&self) -> Option<u8> {
         MEMORY_MAP.sectors.iter().enumerate().find_map(|(index, sector)| {
@@ -209,51 +207,17 @@ impl McuFlash {
 
     fn is_busy(&self) -> bool { self.flash.sr.read().bsy().bit_is_set() }
 
-    //fn write_sector(&mut self, sector: &sector, bytes: &[u8])
-}
-
-impl Write for McuFlash {
-    type Error = Error;
-    type Address = Address;
-
-    fn writable_range() -> (Address, Address) {
-        let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let (first, last) = (writable_sectors.next().unwrap(), writable_sectors.last().unwrap());
-        let range = Range(first.start, last.start + last.size);
-        (range.0, range.1)
-    }
-
-    fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
-        if address.0 % 4 != 0 {
+    fn write_bytes(
+        &mut self,
+        bytes: &[u8],
+        sector: &Sector,
+        address: Address,
+    ) -> nb::Result<(), Error> {
+        if address < sector.start()
+            || address > sector.end()
+            || (address + bytes.len()) > sector.end()
+        {
             return Err(nb::Error::Other(Error::MisalignedAccess));
-        }
-
-        // Adjust end for alignment
-        let range = Range(address, Address(address.0 + bytes.len() as u32));
-        if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotReachable));
-        }
-
-        // Early yield if busy
-        if self.is_busy() {
-            return Err(nb::Error::WouldBlock);
-        }
-
-        //for (block, sector) in bytes.blocks_per_sector(address, &MEMORY_MAP.sectors) {
-        //    // Get a mutable slice on the stack that can fit the sector
-        //    let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
-
-        //    block!(self.read(sector.start, sector_data))?;
-        //    if block.is_subset_of(&sector_data) {
-
-        //    } else {
-        //        block!(self.erase(sector))?;
-        //    }
-        //}
-
-        //TODO smart read-write cycle
-        for sector in range.span() {
-            block!(self.erase(sector))?;
         }
 
         let words = bytes.chunks(4).map(|bytes| {
@@ -277,6 +241,59 @@ impl Write for McuFlash {
             }
         }
         self.lock();
+        Ok(())
+    }
+}
+
+impl Write for McuFlash {
+    type Error = Error;
+    type Address = Address;
+
+    fn writable_range() -> (Address, Address) {
+        let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
+        let (first_sector, last_sector) =
+            (writable_sectors.next().unwrap(), writable_sectors.last().unwrap());
+        (first_sector.start(), last_sector.end())
+    }
+
+    fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
+        if address.0 % 4 != 0 {
+            return Err(nb::Error::Other(Error::MisalignedAccess));
+        }
+
+        // Adjust end for alignment
+        let range = Range(address, Address(address.0 + bytes.len() as u32));
+        if !range.is_writable() {
+            return Err(nb::Error::Other(Error::MemoryNotReachable));
+        }
+
+        // Early yield if busy
+        if self.is_busy() {
+            return Err(nb::Error::WouldBlock);
+        }
+
+        for (block, sector, address) in bytes.blocks_per_sector(address, &MEMORY_MAP.sectors) {
+            // Get a mutable slice on the stack that can fit the sector
+            let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
+            let offset_into_sector = address.0.saturating_sub(sector.start().0) as usize;
+
+            block!(self.read(sector.start(), sector_data))?;
+            if block.is_subset_of(&sector_data[offset_into_sector..sector_data.len()]) {
+                // No need to erase the sector, as we can just flip bits off
+                // (since our block is a bitwise subset of the sector)
+                block!(self.write_bytes(block, sector, address))?;
+            } else {
+                // We have to erase and rewrite any saved data alongside the new block
+                block!(self.erase(sector))?;
+                sector_data
+                    .iter_mut()
+                    .skip(offset_into_sector)
+                    .zip(block)
+                    .for_each(|(byte, input)| *byte = *input);
+                block!(self.write_bytes(sector_data, sector, sector.location))?;
+            }
+        }
+
         Ok(())
     }
 }

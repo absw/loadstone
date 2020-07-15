@@ -93,9 +93,7 @@ pub mod doubles {
         fn contains(&self, address: FakeAddress) -> bool {
             (self.start <= address) && ((self.start + self.size) > address)
         }
-        fn location(&self) -> FakeAddress {
-            self.start
-        }
+        fn location(&self) -> FakeAddress { self.start }
     }
 }
 
@@ -136,8 +134,7 @@ mod test {
         let memory_slice = &memory[..];
         let base_address = 15;
 
-        let sectors =
-            [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
+        let sectors = [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
 
         // When
         let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
