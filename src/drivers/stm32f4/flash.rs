@@ -213,10 +213,7 @@ impl McuFlash {
         sector: &Sector,
         address: Address,
     ) -> nb::Result<(), Error> {
-        if address < sector.start()
-            || address > sector.end()
-            || (address + bytes.len()) > sector.end()
-        {
+        if (address < sector.start()) || (address + bytes.len() > sector.end()) {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
 
@@ -228,6 +225,7 @@ impl McuFlash {
                 bytes.get(3).cloned().unwrap_or(0),
             ])
         });
+
         block!(self.unlock())?;
         self.flash.cr.modify(|_, w| w.pg().set_bit());
         let base_address = address.0 as *mut u32;
@@ -272,12 +270,11 @@ impl Write for McuFlash {
         }
 
         for (block, sector, address) in bytes.blocks_per_sector(address, &MEMORY_MAP.sectors) {
-            // Get a mutable slice on the stack that can fit the sector
             let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
             let offset_into_sector = address.0.saturating_sub(sector.start().0) as usize;
 
             block!(self.read(sector.start(), sector_data))?;
-            if block.is_subset_of(&sector_data[offset_into_sector..sector_data.len()]) {
+            if block.is_subset_of(&sector_data[offset_into_sector..sector.size]) {
                 // No need to erase the sector, as we can just flip bits off
                 // (since our block is a bitwise subset of the sector)
                 block!(self.write_bytes(block, sector, address))?;
