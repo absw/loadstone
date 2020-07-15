@@ -283,6 +283,8 @@ macro_rules! gpio_inner {
                 new_af!($GPIOx, $i, $Pxi, $pxi, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
 
                 $(
+                    // If this field exists, it means the gpio has been earmarked for
+                    // a particular purpose in the gpio table.
                     trait $earmark: $function$(<$T>)? {}
                     impl $earmark for $Pxi<$default_mode> {}
                 )?
