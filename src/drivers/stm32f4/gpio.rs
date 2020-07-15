@@ -88,7 +88,7 @@ macro_rules! pin_row {
 /// gpiob.pb3 as a floating input.
 macro_rules! gpio {
     ($x: ident, [
-        $( ($i:expr, $default_mode:ty), )+
+        $( ($i:expr, $default_mode:ty $(as $function:ident$(<$T:ident>)?)?), )+
     ]) => {
 
         // Macro black magic. the "paste" crate generates a context where anything bounded by "[<"
@@ -97,7 +97,7 @@ macro_rules! gpio {
         // expand the outer level, simplified "gpio!" instantiation macro into the complex one.
         paste::item_with_macros! {
             gpio_inner!([<GPIO $x>], [<gpio $x>], [<gpio $x en>], [<gpio $x rst>], [<P $x x>], [
-                $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode), )+
+                $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode, $([<Earmark $x $i>], $function$(<$T>)?)?), )+
             ]);
         }
     }
@@ -161,7 +161,7 @@ macro_rules! new_af {
 
 macro_rules! gpio_inner {
     ($GPIOx:ident, $gpiox:ident, $enable_pin:ident, $reset_pin:ident, $Pxx:ident, [
-        $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty), )+
+        $($Pxi:ident: ($pxi:ident, $i:expr, $default_mode:ty, $($earmark:ident, $function:ident$(<$T:ident>)?)?), )+
     ]) => {
         /// GPIO
         pub mod $gpiox {
@@ -281,6 +281,13 @@ macro_rules! gpio_inner {
                 }
 
                 new_af!($GPIOx, $i, $Pxi, $pxi, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);
+
+                $(
+                    // If this field exists, it means the gpio has been earmarked for
+                    // a particular purpose in the gpio table.
+                    trait $earmark: $function$(<$T>)? {}
+                    impl $earmark for $Pxi<$default_mode> {}
+                )?
 
                 impl<MODE> $Pxi<MODE> {
                     into_af!($GPIOx, $i, $Pxi, $pxi, [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,]);

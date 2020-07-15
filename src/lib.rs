@@ -27,8 +27,8 @@ pub mod utilities {
     mod macros;
 }
 
-pub mod drivers;
 pub mod hal;
+pub mod drivers;
 pub mod devices;
 pub mod error;
 pub mod ports;
