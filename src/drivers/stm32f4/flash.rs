@@ -4,7 +4,7 @@ use crate::{
     stm32pac::FLASH,
     utilities::{
         bitwise::SliceBitSubset,
-        memory::{self, IterableByBlocksAndRegions},
+        memory::{self, IterableByOverlaps},
     },
 };
 use core::ops::{Add, Sub};
@@ -111,6 +111,8 @@ impl MemoryMap {
             self.sectors.iter().map(|s| Range(s.start(), s.end())).all(Range::is_valid);
         consecutive && ranges_valid
     }
+
+    fn sectors() -> impl Iterator<Item=Sector> { MEMORY_MAP.sectors.iter().cloned() }
 }
 
 impl Range {
@@ -269,7 +271,7 @@ impl Write for McuFlash {
             return Err(nb::Error::WouldBlock);
         }
 
-        for (block, sector, address) in bytes.blocks_per_region(address, &MEMORY_MAP.sectors) {
+        for (block, sector, address) in MemoryMap::sectors().overlaps(bytes, address) {
             let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
             let offset_into_sector = address.0.saturating_sub(sector.start().0) as usize;
 
@@ -277,16 +279,16 @@ impl Write for McuFlash {
             if block.is_subset_of(&sector_data[offset_into_sector..sector.size]) {
                 // No need to erase the sector, as we can just flip bits off
                 // (since our block is a bitwise subset of the sector)
-                block!(self.write_bytes(block, sector, address))?;
+                block!(self.write_bytes(block, &sector, address))?;
             } else {
                 // We have to erase and rewrite any saved data alongside the new block
-                block!(self.erase(sector))?;
+                block!(self.erase(&sector))?;
                 sector_data
                     .iter_mut()
                     .skip(offset_into_sector)
                     .zip(block)
                     .for_each(|(byte, input)| *byte = *input);
-                block!(self.write_bytes(sector_data, sector, sector.location))?;
+                block!(self.write_bytes(sector_data, &sector, sector.location))?;
             }
         }
 

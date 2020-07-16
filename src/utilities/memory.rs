@@ -27,49 +27,45 @@ pub trait Region<A: Address> {
 
 /// Iterator producing block-region pairs,
 /// where each memory block corresponds to each region
-pub struct BlockAndRegionIterator<'a, A, R>
+pub struct OverlapIterator<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
+    I: Iterator<Item=R>,
 {
     memory: &'a [u8],
-    regions: &'a [R],
+    regions: I,
     base_address: A,
     region_index: usize,
 }
 
 /// Anything that can be sliced in blocks, each block
 /// corresponding to a region in a region sequence
-pub trait IterableByBlocksAndRegions<'a, A, R>
+pub trait IterableByOverlaps<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
+    I: Iterator<Item=R>,
 {
-    fn blocks_per_region(
-        &'a self,
-        base_address: A,
-        regions: &'a [R],
-    ) -> BlockAndRegionIterator<A, R>;
+    fn overlaps(self, block: &'a [u8], base_address: A) -> OverlapIterator<A, R, I>;
 }
 
-impl<'a, A, R> Iterator for BlockAndRegionIterator<'a, A, R>
+impl<'a, A, R, I> Iterator for OverlapIterator<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
+    I: Iterator<Item=R>,
 {
-    type Item = (&'a [u8], &'a R, A);
+    type Item = (&'a [u8], R, A);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while self.region_index < self.regions.len() {
-            let current_region = &self.regions[self.region_index];
-            self.region_index += 1;
+        while let Some(region) = self.regions.next() {
             let mut block_range = (0..self.memory.len())
-                .skip_while(|index| !current_region.contains(self.base_address + *index))
-                .take_while(|index| current_region.contains(self.base_address + *index));
-
+                .skip_while(|index| !region.contains(self.base_address + *index))
+                .take_while(|index| region.contains(self.base_address + *index));
             if let Some(start) = block_range.next() {
                 let end = block_range.last().unwrap_or(start) + 1;
-                return Some((&self.memory[start..end], current_region, self.base_address + start));
+                return Some((&self.memory[start..end], region, self.base_address + start));
             }
         }
         None
@@ -77,13 +73,14 @@ where
 }
 
 /// Blanket implementation of block and region iteration for slices of bytes
-impl<'a, A, R> IterableByBlocksAndRegions<'a, A, R> for &'a [u8]
+impl<'a, A, R, I> IterableByOverlaps<'a, A, R, I> for I
 where
     A: Address,
     R: Region<A>,
+    I: Iterator<Item=R>,
 {
-    fn blocks_per_region(&self, base_address: A, regions: &'a [R]) -> BlockAndRegionIterator<A, R> {
-        BlockAndRegionIterator { memory: self, regions, base_address, region_index: 0 }
+    fn overlaps(self, memory: &'a [u8], base_address: A) -> OverlapIterator<A, R, I> {
+        OverlapIterator { memory, regions: self, base_address, region_index: 0 }
     }
 }
 
@@ -93,7 +90,7 @@ pub mod doubles {
     use super::*;
     pub type FakeAddress = usize;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Copy, Clone)]
     pub struct FakeRegion {
         pub start: FakeAddress,
         pub size: usize,
@@ -122,18 +119,18 @@ mod test {
             [FakeRegion { start: 0x30, size: 0x10 }, FakeRegion { start: 0x40, size: 0x05 }];
 
         // When
-        let pairs: Vec<_> = memory_slice.blocks_per_region(base_address, &regions).collect();
+        let pairs: Vec<_> = regions.iter().copied().overlaps(memory_slice, base_address).collect();
 
         // Then
         assert_eq!(pairs.len(), 2);
 
         let (block, region, address) = pairs[0];
         assert_eq!(block, &memory[0x10..0x20]);
-        assert_eq!(region, &regions[0]);
+        assert_eq!(region, regions[0]);
         assert_eq!(address, regions[0].start);
         let (block, region, address) = pairs[1];
         assert_eq!(block, &memory[0x20..0x25]);
-        assert_eq!(region, &regions[1]);
+        assert_eq!(region, regions[1]);
         assert_eq!(address, regions[1].start);
     }
 
@@ -148,19 +145,19 @@ mod test {
         let regions = [FakeRegion { start: 10, size: 20 }, FakeRegion { start: 30, size: 100 }];
 
         // When
-        let pairs: Vec<_> = memory_slice.blocks_per_region(base_address, &regions).collect();
+        let pairs: Vec<_> = regions.iter().copied().overlaps(memory_slice, base_address).collect();
 
         // Then
         assert_eq!(pairs.len(), 2);
 
         let (block, region, address) = pairs[0];
         assert_eq!(block, &memory[0..15]);
-        assert_eq!(region, &regions[0]);
+        assert_eq!(region, regions[0]);
         assert_eq!(address, base_address);
 
         let (block, region, address) = pairs[1];
         assert_eq!(block, &memory[15..30]);
-        assert_eq!(region, &regions[1]);
+        assert_eq!(region, regions[1]);
         assert_eq!(address, regions[1].start);
     }
 
@@ -175,14 +172,14 @@ mod test {
         let regions = [FakeRegion { start: 10, size: 20 }, FakeRegion { start: 30, size: 100 }];
 
         // When
-        let pairs: Vec<_> = memory_slice.blocks_per_region(base_address, &regions).collect();
+        let pairs: Vec<_> = regions.iter().copied().overlaps(memory_slice, base_address).collect();
 
         // Then
         assert_eq!(pairs.len(), 1);
 
         let (block, region, address) = pairs[0];
         assert_eq!(block, &memory[0..1]);
-        assert_eq!(region, &regions[0]);
+        assert_eq!(region, regions[0]);
         assert_eq!(address, base_address);
     }
 

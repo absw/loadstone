@@ -7,7 +7,7 @@ use crate::{
     static_assertions::const_assert,
     utilities::{
         bitwise::BitFlags,
-        memory::{self, IterableByBlocksAndRegions, Region},
+        memory::{self, IterableByOverlaps, Region},
     },
 };
 use core::ops::Add;
