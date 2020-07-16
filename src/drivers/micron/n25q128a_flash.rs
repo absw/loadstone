@@ -54,7 +54,7 @@ impl Sector {
     pub fn subsectors(&self) -> Subsectors {
         ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
     }
-    pub fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
+    pub fn pages(&self) -> Pages { ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page) }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
     pub fn at(address: Address) -> Option<Self> {
