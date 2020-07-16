@@ -4,7 +4,6 @@ use crate::{
         flash::{BulkErase, Read, Write},
         qspi, time,
     },
-    static_assertions::const_assert,
     utilities::{
         bitwise::{SliceBitSubset, BitFlags},
         memory::{self, IterableByOverlaps, Region},
@@ -32,51 +31,51 @@ impl Sub<Address> for Address {
     fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
 
-struct MemoryMap {}
-struct Sector(usize);
-struct Subsector(usize);
-struct Page(usize);
+pub struct MemoryMap {}
+pub struct Sector(usize);
+pub struct Subsector(usize);
+pub struct Page(usize);
 
 // Existential iterator types (alias for `some` type that iterates over them)
-type Sectors = impl Iterator<Item = Sector>;
-type Subsectors = impl Iterator<Item = Subsector>;
-type Pages = impl Iterator<Item = Page>;
+pub type Sectors = impl Iterator<Item = Sector>;
+pub type Subsectors = impl Iterator<Item = Subsector>;
+pub type Pages = impl Iterator<Item = Page>;
 
 impl MemoryMap {
-    fn sectors() -> Sectors { (0..NUMBER_OF_SECTORS).map(Sector) }
-    fn subsectors() -> Subsectors { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
-    fn pages() -> Pages { (0..NUMBER_OF_PAGES).map(Page) }
-    const fn location() -> Address { BASE_ADDRESS }
-    const fn end() -> Address { Address(BASE_ADDRESS.0 + MEMORY_SIZE as u32) }
-    const fn size() -> usize { MEMORY_SIZE }
+    pub fn sectors() -> Sectors { (0..NUMBER_OF_SECTORS).map(Sector) }
+    pub fn subsectors() -> Subsectors { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
+    pub fn pages() -> Pages { (0..NUMBER_OF_PAGES).map(Page) }
+    pub const fn location() -> Address { BASE_ADDRESS }
+    pub const fn end() -> Address { Address(BASE_ADDRESS.0 + MEMORY_SIZE as u32) }
+    pub const fn size() -> usize { MEMORY_SIZE }
 }
 
 impl Sector {
-    fn subsectors(&self) -> Subsectors {
+    pub fn subsectors(&self) -> Subsectors {
         ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
     }
-    fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
-    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
-    fn end(&self) -> Address { self.location() + Self::size() }
-    fn at(address: Address) -> Option<Self> { MemoryMap::sectors().find(|s| s.contains(address)) }
-    const fn size() -> usize { SECTOR_SIZE }
+    pub fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
+    pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    pub fn end(&self) -> Address { self.location() + Self::size() }
+    pub fn at(address: Address) -> Option<Self> { MemoryMap::sectors().find(|s| s.contains(address)) }
+    pub const fn size() -> usize { SECTOR_SIZE }
 }
 
 impl Subsector {
-    fn pages(&self) -> Pages {
+    pub fn pages(&self) -> Pages {
         ((self.0 * PAGES_PER_SUBSECTOR)..((1 + self.0) * PAGES_PER_SUBSECTOR)).map(Page)
     }
-    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
-    fn end(&self) -> Address { self.location() + Self::size() }
-    fn at(address: Address) -> Option<Self> { MemoryMap::subsectors().find(|s| s.contains(address)) }
-    const fn size() -> usize { SUBSECTOR_SIZE }
+    pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    pub fn end(&self) -> Address { self.location() + Self::size() }
+    pub fn at(address: Address) -> Option<Self> { MemoryMap::subsectors().find(|s| s.contains(address)) }
+    pub const fn size() -> usize { SUBSECTOR_SIZE }
 }
 
 impl Page {
-    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
-    fn end(&self) -> Address { self.location() + Self::size() }
-    fn at(address: Address) -> Option<Self> { MemoryMap::pages().find(|p| p.contains(address)) }
-    const fn size() -> usize { PAGE_SIZE }
+    pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    pub fn end(&self) -> Address { self.location() + Self::size() }
+    pub fn at(address: Address) -> Option<Self> { MemoryMap::pages().find(|p| p.contains(address)) }
+    pub const fn size() -> usize { PAGE_SIZE }
 }
 
 impl memory::Region<Address> for MemoryMap {
@@ -483,7 +482,7 @@ mod test {
     }
 
     #[test]
-    fn writing_a_bitwise_subset_of_a_sector() {
+    fn writing_a_bitwise_subset_of_a_subsector() {
         // Given
         let mut flash = flash_to_test();
         let data_to_write = [0xAA, 0xBB, 0xAA, 0xBB];
@@ -498,6 +497,75 @@ mod test {
 
         // When
         flash.write(page.location(), &data_to_write).unwrap();
+
+        // Then we read the sector to verify we are a subset
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[2].address);
+        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[2].length_requested);
+        flash.qspi.command_records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
+
+        // And we are a subset, so we simply write the data
+        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[4].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(Some(page.location().0), flash.qspi.command_records[5].address);
+        assert!(flash.qspi.command_records[5].contains(&data_to_write));
+    }
+
+    #[test]
+    fn writing_a_whole_subsector_page_by_page() {
+        // Given
+        let mut flash = flash_to_test();
+        let data_to_write = [0x00; SUBSECTOR_SIZE];
+        let subsector = MemoryMap::subsectors().nth(12).unwrap();
+
+        // When
+        flash.write(subsector.location(), &data_to_write).unwrap();
+
+        // Then we read the subsector to verify we are a subset of it
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
+
+        let first_command_index = 3;
+        let commands_per_page_write = 4;
+
+        (0..PAGES_PER_SUBSECTOR)
+            .map(|i| (i, first_command_index + i * commands_per_page_write))
+            .for_each(|(page, i)| {
+                assert_eq!(flash.qspi.command_records[i].instruction, Some(Command::ReadStatus as u8));
+                assert_eq!(flash.qspi.command_records[i + 1].instruction, Some(Command::WriteEnable as u8));
+                assert_eq!(flash.qspi.command_records[i + 2].instruction, Some(Command::PageProgram as u8));
+                assert!(flash.qspi.command_records[i + 2].contains(&data_to_write[page*PAGE_SIZE..(page+1)*PAGE_SIZE]));
+                assert_eq!(flash.qspi.command_records[i + 3].instruction, Some(Command::ReadStatus as u8));
+            })
+    }
+
+    #[test]
+    fn writing_a_non_bitwise_subset_of_a_subsector() {
+        // Given
+        let mut flash = flash_to_test();
+        let data_to_write = [0xAA, 0xBB, 0xAA, 0xBB];
+        let subsector = MemoryMap::subsectors().nth(12).unwrap();
+        let page = subsector.pages().nth(3).unwrap();
+        let original_subsector_data = vec![0x11u8; SUBSECTOR_SIZE];
+        let merged_data = original_subsector_data
+            .clone()
+            .iter_mut()
+            .skip(page.location() - subsector.location())
+            .zip(data_to_write.iter())
+            .for_each(|(a, b)| *a = *b);
+
+        flash.qspi.to_read = VecDeque::from(vec![
+            vec![NOT_BUSY], // Response to busy check when calling write
+            vec![NOT_BUSY], // Response to busy check when calling first read
+            original_subsector_data //sector data (for pre-write check). Not a superset!
+        ]);
+
+        // When
+        flash.write(page.location(), &data_to_write).unwrap();
         assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
 
         // Then we read the sector to verify we are a subset
@@ -505,13 +573,19 @@ mod test {
         assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
         assert_eq!(Some(subsector.location().0), flash.qspi.command_records[2].address);
         assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[2].length_requested);
-        flash.qspi.command_records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
+        flash.qspi.command_records[1].contains(&[0x11; SUBSECTOR_SIZE]);
 
-        // And We are a subset, so we simply write the data
+        // And we are not a subset, so we erase first
         assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::ReadStatus as u8));
         assert_eq!(flash.qspi.command_records[4].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::PageProgram as u8));
-        assert_eq!(Some(page.location().0), flash.qspi.command_records[5].address);
-        assert!(flash.qspi.command_records[5].contains(&data_to_write));
+        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::SubsectorErase as u8));
+        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[5].address);
+
+        // And then we write the "merged" data back, page per page
+        //assert_eq!(flash.qspi.command_records[6].instruction, Some(Command::ReadStatus as u8));
+        //assert_eq!(flash.qspi.command_records[7].instruction, Some(Command::WriteEnable as u8));
+        //assert_eq!(flash.qspi.command_records[8].instruction, Some(Command::PageProgram as u8));
+        //assert_eq!(Some(page.location().0), flash.qspi.command_records[8].address);
+        //assert!(flash.qspi.command_records[8].contains(&data_to_write));
     }
 }
