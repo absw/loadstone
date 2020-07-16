@@ -1,20 +1,114 @@
 //! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
-    error::Error as BootloaderError,
     hal::{
         flash::{BulkErase, Read, Write},
         qspi, time,
     },
-    utilities::bitwise::BitFlags,
+    static_assertions::const_assert,
+    utilities::{
+        bitwise::BitFlags,
+        memory::{self, IterableByBlocksAndRegions, Region},
+    },
 };
+use core::ops::Add;
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
 const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip [memory map](../../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
-#[derive(Clone, Copy, Debug)]
-pub struct Address(pub u32);
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
+pub struct Address(u32);
+impl Add<usize> for Address {
+    type Output = Self;
+    fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
+}
+
+struct MemoryMap {}
+struct Sector(usize);
+struct Subsector(usize);
+struct Page(usize);
+
+// Existential iterator types (alias for `some` type that iterates over them)
+type Sectors = impl Iterator<Item = Sector>;
+type Subsectors = impl Iterator<Item = Subsector>;
+type Pages = impl Iterator<Item = Page>;
+
+impl MemoryMap {
+    fn sectors() -> Sectors { (0..NUMBER_OF_SECTORS).map(Sector) }
+    fn subsectors() -> Subsectors { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
+    fn pages() -> Pages { (0..NUMBER_OF_PAGES).map(Page) }
+    const fn location() -> Address { BASE_ADDRESS }
+    const fn end() -> Address { Address(BASE_ADDRESS.0 + MEMORY_SIZE as u32) }
+    const fn size() -> usize { MEMORY_SIZE }
+}
+
+impl Sector {
+    fn subsectors(&self) -> Subsectors {
+        ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
+    }
+    fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
+    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    fn end(&self) -> Address { self.location() + Self::size() }
+    const fn size() -> usize { SECTOR_SIZE }
+}
+
+impl Subsector {
+    fn pages(&self) -> Pages {
+        ((self.0 * PAGES_PER_SUBSECTOR)..((1 + self.0) * PAGES_PER_SUBSECTOR)).map(Page)
+    }
+    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    fn end(&self) -> Address { self.location() + Self::size() }
+    const fn size() -> usize { SUBSECTOR_SIZE }
+}
+
+impl Page {
+    fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
+    fn end(&self) -> Address { self.location() + Self::size() }
+    const fn size() -> usize { PAGE_SIZE }
+}
+
+impl memory::Region<Address> for MemoryMap {
+    fn contains(&self, address: Address) -> bool {
+        (address >= BASE_ADDRESS) && (address < BASE_ADDRESS + MEMORY_SIZE)
+    }
+}
+
+impl memory::Region<Address> for Sector {
+    fn contains(&self, address: Address) -> bool {
+        let start = Address((Self::size() * self.0) as u32);
+        (address >= start) && (address < start + Self::size())
+    }
+}
+
+impl memory::Region<Address> for Subsector {
+    fn contains(&self, address: Address) -> bool {
+        let start = Address((Self::size() * self.0) as u32);
+        (address >= start) && (address < start + Self::size())
+    }
+}
+
+impl memory::Region<Address> for Page {
+    fn contains(&self, address: Address) -> bool {
+        let start = Address((Self::size() * self.0) as u32);
+        (address >= start) && (address < start + Self::size())
+    }
+}
+
+const BASE_ADDRESS: Address = Address(0x0000_0000);
+
+const PAGES_PER_SUBSECTOR: usize = 16;
+const SUBSECTORS_PER_SECTOR: usize = 16;
+const PAGES_PER_SECTOR: usize = PAGES_PER_SUBSECTOR * SUBSECTORS_PER_SECTOR;
+
+const PAGE_SIZE: usize = 256;
+const SUBSECTOR_SIZE: usize = PAGE_SIZE * PAGES_PER_SUBSECTOR;
+const SECTOR_SIZE: usize = SUBSECTOR_SIZE * SUBSECTORS_PER_SECTOR;
+const MEMORY_SIZE: usize = NUMBER_OF_SECTORS * SECTOR_SIZE;
+
+const NUMBER_OF_SECTORS: usize = 256;
+const NUMBER_OF_SUBSECTORS: usize = NUMBER_OF_SECTORS * SUBSECTORS_PER_SECTOR;
+const NUMBER_OF_PAGES: usize = NUMBER_OF_SUBSECTORS * PAGES_PER_SUBSECTOR;
 
 /// MicronN25q128a driver, generic over a QSPI programmed in indirect mode
 pub struct MicronN25q128a<QSPI, NOW>
@@ -32,21 +126,7 @@ pub enum Error {
     QspiError,
     WrongManufacturerId,
     MisalignedAccess,
-}
-
-impl From<Error> for BootloaderError {
-    fn from(error: Error) -> Self {
-        match error {
-            Error::TimeOut => BootloaderError::DriverError("Micron n25q128a timed out"),
-            Error::QspiError => BootloaderError::DriverError("Micron n25q128a QSPI access error"),
-            Error::WrongManufacturerId => {
-                BootloaderError::DriverError("Micron n25q128a reported wrong manufacturer ID")
-            }
-            Error::MisalignedAccess => {
-                BootloaderError::DriverError("Misaligned access to Micron n25q128a requested")
-            }
-        }
-    }
+    AddressOutOfRange,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -100,38 +180,21 @@ where
     type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
-        // TODO remove page alignment limitations
-        if (address.0 % 256 != 0) || bytes.len() > 256 {
-            return Err(nb::Error::Other(Error::MisalignedAccess));
-        }
-
-        // TODO read subsector first before erasing (to preserve previous values)
-        block!(Self::execute_command(
-            &mut self.qspi,
-            Command::WriteEnable,
-            None,
-            CommandData::None
-        ))?;
-        block!(Self::execute_command(
-            &mut self.qspi,
-            Command::SubsectorErase,
-            Some(address),
-            CommandData::None
-        ))?;
-        block!(self.wait_until_write_complete())?;
-        block!(Self::execute_command(
-            &mut self.qspi,
-            Command::WriteEnable,
-            None,
-            CommandData::None
-        ))?;
-        block!(Self::execute_command(
-            &mut self.qspi,
-            Command::PageProgram,
-            Some(address),
-            CommandData::Write(&bytes)
-        ))?;
-        Ok(())
+        //block!(self.erase_subsector(Subsector::at(&address)?))?;
+        unimplemented!("requires page writes (lower granularity than sectors)");
+        //block!(Self::execute_command(
+        //    &mut self.qspi,
+        //    Command::WriteEnable,
+        //    None,
+        //    CommandData::None
+        //))?;
+        //block!(Self::execute_command(
+        //    &mut self.qspi,
+        //    Command::PageProgram,
+        //    Some(address),
+        //    CommandData::Write(&bytes)
+        //))?;
+        //Ok(())
     }
 
     fn writable_range() -> (Address, Address) {
@@ -249,6 +312,42 @@ where
         block!(flash.verify_id())?;
         Ok(flash)
     }
+
+    fn erase_subsector(&mut self, subsector: &Subsector) -> nb::Result<(), Error> {
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::WriteEnable,
+            None,
+            CommandData::None
+        ))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::SubsectorErase,
+            Some(subsector.location()),
+            CommandData::None
+        ))?;
+        Ok(block!(self.wait_until_write_complete())?)
+    }
+
+    fn write_page(&mut self, page: &Page, bytes: &[u8], address: Address) -> nb::Result<(), Error> {
+        if (address < page.location()) || (address + bytes.len() > page.end()) {
+            return Err(nb::Error::Other(Error::MisalignedAccess));
+        }
+
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::WriteEnable,
+            None,
+            CommandData::None
+        ))?;
+        block!(Self::execute_command(
+            &mut self.qspi,
+            Command::PageProgram,
+            Some(address),
+            CommandData::Write(&bytes)
+        ))?;
+        Ok(block!(self.wait_until_write_complete())?)
+    }
 }
 
 #[cfg(test)]
@@ -265,6 +364,25 @@ mod test {
         assert_eq!(initial_read.instruction, Some(Command::ReadId as u8));
         flash.qspi.clear();
         flash
+    }
+
+    #[test]
+    fn various_memory_map_iterations() {
+        assert_eq!(MemoryMap::sectors().count(), NUMBER_OF_SECTORS);
+        assert_eq!(MemoryMap::subsectors().count(), NUMBER_OF_SUBSECTORS);
+        assert_eq!(MemoryMap::pages().count(), NUMBER_OF_PAGES);
+
+        let expected_address = Address((3 * SECTOR_SIZE + 3 * SUBSECTOR_SIZE) as u32);
+        let expected_index = 3 * SUBSECTORS_PER_SECTOR + 3;
+        let subsector = MemoryMap::sectors().nth(3).unwrap().subsectors().nth(3).unwrap();
+        assert_eq!(expected_address, subsector.location());
+        assert_eq!(subsector.0, expected_index);
+
+        let expected_address = Address((1 * SECTOR_SIZE + 2 * SUBSECTOR_SIZE + 3 * PAGE_SIZE) as u32);
+        let expected_index = 1 * PAGES_PER_SECTOR + 2 * PAGES_PER_SUBSECTOR + 3;
+        let page = MemoryMap::sectors().nth(1).unwrap().subsectors().nth(2).unwrap().pages().nth(3).unwrap();
+        assert_eq!(expected_address, page.location());
+        assert_eq!(page.0, expected_index);
     }
 
     #[test]
