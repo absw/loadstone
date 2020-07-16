@@ -112,7 +112,7 @@ impl MemoryMap {
         consecutive && ranges_valid
     }
 
-    fn sectors() -> impl Iterator<Item=Sector> { MEMORY_MAP.sectors.iter().cloned() }
+    fn sectors() -> impl Iterator<Item = Sector> { MEMORY_MAP.sectors.iter().cloned() }
 }
 
 impl Range {

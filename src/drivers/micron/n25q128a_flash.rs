@@ -5,7 +5,7 @@ use crate::{
         qspi, time,
     },
     utilities::{
-        bitwise::{SliceBitSubset, BitFlags},
+        bitwise::{BitFlags, SliceBitSubset},
         memory::{self, IterableByOverlaps, Region},
     },
 };
@@ -57,7 +57,9 @@ impl Sector {
     pub fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
-    pub fn at(address: Address) -> Option<Self> { MemoryMap::sectors().find(|s| s.contains(address)) }
+    pub fn at(address: Address) -> Option<Self> {
+        MemoryMap::sectors().find(|s| s.contains(address))
+    }
     pub const fn size() -> usize { SECTOR_SIZE }
 }
 
@@ -67,7 +69,9 @@ impl Subsector {
     }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
-    pub fn at(address: Address) -> Option<Self> { MemoryMap::subsectors().find(|s| s.contains(address)) }
+    pub fn at(address: Address) -> Option<Self> {
+        MemoryMap::subsectors().find(|s| s.contains(address))
+    }
     pub const fn size() -> usize { SUBSECTOR_SIZE }
 }
 
@@ -191,7 +195,7 @@ where
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
-            return Err(nb::Error::WouldBlock)
+            return Err(nb::Error::WouldBlock);
         }
 
         for (bytes, subsector, address) in MemoryMap::subsectors().overlaps(bytes, address) {
@@ -204,7 +208,17 @@ where
                 }
             } else {
                 block!(self.erase_subsector(&subsector))?;
-                unimplemented!();
+                // "merge" the preexisting data with the new write.
+                subsector_data
+                    .iter_mut()
+                    .skip(offset_into_subsector)
+                    .zip(bytes)
+                    .for_each(|(a, b)| *a = *b);
+                for (bytes, page, address) in
+                    subsector.pages().overlaps(&subsector_data, subsector.location())
+                {
+                    block!(self.write_page(&page, bytes, address))?;
+                }
             }
         }
         Ok(())
@@ -233,10 +247,7 @@ where
         }
     }
 
-    fn readable_range() -> (Address, Address) {
-        // TODO write a proper table instead of hardcoding it
-        (Address(0x0000_0000), Address(0x00FF_0000))
-    }
+    fn readable_range() -> (Address, Address) { Self::writable_range() }
 }
 
 impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>
@@ -324,6 +335,9 @@ where
     }
 
     fn erase_subsector(&mut self, subsector: &Subsector) -> nb::Result<(), Error> {
+        if Self::status(&mut self.qspi)?.write_in_progress {
+            return Err(nb::Error::WouldBlock);
+        }
         block!(Self::execute_command(
             &mut self.qspi,
             Command::WriteEnable,
@@ -344,7 +358,7 @@ where
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
         if Self::status(&mut self.qspi)?.write_in_progress {
-            return Err(nb::Error::WouldBlock)
+            return Err(nb::Error::WouldBlock);
         }
 
         block!(Self::execute_command(
@@ -394,9 +408,18 @@ mod test {
         assert_eq!(expected_address, subsector.location());
         assert_eq!(subsector.0, expected_index);
 
-        let expected_address = Address((1 * SECTOR_SIZE + 2 * SUBSECTOR_SIZE + 3 * PAGE_SIZE) as u32);
+        let expected_address =
+            Address((1 * SECTOR_SIZE + 2 * SUBSECTOR_SIZE + 3 * PAGE_SIZE) as u32);
         let expected_index = 1 * PAGES_PER_SECTOR + 2 * PAGES_PER_SUBSECTOR + 3;
-        let page = MemoryMap::sectors().nth(1).unwrap().subsectors().nth(2).unwrap().pages().nth(3).unwrap();
+        let page = MemoryMap::sectors()
+            .nth(1)
+            .unwrap()
+            .subsectors()
+            .nth(2)
+            .unwrap()
+            .pages()
+            .nth(3)
+            .unwrap();
         assert_eq!(expected_address, page.location());
         assert_eq!(page.0, expected_index);
     }
@@ -425,12 +448,13 @@ mod test {
 
         // When
         flash.erase().unwrap();
+        let records = &flash.qspi.command_records;
 
         // Then
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::BulkErase as u8));
-        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::WriteDisable as u8));
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(records[2].instruction, Some(Command::BulkErase as u8));
+        assert_eq!(records[3].instruction, Some(Command::WriteDisable as u8));
     }
 
     #[test]
@@ -455,13 +479,14 @@ mod test {
 
         // When
         flash.write_page(&Page::at(address).unwrap(), &data, address).unwrap();
+        let records = &flash.qspi.command_records;
 
         // Then
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::PageProgram as u8));
-        assert_eq!(Some(address.0), flash.qspi.command_records[2].address);
-        assert!(flash.qspi.command_records[2].contains(&data));
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(records[2].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(Some(address.0), records[2].address);
+        assert!(records[2].contains(&data));
     }
 
     #[test]
@@ -473,12 +498,13 @@ mod test {
 
         // When
         flash.read(address, &mut data).unwrap();
+        let records = &flash.qspi.command_records;
 
         // Then
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::Read as u8));
-        assert_eq!(Some(address.0), flash.qspi.command_records[1].address);
-        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[1].length_requested);
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(address.0), records[1].address);
+        assert_eq!(SUBSECTOR_SIZE, records[1].length_requested);
     }
 
     #[test]
@@ -490,28 +516,53 @@ mod test {
         let page = subsector.pages().nth(3).unwrap();
 
         flash.qspi.to_read = VecDeque::from(vec![
-            vec![NOT_BUSY], // Response to busy check when calling write
-            vec![NOT_BUSY], // Response to busy check when calling first read
+            vec![NOT_BUSY],             // Response to busy check when calling write
+            vec![NOT_BUSY],             // Response to busy check when calling first read
             vec![0xFF; SUBSECTOR_SIZE], //sector data (for pre-write check)
         ]);
 
         // When
         flash.write(page.location(), &data_to_write).unwrap();
+        let records = &flash.qspi.command_records;
 
         // Then we read the sector to verify we are a subset
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
-        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[2].address);
-        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[2].length_requested);
-        flash.qspi.command_records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[2].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(subsector.location().0), records[2].address);
+        assert_eq!(SUBSECTOR_SIZE, records[2].length_requested);
+        records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
 
         // And we are a subset, so we simply write the data
-        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[4].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::PageProgram as u8));
-        assert_eq!(Some(page.location().0), flash.qspi.command_records[5].address);
-        assert!(flash.qspi.command_records[5].contains(&data_to_write));
+        assert_eq!(records[3].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[4].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(records[5].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(Some(page.location().0), records[5].address);
+        assert!(records[5].contains(&data_to_write));
+    }
+
+    fn wrote_a_whole_subsector(data: &[u8], address: Address, commands: &[CommandRecord]) -> bool {
+        let commands_per_page_write = 4;
+        (0..PAGES_PER_SUBSECTOR)
+            .map(|i| (i, i * commands_per_page_write))
+            .inspect(|(page, i)| {
+                println!(
+                    "Page {}, commands: \n *{:?}\n *{:?}\n *{:?}\n *{:?}",
+                    page,
+                    commands[*i],
+                    commands[*i + 1],
+                    commands[*i + 2],
+                    commands[*i + 3],
+                )
+            })
+            .all(|(page, i)| {
+                commands[i].instruction == Some(Command::ReadStatus as u8)
+                    && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
+                    && commands[i + 2].instruction == Some(Command::PageProgram as u8)
+                    && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
+                    && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
+                    && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
+            })
     }
 
     #[test]
@@ -523,24 +574,15 @@ mod test {
 
         // When
         flash.write(subsector.location(), &data_to_write).unwrap();
+        let records = &flash.qspi.command_records;
 
         // Then we read the subsector to verify we are a subset of it
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[2].instruction, Some(Command::Read as u8));
 
-        let first_command_index = 3;
-        let commands_per_page_write = 4;
-
-        (0..PAGES_PER_SUBSECTOR)
-            .map(|i| (i, first_command_index + i * commands_per_page_write))
-            .for_each(|(page, i)| {
-                assert_eq!(flash.qspi.command_records[i].instruction, Some(Command::ReadStatus as u8));
-                assert_eq!(flash.qspi.command_records[i + 1].instruction, Some(Command::WriteEnable as u8));
-                assert_eq!(flash.qspi.command_records[i + 2].instruction, Some(Command::PageProgram as u8));
-                assert!(flash.qspi.command_records[i + 2].contains(&data_to_write[page*PAGE_SIZE..(page+1)*PAGE_SIZE]));
-                assert_eq!(flash.qspi.command_records[i + 3].instruction, Some(Command::ReadStatus as u8));
-            })
+        // And we write the whole thing page by page
+        assert!(wrote_a_whole_subsector(&data_to_write, subsector.location(), &records[3..]));
     }
 
     #[test]
@@ -551,41 +593,39 @@ mod test {
         let subsector = MemoryMap::subsectors().nth(12).unwrap();
         let page = subsector.pages().nth(3).unwrap();
         let original_subsector_data = vec![0x11u8; SUBSECTOR_SIZE];
-        let merged_data = original_subsector_data
-            .clone()
+        let mut merged_data = original_subsector_data.clone();
+        merged_data
             .iter_mut()
             .skip(page.location() - subsector.location())
             .zip(data_to_write.iter())
             .for_each(|(a, b)| *a = *b);
 
         flash.qspi.to_read = VecDeque::from(vec![
-            vec![NOT_BUSY], // Response to busy check when calling write
-            vec![NOT_BUSY], // Response to busy check when calling first read
-            original_subsector_data //sector data (for pre-write check). Not a superset!
+            vec![NOT_BUSY],          // Response to busy check when calling write
+            vec![NOT_BUSY],          // Response to busy check when calling first read
+            original_subsector_data, //sector data (for pre-write check). Not a superset!
         ]);
 
         // When
         flash.write(page.location(), &data_to_write).unwrap();
-        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        let records = &flash.qspi.command_records;
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
 
         // Then we read the sector to verify we are a subset
-        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
-        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[2].address);
-        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[2].length_requested);
-        flash.qspi.command_records[1].contains(&[0x11; SUBSECTOR_SIZE]);
+        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[2].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(subsector.location().0), records[2].address);
+        assert_eq!(SUBSECTOR_SIZE, records[2].length_requested);
+        records[1].contains(&[0x11; SUBSECTOR_SIZE]);
 
         // And we are not a subset, so we erase first
-        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.command_records[4].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::SubsectorErase as u8));
-        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[5].address);
+        assert_eq!(records[3].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[4].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(records[5].instruction, Some(Command::SubsectorErase as u8));
+        assert_eq!(Some(subsector.location().0), records[5].address);
+        assert_eq!(records[6].instruction, Some(Command::ReadStatus as u8));
 
         // And then we write the "merged" data back, page per page
-        //assert_eq!(flash.qspi.command_records[6].instruction, Some(Command::ReadStatus as u8));
-        //assert_eq!(flash.qspi.command_records[7].instruction, Some(Command::WriteEnable as u8));
-        //assert_eq!(flash.qspi.command_records[8].instruction, Some(Command::PageProgram as u8));
-        //assert_eq!(Some(page.location().0), flash.qspi.command_records[8].address);
-        //assert!(flash.qspi.command_records[8].contains(&data_to_write));
+        assert!(wrote_a_whole_subsector(&merged_data, subsector.location(), &records[7..]));
     }
 }

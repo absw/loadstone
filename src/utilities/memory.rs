@@ -31,7 +31,7 @@ pub struct OverlapIterator<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
-    I: Iterator<Item=R>,
+    I: Iterator<Item = R>,
 {
     memory: &'a [u8],
     regions: I,
@@ -44,7 +44,7 @@ pub trait IterableByOverlaps<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
-    I: Iterator<Item=R>,
+    I: Iterator<Item = R>,
 {
     fn overlaps(self, block: &'a [u8], base_address: A) -> OverlapIterator<A, R, I>;
 }
@@ -53,7 +53,7 @@ impl<'a, A, R, I> Iterator for OverlapIterator<'a, A, R, I>
 where
     A: Address,
     R: Region<A>,
-    I: Iterator<Item=R>,
+    I: Iterator<Item = R>,
 {
     type Item = (&'a [u8], R, A);
 
@@ -76,7 +76,7 @@ impl<'a, A, R, I> IterableByOverlaps<'a, A, R, I> for I
 where
     A: Address,
     R: Region<A>,
-    I: Iterator<Item=R>,
+    I: Iterator<Item = R>,
 {
     fn overlaps(self, memory: &'a [u8], base_address: A) -> OverlapIterator<A, R, I> {
         OverlapIterator { memory, regions: self, base_address }
