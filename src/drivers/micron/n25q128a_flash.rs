@@ -50,6 +50,7 @@ impl Sector {
     fn pages(&self) -> Pages { (self.0..(self.0 + PAGES_PER_SECTOR)).map(Page) }
     fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     fn end(&self) -> Address { self.location() + Self::size() }
+    fn at(address: Address) -> Option<Self> { MemoryMap::sectors().find(|s| s.contains(address)) }
     const fn size() -> usize { SECTOR_SIZE }
 }
 
@@ -59,12 +60,14 @@ impl Subsector {
     }
     fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     fn end(&self) -> Address { self.location() + Self::size() }
+    fn at(address: Address) -> Option<Self> { MemoryMap::subsectors().find(|s| s.contains(address)) }
     const fn size() -> usize { SUBSECTOR_SIZE }
 }
 
 impl Page {
     fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     fn end(&self) -> Address { self.location() + Self::size() }
+    fn at(address: Address) -> Option<Self> { MemoryMap::pages().find(|p| p.contains(address)) }
     const fn size() -> usize { PAGE_SIZE }
 }
 
@@ -180,27 +183,13 @@ where
     type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
-        //block!(self.erase_subsector(Subsector::at(&address)?))?;
-        unimplemented!("requires page writes (lower granularity than sectors)");
-        //block!(Self::execute_command(
-        //    &mut self.qspi,
-        //    Command::WriteEnable,
-        //    None,
-        //    CommandData::None
-        //))?;
-        //block!(Self::execute_command(
-        //    &mut self.qspi,
-        //    Command::PageProgram,
-        //    Some(address),
-        //    CommandData::Write(&bytes)
-        //))?;
-        //Ok(())
+        // TODO make this good and smart
+        block!(self.erase_subsector(&Subsector::at(address).ok_or(nb::Error::Other(Error::AddressOutOfRange))?))?;
+        block!(self.write_page(&Page::at(address).ok_or(nb::Error::Other(Error::AddressOutOfRange))?, bytes, address))?;
+        Ok(())
     }
 
-    fn writable_range() -> (Address, Address) {
-        // TODO write a proper table instead of hardcoding it
-        (Address(0x0000_0000), Address(0x00FF_0000))
-    }
+    fn writable_range() -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
 }
 
 impl<QSPI, NOW> Read for MicronN25q128a<QSPI, NOW>
