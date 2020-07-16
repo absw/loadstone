@@ -1,0 +1,176 @@
+//! Utilities to manipulate generic memory
+
+/// Generic address for the purpose of this module's methods.
+/// Anything that can be offset by a usize and yield another
+/// address works as an address.
+pub trait Address: Copy + core::ops::Add<usize, Output = Self> {}
+impl<A> Address for A where A: Copy + core::ops::Add<usize, Output = A> {}
+
+/// Abstract sector that can contain addresses
+pub trait Sector<A: Address> {
+    fn contains(&self, address: A) -> bool;
+    fn location(&self) -> A;
+}
+
+/// Iterator producing block-sector pairs,
+/// where each memory block corresponds to each sector
+pub struct BlockAndSectorIterator<'a, A, S>
+where
+    A: Address,
+    S: Sector<A>,
+{
+    memory: &'a [u8],
+    sectors: &'a [S],
+    base_address: A,
+    sector_index: usize,
+}
+
+impl<'a, A, S> Iterator for BlockAndSectorIterator<'a, A, S>
+where
+    A: Address,
+    S: Sector<A>,
+{
+    type Item = (&'a [u8], &'a S, A);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while self.sector_index < self.sectors.len() {
+            let current_sector = &self.sectors[self.sector_index];
+            self.sector_index += 1;
+            let mut block_range = (0..self.memory.len())
+                .skip_while(|index| !current_sector.contains(self.base_address + *index))
+                .take_while(|index| current_sector.contains(self.base_address + *index));
+
+            if let Some(start) = block_range.next() {
+                let end = block_range.last().unwrap_or(start) + 1;
+                return Some((&self.memory[start..end], current_sector, self.base_address + start));
+            }
+        }
+        None
+    }
+}
+
+/// Anything that can be sliced in blocks, each block
+/// corresponding to a sector in a sector sequence
+pub trait IterableByBlocksAndSectors<'a, A, S>
+where
+    A: Address,
+    S: Sector<A>,
+{
+    fn blocks_per_sector(
+        &'a self,
+        base_address: A,
+        sectors: &'a [S],
+    ) -> BlockAndSectorIterator<A, S>;
+}
+
+/// Blanket implementation of block and sector iteration for slices of bytes
+impl<'a, A, S> IterableByBlocksAndSectors<'a, A, S> for &'a [u8]
+where
+    A: Address,
+    S: Sector<A>,
+{
+    fn blocks_per_sector(&self, base_address: A, sectors: &'a [S]) -> BlockAndSectorIterator<A, S> {
+        BlockAndSectorIterator { memory: self, sectors, base_address, sector_index: 0 }
+    }
+}
+
+#[cfg(not(target_arch = "arm"))]
+#[doc(hidden)]
+pub mod doubles {
+    use super::*;
+    pub type FakeAddress = usize;
+
+    #[derive(Debug, PartialEq)]
+    pub struct FakeSector {
+        pub start: FakeAddress,
+        pub size: usize,
+    }
+
+    impl Sector<FakeAddress> for FakeSector {
+        fn contains(&self, address: FakeAddress) -> bool {
+            (self.start <= address) && ((self.start + self.size) > address)
+        }
+        fn location(&self) -> FakeAddress { self.start }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{doubles::*, *};
+
+    #[test]
+    fn iterating_over_sectors_starting_before_them() {
+        // Given
+        const MEMORY_SIZE: usize = 0x50;
+        let memory = [0xFFu8; MEMORY_SIZE];
+        let memory_slice = &memory[..];
+        let base_address = 0x20;
+
+        let sectors =
+            [FakeSector { start: 0x30, size: 0x10 }, FakeSector { start: 0x40, size: 0x05 }];
+
+        // When
+        let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
+
+        // Then
+        assert_eq!(pairs.len(), 2);
+
+        let (block, sector, address) = pairs[0];
+        assert_eq!(block, &memory[0x10..0x20]);
+        assert_eq!(sector, &sectors[0]);
+        assert_eq!(address, sectors[0].start);
+        let (block, sector, address) = pairs[1];
+        assert_eq!(block, &memory[0x20..0x25]);
+        assert_eq!(sector, &sectors[1]);
+        assert_eq!(address, sectors[1].start);
+    }
+
+    #[test]
+    fn iterating_over_sectors_starting_in_the_middle() {
+        // Given
+        const MEMORY_SIZE: usize = 30;
+        let memory = [0; MEMORY_SIZE];
+        let memory_slice = &memory[..];
+        let base_address = 15;
+
+        let sectors = [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
+
+        // When
+        let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
+
+        // Then
+        assert_eq!(pairs.len(), 2);
+
+        let (block, sector, address) = pairs[0];
+        assert_eq!(block, &memory[0..15]);
+        assert_eq!(sector, &sectors[0]);
+        assert_eq!(address, base_address);
+
+        let (block, sector, address) = pairs[1];
+        assert_eq!(block, &memory[15..30]);
+        assert_eq!(sector, &sectors[1]);
+        assert_eq!(address, sectors[1].start);
+    }
+
+    #[test]
+    fn single_byte() {
+        // Given
+        const MEMORY_SIZE: usize = 1;
+        let memory = [0; MEMORY_SIZE];
+        let memory_slice = &memory[..];
+        let base_address = 15;
+
+        let sectors = [FakeSector { start: 10, size: 20 }, FakeSector { start: 30, size: 100 }];
+
+        // When
+        let pairs: Vec<_> = memory_slice.blocks_per_sector(base_address, &sectors).collect();
+
+        // Then
+        assert_eq!(pairs.len(), 1);
+
+        let (block, sector, address) = pairs[0];
+        assert_eq!(block, &memory[0..1]);
+        assert_eq!(sector, &sectors[0]);
+        assert_eq!(address, base_address);
+    }
+}
