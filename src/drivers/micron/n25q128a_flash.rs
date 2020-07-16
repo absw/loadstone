@@ -6,11 +6,11 @@ use crate::{
     },
     static_assertions::const_assert,
     utilities::{
-        bitwise::BitFlags,
+        bitwise::{SliceBitSubset, BitFlags},
         memory::{self, IterableByOverlaps, Region},
     },
 };
-use core::ops::Add;
+use core::ops::{Add, Sub};
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
@@ -22,6 +22,14 @@ pub struct Address(u32);
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
+}
+impl Sub<usize> for Address {
+    type Output = Self;
+    fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
+}
+impl Sub<Address> for Address {
+    type Output = usize;
+    fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
 
 struct MemoryMap {}
@@ -183,9 +191,23 @@ where
     type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
-        // TODO make this good and smart
-        block!(self.erase_subsector(&Subsector::at(address).ok_or(nb::Error::Other(Error::AddressOutOfRange))?))?;
-        block!(self.write_page(&Page::at(address).ok_or(nb::Error::Other(Error::AddressOutOfRange))?, bytes, address))?;
+        if Self::status(&mut self.qspi)?.write_in_progress {
+            return Err(nb::Error::WouldBlock)
+        }
+
+        for (bytes, subsector, address) in MemoryMap::subsectors().overlaps(bytes, address) {
+            let offset_into_subsector = address - subsector.location();
+            let mut subsector_data = [0x00u8; SUBSECTOR_SIZE];
+            block!(self.read(subsector.location(), &mut subsector_data))?;
+            if bytes.is_subset_of(&mut subsector_data[offset_into_subsector..]) {
+                for (bytes, page, address) in subsector.pages().overlaps(bytes, address) {
+                    block!(self.write_page(&page, bytes, address))?;
+                }
+            } else {
+                block!(self.erase_subsector(&subsector))?;
+                unimplemented!();
+            }
+        }
         Ok(())
     }
 
@@ -322,6 +344,9 @@ where
         if (address < page.location()) || (address + bytes.len() > page.end()) {
             return Err(nb::Error::Other(Error::MisalignedAccess));
         }
+        if Self::status(&mut self.qspi)?.write_in_progress {
+            return Err(nb::Error::WouldBlock)
+        }
 
         block!(Self::execute_command(
             &mut self.qspi,
@@ -343,13 +368,16 @@ where
 mod test {
     use super::*;
     use crate::hal::doubles::{gpio::*, qspi::*, time::*};
+    use std::collections::VecDeque;
+
+    const NOT_BUSY: u8 = 0x0u8;
 
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
         let mut qspi = MockQspi::default();
         qspi.to_read.push_back(vec![MANUFACTURER_ID]);
         let mut flash = MicronN25q128a::new(qspi).unwrap();
-        let initial_read = flash.qspi.read_records[0].clone();
+        let initial_read = flash.qspi.command_records[0].clone();
         assert_eq!(initial_read.instruction, Some(Command::ReadId as u8));
         flash.qspi.clear();
         flash
@@ -400,10 +428,10 @@ mod test {
         flash.erase().unwrap();
 
         // Then
-        assert_eq!(flash.qspi.read_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.write_records[0].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.write_records[1].instruction, Some(Command::BulkErase as u8));
-        assert_eq!(flash.qspi.write_records[2].instruction, Some(Command::WriteDisable as u8));
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::BulkErase as u8));
+        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::WriteDisable as u8));
     }
 
     #[test]
@@ -415,23 +443,75 @@ mod test {
 
         // Then
         assert_eq!(flash.erase(), Err(nb::Error::WouldBlock));
+
+        flash.qspi.to_read.push_back(vec![BUSY_WRITING_STATUS]);
     }
 
     #[test]
     fn page_program_command_sequence() {
         // Given
         let mut flash = flash_to_test();
-        let address = Address(0x0000);
-        let data = [0xAAu8; 256];
+        let address = Address(0x1000);
+        let data = [0xAAu8; PAGE_SIZE];
 
         // When
-        flash.write(address, &data).unwrap();
+        flash.write_page(&Page::at(address).unwrap(), &data, address).unwrap();
 
         // Then
-        assert_eq!(flash.qspi.read_records[0].instruction, Some(Command::ReadStatus as u8));
-        assert_eq!(flash.qspi.write_records[0].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.write_records[1].instruction, Some(Command::SubsectorErase as u8));
-        assert_eq!(flash.qspi.write_records[2].instruction, Some(Command::WriteEnable as u8));
-        assert_eq!(flash.qspi.write_records[3].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(Some(address.0), flash.qspi.command_records[2].address);
+        assert!(flash.qspi.command_records[2].contains(&data));
+    }
+
+    #[test]
+    fn subsector_read_command_sequence() {
+        // Given
+        let mut flash = flash_to_test();
+        let address = MemoryMap::subsectors().nth(12).unwrap().location();
+        let mut data = [0x00u8; SUBSECTOR_SIZE];
+
+        // When
+        flash.read(address, &mut data).unwrap();
+
+        // Then
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(address.0), flash.qspi.command_records[1].address);
+        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[1].length_requested);
+    }
+
+    #[test]
+    fn writing_a_bitwise_subset_of_a_sector() {
+        // Given
+        let mut flash = flash_to_test();
+        let data_to_write = [0xAA, 0xBB, 0xAA, 0xBB];
+        let subsector = MemoryMap::subsectors().nth(12).unwrap();
+        let page = subsector.pages().nth(3).unwrap();
+
+        flash.qspi.to_read = VecDeque::from(vec![
+            vec![NOT_BUSY], // Response to busy check when calling write
+            vec![NOT_BUSY], // Response to busy check when calling first read
+            vec![0xFF; SUBSECTOR_SIZE], //sector data (for pre-write check)
+        ]);
+
+        // When
+        flash.write(page.location(), &data_to_write).unwrap();
+        assert_eq!(flash.qspi.command_records[0].instruction, Some(Command::ReadStatus as u8));
+
+        // Then we read the sector to verify we are a subset
+        assert_eq!(flash.qspi.command_records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[2].instruction, Some(Command::Read as u8));
+        assert_eq!(Some(subsector.location().0), flash.qspi.command_records[2].address);
+        assert_eq!(SUBSECTOR_SIZE, flash.qspi.command_records[2].length_requested);
+        flash.qspi.command_records[1].contains(&[0xFF; SUBSECTOR_SIZE]);
+
+        // And We are a subset, so we simply write the data
+        assert_eq!(flash.qspi.command_records[3].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(flash.qspi.command_records[4].instruction, Some(Command::WriteEnable as u8));
+        assert_eq!(flash.qspi.command_records[5].instruction, Some(Command::PageProgram as u8));
+        assert_eq!(Some(page.location().0), flash.qspi.command_records[5].address);
+        assert!(flash.qspi.command_records[5].contains(&data_to_write));
     }
 }

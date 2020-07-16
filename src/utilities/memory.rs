@@ -36,7 +36,6 @@ where
     memory: &'a [u8],
     regions: I,
     base_address: A,
-    region_index: usize,
 }
 
 /// Anything that can be sliced in blocks, each block
@@ -72,7 +71,7 @@ where
     }
 }
 
-/// Blanket implementation of block and region iteration for slices of bytes
+/// Blanket implementation of overlaps iterator for any region iterator
 impl<'a, A, R, I> IterableByOverlaps<'a, A, R, I> for I
 where
     A: Address,
@@ -80,7 +79,7 @@ where
     I: Iterator<Item=R>,
 {
     fn overlaps(self, memory: &'a [u8], base_address: A) -> OverlapIterator<A, R, I> {
-        OverlapIterator { memory, regions: self, base_address, region_index: 0 }
+        OverlapIterator { memory, regions: self, base_address }
     }
 }
 
