@@ -384,6 +384,7 @@ mod test {
     use std::collections::VecDeque;
 
     const NOT_BUSY: u8 = 0x0u8;
+    const COMMANDS_PER_PAGE_WRITE: usize = 4;
 
     type FlashToTest = MicronN25q128a<MockQspi, MockSysTick>;
     fn flash_to_test() -> FlashToTest {
@@ -542,19 +543,8 @@ mod test {
     }
 
     fn wrote_a_whole_subsector(data: &[u8], address: Address, commands: &[CommandRecord]) -> bool {
-        let commands_per_page_write = 4;
         (0..PAGES_PER_SUBSECTOR)
-            .map(|i| (i, i * commands_per_page_write))
-            .inspect(|(page, i)| {
-                println!(
-                    "Page {}, commands: \n *{:?}\n *{:?}\n *{:?}\n *{:?}",
-                    page,
-                    commands[*i],
-                    commands[*i + 1],
-                    commands[*i + 2],
-                    commands[*i + 3],
-                )
-            })
+            .map(|i| (i, i * COMMANDS_PER_PAGE_WRITE))
             .all(|(page, i)| {
                 commands[i].instruction == Some(Command::ReadStatus as u8)
                     && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
@@ -627,5 +617,35 @@ mod test {
 
         // And then we write the "merged" data back, page per page
         assert!(wrote_a_whole_subsector(&merged_data, subsector.location(), &records[7..]));
+    }
+
+    #[test]
+    fn write_straddling_two_subsectors() {
+        // Given
+        let mut flash = flash_to_test();
+        let data_to_write = [0x00u8; 2 * SUBSECTOR_SIZE];
+        let address = MemoryMap::subsectors().nth(1).unwrap().location();
+
+        // When
+        flash.write(address, &data_to_write).unwrap();
+        let records = &flash.qspi.command_records;
+
+        // Then
+        // First subsector subset check
+        assert_eq!(records[0].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[1].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[2].instruction, Some(Command::Read as u8));
+
+        // And first subsector write
+        assert!(wrote_a_whole_subsector(&data_to_write[..SUBSECTOR_SIZE], address, &records[3..]));
+
+        let index = 3 + COMMANDS_PER_PAGE_WRITE * PAGES_PER_SUBSECTOR;
+
+        // second subsector subset check
+        assert_eq!(records[index].instruction, Some(Command::ReadStatus as u8));
+        assert_eq!(records[index + 1].instruction, Some(Command::Read as u8));
+
+        // And second subsector write
+        assert!(wrote_a_whole_subsector(&data_to_write[SUBSECTOR_SIZE..], address + SUBSECTOR_SIZE, &records[index + 2..]));
     }
 }
