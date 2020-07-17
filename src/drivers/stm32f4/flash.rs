@@ -4,7 +4,7 @@ use crate::{
     stm32pac::FLASH,
     utilities::{
         bitwise::SliceBitSubset,
-        memory::{self, IterableByBlocksAndSectors},
+        memory::{self, IterableByOverlaps},
     },
 };
 use core::ops::{Add, Sub};
@@ -20,8 +20,9 @@ pub enum Error {
     MisalignedAccess,
 }
 
-#[derive(Copy, Clone, Debug, PartialOrd, PartialEq)]
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Address(u32);
+
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
@@ -50,41 +51,41 @@ pub enum Block {
 /// A memory map sector, with an associated block and an address range
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[non_exhaustive]
-pub struct Sector {
-    pub block: Block,
-    pub location: Address,
-    pub size: usize,
+struct Sector {
+    block: Block,
+    location: Address,
+    size: usize,
 }
 
 #[non_exhaustive]
-pub struct MemoryMap {
-    pub sectors: [Sector; SECTOR_NUMBER],
+struct MemoryMap {
+    sectors: [Sector; SECTOR_NUMBER],
 }
 
 ///From [section 3.5.1](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
 #[cfg(feature = "stm32f412")]
-pub const SECTOR_NUMBER: usize = 15;
+const SECTOR_NUMBER: usize = 15;
 
 #[cfg(feature = "stm32f412")]
-pub const MEMORY_MAP: MemoryMap = MemoryMap {
+const MEMORY_MAP: MemoryMap = MemoryMap {
     sectors: [
-        Sector::new(Block::Boot, Address(0x0800_0000), 0x4000),
-        Sector::new(Block::Boot, Address(0x0800_4000), 0x4000),
-        Sector::new(Block::Boot, Address(0x0800_8000), 0x4000),
-        Sector::new(Block::Boot, Address(0x0800_C000), 0x4000),
-        Sector::new(Block::Main, Address(0x0801_0000), 0x10000),
-        Sector::new(Block::Main, Address(0x0802_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x0804_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x0806_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x0808_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x080A_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x080C_0000), 0x20000),
-        Sector::new(Block::Main, Address(0x080E_0000), 0x20000),
-        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), 0x7800),
-        Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 0x210),
-        Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 0x10),
+        Sector::new(Block::Boot, Address(0x0800_0000), kb!(16)),
+        Sector::new(Block::Boot, Address(0x0800_4000), kb!(16)),
+        Sector::new(Block::Boot, Address(0x0800_8000), kb!(16)),
+        Sector::new(Block::Boot, Address(0x0800_C000), kb!(16)),
+        Sector::new(Block::Main, Address(0x0801_0000), kb!(64)),
+        Sector::new(Block::Main, Address(0x0802_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x0804_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x0806_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x0808_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x080A_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x080C_0000), kb!(128)),
+        Sector::new(Block::Main, Address(0x080E_0000), kb!(128)),
+        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), kb!(32)),
+        Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 528),
+        Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 16),
     ],
 };
 
@@ -110,6 +111,8 @@ impl MemoryMap {
             self.sectors.iter().map(|s| Range(s.start(), s.end())).all(Range::is_valid);
         consecutive && ranges_valid
     }
+
+    fn sectors() -> impl Iterator<Item = Sector> { MEMORY_MAP.sectors.iter().cloned() }
 }
 
 impl Range {
@@ -149,11 +152,10 @@ impl Range {
     fn is_writable(self) -> bool { self.span().iter().all(Sector::is_writable) }
 }
 
-impl memory::Sector<Address> for Sector {
+impl memory::Region<Address> for Sector {
     fn contains(&self, address: Address) -> bool {
         (self.start() <= address) && (self.end() > address)
     }
-    fn location(&self) -> Address { self.start() }
 }
 
 impl Sector {
@@ -269,7 +271,7 @@ impl Write for McuFlash {
             return Err(nb::Error::WouldBlock);
         }
 
-        for (block, sector, address) in bytes.blocks_per_sector(address, &MEMORY_MAP.sectors) {
+        for (block, sector, address) in MemoryMap::sectors().overlaps(bytes, address) {
             let sector_data = &mut [0u8; max_sector_size()][0..sector.size];
             let offset_into_sector = address.0.saturating_sub(sector.start().0) as usize;
 
@@ -277,16 +279,16 @@ impl Write for McuFlash {
             if block.is_subset_of(&sector_data[offset_into_sector..sector.size]) {
                 // No need to erase the sector, as we can just flip bits off
                 // (since our block is a bitwise subset of the sector)
-                block!(self.write_bytes(block, sector, address))?;
+                block!(self.write_bytes(block, &sector, address))?;
             } else {
                 // We have to erase and rewrite any saved data alongside the new block
-                block!(self.erase(sector))?;
+                block!(self.erase(&sector))?;
                 sector_data
                     .iter_mut()
                     .skip(offset_into_sector)
                     .zip(block)
                     .for_each(|(byte, input)| *byte = *input);
-                block!(self.write_bytes(sector_data, sector, sector.location))?;
+                block!(self.write_bytes(sector_data, &sector, sector.location))?;
             }
         }
 

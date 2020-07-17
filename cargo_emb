@@ -6,4 +6,4 @@
 # TODO: This should be solvable using custom test frameworks, but there
 # isn't much documentation for how to use them.
 
-cargo $@ --target thumbv7em-none-eabihf
+cargo $@ --release --target thumbv7em-none-eabihf
