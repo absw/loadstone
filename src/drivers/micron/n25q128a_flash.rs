@@ -54,7 +54,9 @@ impl Sector {
     pub fn subsectors(&self) -> Subsectors {
         ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
     }
-    pub fn pages(&self) -> Pages { ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page) }
+    pub fn pages(&self) -> Pages {
+        ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page)
+    }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
     pub fn at(address: Address) -> Option<Self> {
@@ -543,16 +545,14 @@ mod test {
     }
 
     fn wrote_a_whole_subsector(data: &[u8], address: Address, commands: &[CommandRecord]) -> bool {
-        (0..PAGES_PER_SUBSECTOR)
-            .map(|i| (i, i * COMMANDS_PER_PAGE_WRITE))
-            .all(|(page, i)| {
-                commands[i].instruction == Some(Command::ReadStatus as u8)
-                    && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
-                    && commands[i + 2].instruction == Some(Command::PageProgram as u8)
-                    && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
-                    && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
-                    && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
-            })
+        (0..PAGES_PER_SUBSECTOR).map(|i| (i, i * COMMANDS_PER_PAGE_WRITE)).all(|(page, i)| {
+            commands[i].instruction == Some(Command::ReadStatus as u8)
+                && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
+                && commands[i + 2].instruction == Some(Command::PageProgram as u8)
+                && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
+                && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
+                && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
+        })
     }
 
     #[test]
@@ -646,6 +646,10 @@ mod test {
         assert_eq!(records[index + 1].instruction, Some(Command::Read as u8));
 
         // And second subsector write
-        assert!(wrote_a_whole_subsector(&data_to_write[SUBSECTOR_SIZE..], address + SUBSECTOR_SIZE, &records[index + 2..]));
+        assert!(wrote_a_whole_subsector(
+            &data_to_write[SUBSECTOR_SIZE..],
+            address + SUBSECTOR_SIZE,
+            &records[index + 2..]
+        ));
     }
 }

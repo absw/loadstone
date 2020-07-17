@@ -39,7 +39,8 @@ where
         uprintln!(serial, "External flash ID verification and simple RW cycle passed");
         Self::post_test_flash_simple_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
         uprintln!(serial, "MCU flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_complex_rwc(external_flash).report_unwrap("[External Flash] ", serial);
+        Self::post_test_flash_complex_rwc(external_flash)
+            .report_unwrap("[External Flash] ", serial);
         uprintln!(serial, "External flash complex RW cycle passed");
         Self::post_test_flash_complex_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
         uprintln!(serial, "MCU flash complex RW cycle passed");
