@@ -36,7 +36,7 @@ impl Sub<usize> for Address {
 #[derive(Copy, Clone, Debug)]
 struct Range(Address, Address);
 
-/// Different address blocks as defined in [Table 5](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=58)
+/// Different address blocks as defined in [Table 5](../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=58)
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Block {
     /// Main memory, but reserved for secure bootloader
@@ -62,7 +62,7 @@ struct MemoryMap {
     sectors: [Sector; SECTOR_NUMBER],
 }
 
-///From [section 3.5.1](../../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
+///From [section 3.5.1](../../../../../../../documentation/hardware/stm32f412_reference.pdf#page=62)
 const UNLOCK_KEYS: [u32; 2] = [0x45670123, 0xCDEF89AB];
 
 #[cfg(feature = "stm32f412")]
