@@ -1,4 +1,4 @@
-//! Device driver for the [Micron N24q128a](../../../../../../../../documentation/hardware/micron_flash.pdf#page=0)
+//! Device driver for the [Micron N24q128a](../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
     hal::{
         flash::{BulkErase, Read, Write},
@@ -12,10 +12,10 @@ use crate::{
 use core::ops::{Add, Sub};
 use nb::block;
 
-/// From [datasheet table 19](../../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
-const MANUFACTURER_ID: u8 = 0x20;
+/// From [datasheet table 19](../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
+pub const MANUFACTURER_ID: u8 = 0x20;
 
-/// Address into the micron chip [memory map](../../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
+/// Address into the micron chip [memory map](../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
 #[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
 pub struct Address(u32);
 impl Add<usize> for Address {
@@ -36,25 +36,20 @@ pub struct Sector(usize);
 pub struct Subsector(usize);
 pub struct Page(usize);
 
-// Existential iterator types (alias for `some` type that iterates over them)
-pub type Sectors = impl Iterator<Item = Sector>;
-pub type Subsectors = impl Iterator<Item = Subsector>;
-pub type Pages = impl Iterator<Item = Page>;
-
 impl MemoryMap {
-    pub fn sectors() -> Sectors { (0..NUMBER_OF_SECTORS).map(Sector) }
-    pub fn subsectors() -> Subsectors { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
-    pub fn pages() -> Pages { (0..NUMBER_OF_PAGES).map(Page) }
+    pub fn sectors() -> impl Iterator<Item = Sector> { (0..NUMBER_OF_SECTORS).map(Sector) }
+    pub fn subsectors() -> impl Iterator<Item = Subsector> { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
+    pub fn pages() -> impl Iterator<Item = Page> { (0..NUMBER_OF_PAGES).map(Page) }
     pub const fn location() -> Address { BASE_ADDRESS }
     pub const fn end() -> Address { Address(BASE_ADDRESS.0 + MEMORY_SIZE as u32) }
     pub const fn size() -> usize { MEMORY_SIZE }
 }
 
 impl Sector {
-    pub fn subsectors(&self) -> Subsectors {
+    pub fn subsectors(&self) -> impl Iterator<Item = Subsector> {
         ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
     }
-    pub fn pages(&self) -> Pages { ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page) }
+    pub fn pages(&self) -> impl Iterator<Item = Page> { ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page) }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
     pub fn at(address: Address) -> Option<Self> {
@@ -64,7 +59,7 @@ impl Sector {
 }
 
 impl Subsector {
-    pub fn pages(&self) -> Pages {
+    pub fn pages(&self) -> impl Iterator<Item = Page> {
         ((self.0 * PAGES_PER_SUBSECTOR)..((1 + self.0) * PAGES_PER_SUBSECTOR)).map(Page)
     }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
