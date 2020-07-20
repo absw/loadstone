@@ -20,7 +20,6 @@ stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
 
-
 [dependencies]
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
