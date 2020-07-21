@@ -1,5 +1,10 @@
 #![macro_use]
-use crate::{hal::serial, utilities::buffer::CollectSlice, utilities::iterator::Unique};
+use crate::{
+    devices::bootloader::Bootloader,
+    error::Error as BootloaderError,
+    hal::{flash, serial},
+    utilities::{buffer::CollectSlice, iterator::Unique},
+};
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 
@@ -17,6 +22,11 @@ pub enum Error {
     BadCommandEncoding,
     DuplicateArguments,
     SerialBufferOverflow,
+    BootloaderError(BootloaderError),
+}
+
+impl From<BootloaderError> for Error {
+    fn from(e: BootloaderError) -> Self { Error::BootloaderError(e) }
 }
 
 pub struct Cli<S: serial::ReadWrite> {
@@ -63,7 +73,9 @@ impl<'a> Parsable<'a> for u32 {
     }
 }
 
-impl<'a> Parsable<'a> for &'a str { fn parse(text: &'a str) -> Result<Self, Error> { Ok(text) } }
+impl<'a> Parsable<'a> for &'a str {
+    fn parse(text: &'a str) -> Result<Self, Error> { Ok(text) }
+}
 
 trait RetrieveArgument<T> {
     fn retrieve(&self, name: &str) -> Result<T, Error>;
@@ -71,10 +83,13 @@ trait RetrieveArgument<T> {
 
 impl<'a, T: Parsable<'a>> RetrieveArgument<T> for Arguments<'a> {
     fn retrieve(&self, name: &str) -> Result<T, Error> {
-        let argument = self.clone().find_map(|arg| match arg {
-            Argument::Pair(n, v) if n == name => Some(v),
-            _ => None,
-        }).ok_or(Error::MissingArgument)?;
+        let argument = self
+            .clone()
+            .find_map(|arg| match arg {
+                Argument::Pair(n, v) if n == name => Some(v),
+                _ => None,
+            })
+            .ok_or(Error::MissingArgument)?;
         T::parse(argument)
     }
 }
@@ -117,12 +132,24 @@ const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
 impl<S: serial::ReadWrite> Cli<S> {
-    pub fn run(&mut self) {
+    pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, S>)
+    where
+        EXTF: flash::ReadWrite,
+        MCUF: flash::ReadWrite,
+    {
         if !self.greeted {
             uprintln!(self.serial, GREETING);
             self.greeted = true;
         }
-        match self.interpret_line() {
+        uprint!(self.serial, PROMPT);
+        let mut execute_command = || -> Result<(), Error> {
+            let mut buffer = [0u8; BUFFER_SIZE];
+            block!(self.read_line(&mut buffer))?;
+            let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
+            let (name, arguments) = Self::parse(text)?;
+            commands::run(self, bootloader, name, arguments)
+        };
+        match execute_command() {
             Err(Error::BadCommandEncoding) => {
                 uprintln!(self.serial, "[CLI Error] Bad Command Encoding")
             }
@@ -141,6 +168,10 @@ impl<S: serial::ReadWrite> Cli<S> {
             Err(Error::DuplicateArguments) => {
                 uprintln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
             }
+            Err(Error::BootloaderError(e)) => {
+                uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
+                e.report(&mut self.serial);
+            }
             Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
             Err(Error::CommandEmpty) => (),
             Ok(_) => (),
@@ -148,16 +179,6 @@ impl<S: serial::ReadWrite> Cli<S> {
     }
 
     pub fn serial(&mut self) -> &mut S { &mut self.serial }
-
-    fn interpret_line(&mut self) -> Result<(), Error> {
-        uprint!(self.serial, PROMPT);
-        let mut buffer = [0u8; BUFFER_SIZE];
-        block!(self.read_line(&mut buffer))?;
-        let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
-        let (name, arguments) = Self::parse(text)?;
-        commands::run(self, name, arguments)?;
-        Ok(())
-    }
 
     fn parse<'a>(text: &'a str) -> Result<(Name, Arguments), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
@@ -181,10 +202,13 @@ impl<S: serial::ReadWrite> Cli<S> {
         }
         let name = tokens.next().ok_or(Error::CommandEmpty)?;
         let arguments = Arguments { tokens };
-        let unique = arguments.clone().map(|arg| match arg {
-            Argument::Pair(n, _) => n,
-            Argument::Single(n) => n,
-        }).all_unique();
+        let unique = arguments
+            .clone()
+            .map(|arg| match arg {
+                Argument::Pair(n, _) => n,
+                Argument::Single(n) => n,
+            })
+            .all_unique();
 
         if !unique {
             return Err(Error::DuplicateArguments);
@@ -208,9 +232,17 @@ impl<S: serial::ReadWrite> Cli<S> {
         &mut self,
         names: &[&'static str],
         helpstrings: &[(&'static str, &[(&'static str, &'static str)])],
+        command: Option<&str>,
     ) {
-        uprintln!(self.serial, "List of available commands:");
+        if command.is_none() {
+            uprintln!(self.serial, "List of available commands:");
+        }
         for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
+            if let Some(command) = command.as_ref() {
+                if command != name {
+                    continue;
+                }
+            }
             uprint!(self.serial, "* ");
             uprint!(self.serial, name);
             uprint!(self.serial, " - ");
@@ -233,9 +265,9 @@ impl<S: serial::ReadWrite> Cli<S> {
 
 macro_rules! commands {
     (
-        $cli:ident, $names:ident, $helpstrings:ident [
+        $cli:ident, $bootloader:ident, $names:ident, $helpstrings:ident [
             $(
-                $c:ident($($a:ident: $t:ty [$r:expr],)*) [$h:expr] $command:block,
+                $c:ident[$h:expr]($($a:ident: $t:ty [$r:expr],)*) $command:block,
             )+
         ]
     ) => {
@@ -253,7 +285,16 @@ macro_rules! commands {
                 ]),
             )+
         ];
-        pub(super) fn run<S: serial::ReadWrite>($cli: &mut Cli<S>, name: Name, _arguments: Arguments) -> Result<(), Error> {
+
+        pub(super) fn run<EXTF, MCUF, SRL>(
+            $cli: &mut Cli<SRL>,
+            $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
+            name: Name, _arguments: Arguments) -> Result<(), Error>
+        where
+            EXTF: flash::ReadWrite,
+            MCUF: flash::ReadWrite,
+            SRL: serial::ReadWrite,
+        {
             match name {
                 $(
                     stringify!($c) => {

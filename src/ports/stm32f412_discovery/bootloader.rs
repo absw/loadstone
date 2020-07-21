@@ -24,7 +24,7 @@ type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 type PostLed = MonochromeLed<Pe1<Output<PushPull>>>;
 
-impl Bootloader<ExternalFlash, flash::McuFlash, Serial, PostLed> {
+impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
@@ -49,6 +49,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, PostLed> {
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
-        Bootloader { external_flash, mcu_flash, post_led, cli }
+        Bootloader { external_flash, mcu_flash, cli: Some(cli) }
     }
 }

@@ -13,48 +13,47 @@ use crate::{
 use led::Toggle;
 use nb::block;
 
-pub struct Bootloader<EXTF, MCUF, SRL, LED>
+pub struct Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
     SRL: serial::ReadWrite,
-    LED: led::Toggle,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
-    pub(crate) post_led: LED,
-    pub(crate) cli: Cli<SRL>,
+    pub(crate) cli: Option<Cli<SRL>>,
 }
 
-impl<EXTF, MCUF, SRL, LED> Bootloader<EXTF, MCUF, SRL, LED>
+impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
     SRL: serial::ReadWrite,
-    LED: led::Toggle,
 {
-    pub fn power_on_self_test(&mut self) {
-        let Self { external_flash, mcu_flash, post_led, cli } = self;
-        let _guard = Guard::new(post_led, Toggle::on, Toggle::off);
-        Self::post_test_flash_simple_rwc(external_flash)
-            .report_unwrap("[External Flash] ", cli.serial());
-        uprintln!(cli.serial(), "External flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_simple_rwc(mcu_flash).report_unwrap("[MCU Flash] ", cli.serial());
-        uprintln!(cli.serial(), "MCU flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_complex_rwc(external_flash)
-            .report_unwrap("[External Flash] ", cli.serial());
-        uprintln!(cli.serial(), "External flash complex RW cycle passed");
-        Self::post_test_flash_complex_rwc(mcu_flash).report_unwrap("[MCU Flash] ", cli.serial());
-        uprintln!(cli.serial(), "MCU flash complex RW cycle passed");
-    }
-
     pub fn run(mut self) -> ! {
+        let mut cli = self.cli.take().unwrap();
         loop {
-            self.cli.run()
+            cli.run(&mut self)
         }
     }
 
-    fn post_test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
+    pub fn test_mcu_flash(&mut self, complex: bool) -> Result<(), Error> {
+        if complex {
+            Self::test_flash_complex_rwc(&mut self.mcu_flash)
+        } else {
+            Self::test_flash_simple_rwc(&mut self.mcu_flash)
+        }
+    }
+
+    pub fn test_external_flash(&mut self, complex: bool) -> Result<(), Error> {
+        if complex {
+            Self::test_flash_complex_rwc(&mut self.external_flash)
+        } else {
+            Self::test_flash_simple_rwc(&mut self.external_flash)
+        }
+    }
+
+    fn test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {
@@ -74,7 +73,7 @@ where
         }
     }
 
-    fn post_test_flash_complex_rwc<F>(flash: &mut F) -> Result<(), Error>
+    fn test_flash_complex_rwc<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {

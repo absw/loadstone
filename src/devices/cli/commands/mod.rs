@@ -1,15 +1,40 @@
 use crate::{
-    devices::cli::{Arguments, Cli, Error, Name, RetrieveArgument},
-    hal::serial,
+    devices::{
+        bootloader::Bootloader,
+        cli::{Arguments, Cli, Error, Name, RetrieveArgument},
+    },
+    hal::{flash, serial},
 };
 
-commands!( cli, names, helpstrings [
-    help()
-        ["Displays a list of commands."]
-        { cli.print_help(names, helpstrings) },
-    sample_command(_first: bool ["Optional Flag"], _second: u32 ["Numbers (0-100)"], _third: Option<u32> ["Optional thing (3-5)"],)
-        ["A test command."]
-        { uprintln!(cli.serial, "Hi!") },
-]);
+commands!( cli, bootloader, names, helpstrings [
 
-//help(a: MyEnum, b: Option<i32>)
+    help ["Displays a list of commands."] (command: Option<&str> ["Optional command to inspect."],) {
+        cli.print_help(names, helpstrings, command)
+    },
+
+    test ["Tests various elements of the bootloader."](
+        mcu: bool ["Set to test MCU flash"],
+        external: bool ["Set to test external flash"],
+        complex: bool ["Set to perform complex tests"],
+    ){
+        uprintln!(cli.serial, if complex { "Starting Complex Test..." } else { "Starting Simple Test..." });
+        match (mcu, external) {
+            (true, true) => {
+                bootloader.test_mcu_flash(complex)?;
+                bootloader.test_external_flash(complex)?;
+                uprintln!(cli.serial, "Both Flash tests successful");
+            }
+            (true, false) => {
+                bootloader.test_mcu_flash(complex)?;
+                uprintln!(cli.serial, "MCU flash test successful");
+            }
+            (false, true) => {
+                bootloader.test_external_flash(complex)?;
+                uprintln!(cli.serial, "External flash test successful");
+            }
+            (false, false) => {
+                return Err(Error::MissingArgument);
+            }
+        }
+    },
+]);
