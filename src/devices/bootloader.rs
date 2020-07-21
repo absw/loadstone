@@ -5,6 +5,7 @@
 //! handled by the `port` module as it depends on board
 //! specific information.
 use crate::{
+    devices::cli::Cli,
     error::{Error, ReportOnUnwrapWithPrefix},
     hal::{flash, led, serial},
     utilities::guard::Guard,
@@ -16,37 +17,42 @@ pub struct Bootloader<EXTF, MCUF, SRL, LED>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
-    SRL: serial::Write,
+    SRL: serial::ReadWrite,
     LED: led::Toggle,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
     pub(crate) post_led: LED,
-    pub(crate) serial: SRL,
+    pub(crate) cli: Cli<SRL>,
 }
 
 impl<EXTF, MCUF, SRL, LED> Bootloader<EXTF, MCUF, SRL, LED>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
-    SRL: serial::Write,
+    SRL: serial::ReadWrite,
     LED: led::Toggle,
 {
     pub fn power_on_self_test(&mut self) {
-        let Self { external_flash, mcu_flash, post_led, serial } = self;
+        let Self { external_flash, mcu_flash, post_led, cli } = self;
         let _guard = Guard::new(post_led, Toggle::on, Toggle::off);
-        Self::post_test_flash_simple_rwc(external_flash).report_unwrap("[External Flash] ", serial);
-        uprintln!(serial, "External flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_simple_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
-        uprintln!(serial, "MCU flash ID verification and simple RW cycle passed");
+        Self::post_test_flash_simple_rwc(external_flash)
+            .report_unwrap("[External Flash] ", cli.serial());
+        uprintln!(cli.serial(), "External flash ID verification and simple RW cycle passed");
+        Self::post_test_flash_simple_rwc(mcu_flash).report_unwrap("[MCU Flash] ", cli.serial());
+        uprintln!(cli.serial(), "MCU flash ID verification and simple RW cycle passed");
         Self::post_test_flash_complex_rwc(external_flash)
-            .report_unwrap("[External Flash] ", serial);
-        uprintln!(serial, "External flash complex RW cycle passed");
-        Self::post_test_flash_complex_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
-        uprintln!(serial, "MCU flash complex RW cycle passed");
+            .report_unwrap("[External Flash] ", cli.serial());
+        uprintln!(cli.serial(), "External flash complex RW cycle passed");
+        Self::post_test_flash_complex_rwc(mcu_flash).report_unwrap("[MCU Flash] ", cli.serial());
+        uprintln!(cli.serial(), "MCU flash complex RW cycle passed");
     }
 
-    pub fn run(self) -> ! { loop {} }
+    pub fn run(mut self) -> ! {
+        loop {
+            self.cli.run()
+        }
+    }
 
     fn post_test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
     where

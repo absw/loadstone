@@ -7,7 +7,10 @@
 #![macro_use]
 
 use core::fmt::Debug;
-use nb;
+use nb::{self, block};
+
+pub trait ReadWrite: Read + Write {}
+impl<T: Read + Write> ReadWrite for T {}
 
 /// UART read half
 pub trait Read {
@@ -15,6 +18,7 @@ pub trait Read {
 
     /// Reads a single byte
     fn read(&mut self) -> nb::Result<u8, Self::Error>;
+    fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self } }
 }
 
 /// UART write half
@@ -23,6 +27,15 @@ pub trait Write {
 
     /// Writes a single byte
     fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error>;
+}
+
+pub struct ReadIterator<'a, R: Read + ?Sized> {
+    reader: &'a mut R,
+}
+
+impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> { block!(self.reader.read()).ok() }
 }
 
 /// Prints to an abstract serial device.
@@ -44,10 +57,10 @@ macro_rules! uprint {
 /// ```
 #[macro_export]
 macro_rules! uprintln {
-    ($serial:expr, $arg:expr) => {
+    ($serial:expr, $arg:expr) => {{
         uprint!($serial, $arg);
         uprint!($serial, "\r\n");
-    };
+    }};
 }
 
 #[cfg(test)]
