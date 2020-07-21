@@ -37,4 +37,13 @@ commands!( cli, bootloader, names, helpstrings [
             }
         }
     },
+
+    flash ["Stores a FW image in external Flash."] (size: u32 ["[0-500]"],) {
+        if size > 500 {
+            return Err(Error::ArgumentOutOfRange);
+        }
+        uprintln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.");
+        bootloader.store_image(cli.serial.bytes().take(size as usize))?;
+        uprintln!(cli.serial, "Image transfer complete!");
+    },
 ]);

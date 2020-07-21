@@ -6,12 +6,14 @@
 //! specific information.
 use crate::{
     devices::cli::Cli,
-    error::{Error, ReportOnUnwrapWithPrefix},
-    hal::{flash, led, serial},
-    utilities::guard::Guard,
+    error::Error,
+    hal::{flash, serial},
+    utilities::buffer::CollectSlice,
 };
-use led::Toggle;
 use nb::block;
+
+const IMAGE_OFFSET: usize = 4usize;
+const TRANSFER_BUFFER_SIZE: usize = 528usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -34,6 +36,25 @@ where
         let mut cli = self.cli.take().unwrap();
         loop {
             cli.run(&mut self)
+        }
+    }
+
+    pub fn store_image<I>(&mut self, mut bytes: I) -> Result<(), Error>
+    where
+        I: Iterator<Item = u8>,
+    {
+        let mut address = EXTF::writable_range().0 + IMAGE_OFFSET;
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        loop {
+            match bytes.collect_slice(&mut buffer) {
+                0 => break Ok(()),
+                n => {
+                    self.external_flash
+                        .write(address, &mut buffer[0..n])
+                        .map_err(|_| Error::DriverError("Flash Write Error"))?;
+                    address = address + n;
+                }
+            }
         }
     }
 

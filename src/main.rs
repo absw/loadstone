@@ -9,7 +9,7 @@ use cortex_m_rt::{entry, exception};
 #[entry]
 fn main() -> ! {
     use secure_bootloader_lib::devices::bootloader::Bootloader;
-    let mut bootloader = Bootloader::new();
+    let bootloader = Bootloader::new();
     bootloader.run();
 }
 

@@ -16,6 +16,8 @@ const BUFFER_SIZE: usize = 256;
 pub enum Error {
     CommandEmpty,
     CommandUnknown,
+    UnexpectedArguments,
+    ArgumentOutOfRange,
     MalformedArguments,
     MissingArgument,
     CharactersNotAllowed,
@@ -32,6 +34,7 @@ impl From<BootloaderError> for Error {
 pub struct Cli<S: serial::ReadWrite> {
     serial: S,
     greeted: bool,
+    needs_prompt: bool,
 }
 
 type Name<'a> = &'a str;
@@ -40,6 +43,15 @@ type Name<'a> = &'a str;
 enum Argument<'a> {
     Single(&'a str),
     Pair(&'a str, &'a str),
+}
+
+impl<'a> Argument<'a> {
+    fn name(&self) -> &str {
+        match self {
+            Argument::Single(n) => n,
+            Argument::Pair(n, _) => n,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -69,7 +81,7 @@ trait Parsable<'a>: Sized {
 
 impl<'a> Parsable<'a> for u32 {
     fn parse(text: &'a str) -> Result<Self, Error> {
-        text.parse().map_err(|e| Error::MalformedArguments)
+        text.parse().map_err(|_| Error::MalformedArguments)
     }
 }
 
@@ -96,10 +108,7 @@ impl<'a, T: Parsable<'a>> RetrieveArgument<T> for Arguments<'a> {
 
 impl<'a> RetrieveArgument<bool> for Arguments<'a> {
     fn retrieve(&self, name: &str) -> Result<bool, Error> {
-        Ok(self.clone().any(|arg| match arg {
-            Argument::Pair(n, v) => n == name,
-            Argument::Single(n) => n == name,
-        }))
+        Ok(self.clone().any(|arg| arg.name() == name))
     }
 }
 
@@ -118,15 +127,6 @@ impl<'a, T: Parsable<'a>> RetrieveArgument<Option<T>> for Arguments<'a> {
     }
 }
 
-impl<'a> Arguments<'a> {
-    fn is_set(&self, name: &str) -> bool {
-        self.clone().any(|arg| match arg {
-            Argument::Pair(n, _) => n == name,
-            Argument::Single(n) => n == name,
-        })
-    }
-}
-
 const ARGUMENT_SEPARATOR: char = '=';
 const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
@@ -141,13 +141,15 @@ impl<S: serial::ReadWrite> Cli<S> {
             uprintln!(self.serial, GREETING);
             self.greeted = true;
         }
-        uprint!(self.serial, PROMPT);
+        self.prompt();
         let mut execute_command = || -> Result<(), Error> {
             let mut buffer = [0u8; BUFFER_SIZE];
             block!(self.read_line(&mut buffer))?;
             let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
             let (name, arguments) = Self::parse(text)?;
-            commands::run(self, bootloader, name, arguments)
+            self.needs_prompt = true;
+            commands::run(self, bootloader, name, arguments)?;
+            Ok(())
         };
         match execute_command() {
             Err(Error::BadCommandEncoding) => {
@@ -172,9 +174,22 @@ impl<S: serial::ReadWrite> Cli<S> {
                 uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
                 e.report(&mut self.serial);
             }
+            Err(Error::UnexpectedArguments) => {
+                uprintln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
+            }
+            Err(Error::ArgumentOutOfRange) => {
+                uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
+            }
             Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
-            Err(Error::CommandEmpty) => (),
+            Err(Error::CommandEmpty) => self.needs_prompt = false,
             Ok(_) => (),
+        }
+    }
+
+    fn prompt(&mut self) {
+        if self.needs_prompt {
+            uprint!(self.serial, PROMPT);
+            self.needs_prompt = false;
         }
     }
 
@@ -217,7 +232,9 @@ impl<S: serial::ReadWrite> Cli<S> {
         Ok((name, arguments))
     }
 
-    pub fn new(serial: S) -> Result<Self, Error> { Ok(Cli { serial, greeted: false }) }
+    pub fn new(serial: S) -> Result<Self, Error> {
+        Ok(Cli { serial, greeted: false, needs_prompt: true })
+    }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
         let mut bytes = self.serial.bytes().take_while(|b| *b as char != LINE_TERMINATOR);
@@ -243,15 +260,11 @@ impl<S: serial::ReadWrite> Cli<S> {
                     continue;
                 }
             }
-            uprint!(self.serial, "* ");
+            uprintln!(self.serial, "");
+            uprint!(self.serial, "[");
             uprint!(self.serial, name);
-            uprint!(self.serial, " - ");
-            uprint!(self.serial, help);
-            if arguments_help.is_empty() {
-                uprintln!(self.serial, "");
-            } else {
-                uprintln!(self.serial, " Arguments:");
-            }
+            uprint!(self.serial, "] - ");
+            uprintln!(self.serial, help);
             for (argument, range) in arguments_help.iter() {
                 uprint!(self.serial, "    * ");
                 uprint!(self.serial, argument);
@@ -272,13 +285,13 @@ macro_rules! commands {
         ]
     ) => {
         #[allow(non_upper_case_globals)]
-        static $names: &[&'static str] = &[
+        const $names: &[&'static str] = &[
             $(
                 stringify!($c),
             )+
         ];
         #[allow(non_upper_case_globals)]
-        static $helpstrings: &[(&'static str, &[(&'static str, &'static str)])] = &[
+        const $helpstrings: &[(&'static str, &[(&'static str, &'static str)])] = &[
             $(
                 ($h, &[
                      $((stringify!($a), $r),)*
@@ -289,7 +302,7 @@ macro_rules! commands {
         pub(super) fn run<EXTF, MCUF, SRL>(
             $cli: &mut Cli<SRL>,
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
-            name: Name, _arguments: Arguments) -> Result<(), Error>
+            name: Name, arguments: Arguments) -> Result<(), Error>
         where
             EXTF: flash::ReadWrite,
             MCUF: flash::ReadWrite,
@@ -298,9 +311,15 @@ macro_rules! commands {
             match name {
                 $(
                     stringify!($c) => {
+                        if arguments.clone().any(|a| true $(&& a.name() != stringify!($a))*) {
+                            return Err(Error::UnexpectedArguments);
+                        }
+
                         $(
-                            let $a: $t  = _arguments.retrieve(stringify!($a))?;
+                            let $a: $t  = arguments.retrieve(stringify!($a))?;
                         )*
+
+
                         $command
                         Ok(())
                     },

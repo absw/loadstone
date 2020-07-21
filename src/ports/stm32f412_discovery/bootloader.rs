@@ -1,11 +1,10 @@
 //! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
 use crate::ports::pin_configuration::*;
-use crate::hal::{serial::Write, time};
+use crate::hal::time;
 use crate::{drivers::{
     stm32f4::gpio::{GpioExt, *},
     stm32f4::qspi::{self, mode, QuadSpi},
     stm32f4::rcc::Clocks,
-    led::{MonochromeLed, LogicLevel},
     stm32f4::serial::{self, UsartExt},
     stm32f4::systick::SysTick,
     stm32f4::flash,
@@ -22,7 +21,6 @@ type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
 // Serial pins and typedefs
 type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
-type PostLed = MonochromeLed<Pe1<Output<PushPull>>>;
 
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
@@ -31,8 +29,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
-        let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
-        let post_led = MonochromeLed::new(gpioe.pe1, LogicLevel::Inverted);
         let clocks = Clocks::hardcoded(&peripherals.FLASH, peripherals.RCC);
 
         let systick = SysTick::new(cortex_peripherals.SYST, clocks);
