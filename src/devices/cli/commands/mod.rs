@@ -1,7 +1,7 @@
 use crate::{
     devices::{
         bootloader::Bootloader,
-        cli::{Arguments, Cli, Error, Name, RetrieveArgument},
+        cli::{ArgumentIterator, Cli, Error, Name, RetrieveArgument},
     },
     hal::{flash, serial},
 };

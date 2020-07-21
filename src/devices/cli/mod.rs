@@ -55,11 +55,11 @@ impl<'a> Argument<'a> {
 }
 
 #[derive(Clone)]
-struct Arguments<'a> {
+struct ArgumentIterator<'a> {
     tokens: SplitWhitespace<'a>,
 }
 
-impl<'a> Iterator for Arguments<'a> {
+impl<'a> Iterator for ArgumentIterator<'a> {
     type Item = Argument<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -93,7 +93,7 @@ trait RetrieveArgument<T> {
     fn retrieve(&self, name: &str) -> Result<T, Error>;
 }
 
-impl<'a, T: Parsable<'a>> RetrieveArgument<T> for Arguments<'a> {
+impl<'a, T: Parsable<'a>> RetrieveArgument<T> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<T, Error> {
         let argument = self
             .clone()
@@ -106,13 +106,13 @@ impl<'a, T: Parsable<'a>> RetrieveArgument<T> for Arguments<'a> {
     }
 }
 
-impl<'a> RetrieveArgument<bool> for Arguments<'a> {
+impl<'a> RetrieveArgument<bool> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<bool, Error> {
         Ok(self.clone().any(|arg| arg.name() == name))
     }
 }
 
-impl<'a, T: Parsable<'a>> RetrieveArgument<Option<T>> for Arguments<'a> {
+impl<'a, T: Parsable<'a>> RetrieveArgument<Option<T>> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<Option<T>, Error> {
         let argument = self.clone().find_map(|arg| match arg {
             Argument::Pair(n, v) if n == name => Some(v),
@@ -195,7 +195,7 @@ impl<S: serial::ReadWrite> Cli<S> {
 
     pub fn serial(&mut self) -> &mut S { &mut self.serial }
 
-    fn parse<'a>(text: &'a str) -> Result<(Name, Arguments), Error> {
+    fn parse<'a>(text: &'a str) -> Result<(Name, ArgumentIterator), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
         if text.is_empty() {
             return Err(Error::CommandEmpty);
@@ -216,7 +216,7 @@ impl<S: serial::ReadWrite> Cli<S> {
             return Err(Error::MalformedArguments);
         }
         let name = tokens.next().ok_or(Error::CommandEmpty)?;
-        let arguments = Arguments { tokens };
+        let arguments = ArgumentIterator { tokens };
         let unique = arguments
             .clone()
             .map(|arg| match arg {
@@ -302,7 +302,7 @@ macro_rules! commands {
         pub(super) fn run<EXTF, MCUF, SRL>(
             $cli: &mut Cli<SRL>,
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
-            name: Name, arguments: Arguments) -> Result<(), Error>
+            name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
             EXTF: flash::ReadWrite,
             MCUF: flash::ReadWrite,
