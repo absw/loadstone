@@ -39,7 +39,10 @@ spec:
             }
             stage('Build') {
                 sh 'rustup target add thumbv7em-none-eabihf'
-                sh './cargo_emb check'
+                sh './cargo_emb build'
+            }
+            stage('Documentation') {
+                sh './cargo_emb doc'
             }
         }
     }

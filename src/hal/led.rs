@@ -2,7 +2,6 @@
 //!
 //! Access to LEDs is segmented over three interfaces to facilitate
 //! all usual LED patterns.
-
 use crate::hal::time;
 
 /// Interface to a LED's generic color. May be tricolor LEDs, full color

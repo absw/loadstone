@@ -4,7 +4,6 @@
 //! secure bootloader project in library form.
 #![feature(never_type)]
 #![feature(bool_to_option)]
-#![feature(type_alias_impl_trait)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
 

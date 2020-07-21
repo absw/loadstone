@@ -37,16 +37,16 @@ pub struct Cli<S: serial::ReadWrite> {
     needs_prompt: bool,
 }
 
-type Name<'a> = &'a str;
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Argument<'a> {
     Single(&'a str),
     Pair(&'a str, &'a str),
 }
 
+type Name<'a> = &'a str;
+
 impl<'a> Argument<'a> {
-    fn name(&self) -> &str {
+    fn name(&self) -> Name {
         match self {
             Argument::Single(n) => n,
             Argument::Pair(n, _) => n,
@@ -318,7 +318,6 @@ macro_rules! commands {
                         $(
                             let $a: $t  = arguments.retrieve(stringify!($a))?;
                         )*
-
 
                         $command
                         Ok(())
