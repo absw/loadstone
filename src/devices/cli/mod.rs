@@ -207,14 +207,25 @@ impl<S: serial::ReadWrite> Cli<S> {
     fn print_help(
         &mut self,
         names: &[&'static str],
-        helpstrings: &[(&'static str, &[&'static str])],
+        helpstrings: &[(&'static str, &[(&'static str, &'static str)])],
     ) {
         uprintln!(self.serial, "List of available commands:");
-        for (name, (help, _arguments_help)) in names.iter().zip(helpstrings.iter()) {
+        for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
             uprint!(self.serial, "* ");
             uprint!(self.serial, name);
             uprint!(self.serial, " - ");
-            uprintln!(self.serial, help);
+            uprint!(self.serial, help);
+            if arguments_help.is_empty() {
+                uprintln!(self.serial, "");
+            } else {
+                uprintln!(self.serial, " Arguments:");
+            }
+            for (argument, range) in arguments_help.iter() {
+                uprint!(self.serial, "    * ");
+                uprint!(self.serial, argument);
+                uprint!(self.serial, " -> ");
+                uprintln!(self.serial, range);
+            }
         }
         uprintln!(self.serial, "");
     }
@@ -224,7 +235,7 @@ macro_rules! commands {
     (
         $cli:ident, $names:ident, $helpstrings:ident [
             $(
-                $c:ident($($a:ident: $t:ty,)*) [$h:expr] $command:block,
+                $c:ident($($a:ident: $t:ty [$r:expr],)*) [$h:expr] $command:block,
             )+
         ]
     ) => {
@@ -235,7 +246,13 @@ macro_rules! commands {
             )+
         ];
         #[allow(non_upper_case_globals)]
-        static $helpstrings: &[(&'static str, &[&'static str])] = &[ $( ($h, &[$(stringify!($a))*]), )+ ];
+        static $helpstrings: &[(&'static str, &[(&'static str, &'static str)])] = &[
+            $(
+                ($h, &[
+                     $((stringify!($a), $r),)*
+                ]),
+            )+
+        ];
         pub(super) fn run<S: serial::ReadWrite>($cli: &mut Cli<S>, name: Name, _arguments: Arguments) -> Result<(), Error> {
             match name {
                 $(
