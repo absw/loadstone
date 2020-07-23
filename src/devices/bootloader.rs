@@ -5,49 +5,76 @@
 //! handled by the `port` module as it depends on board
 //! specific information.
 use crate::{
-    error::{Error, ReportOnUnwrapWithPrefix},
-    hal::{flash, led, serial},
-    utilities::guard::Guard,
+    devices::cli::Cli,
+    error::Error,
+    hal::{flash, serial},
+    utilities::buffer::CollectSlice,
 };
-use led::Toggle;
 use nb::block;
 
-pub struct Bootloader<EXTF, MCUF, SRL, LED>
+const IMAGE_OFFSET: usize = 4usize;
+const TRANSFER_BUFFER_SIZE: usize = 528usize;
+
+pub struct Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
-    SRL: serial::Write,
-    LED: led::Toggle,
+    SRL: serial::ReadWrite,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
-    pub(crate) post_led: LED,
-    pub(crate) serial: SRL,
+    pub(crate) cli: Option<Cli<SRL>>,
 }
 
-impl<EXTF, MCUF, SRL, LED> Bootloader<EXTF, MCUF, SRL, LED>
+impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     MCUF: flash::ReadWrite,
-    SRL: serial::Write,
-    LED: led::Toggle,
+    SRL: serial::ReadWrite,
 {
-    pub fn power_on_self_test(&mut self) {
-        let Self { external_flash, mcu_flash, post_led, serial } = self;
-        let _guard = Guard::new(post_led, Toggle::on, Toggle::off);
-        Self::post_test_flash_simple_rwc(external_flash).report_unwrap("[External Flash] ", serial);
-        uprintln!(serial, "External flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_simple_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
-        uprintln!(serial, "MCU flash ID verification and simple RW cycle passed");
-        Self::post_test_flash_complex_rwc(external_flash).report_unwrap("[External Flash] ", serial);
-        uprintln!(serial, "External flash complex RW cycle passed");
-        Self::post_test_flash_complex_rwc(mcu_flash).report_unwrap("[MCU Flash] ", serial);
-        uprintln!(serial, "MCU flash complex RW cycle passed");
+    pub fn run(mut self) -> ! {
+        let mut cli = self.cli.take().unwrap();
+        loop {
+            cli.run(&mut self)
+        }
     }
 
-    pub fn run(self) -> ! { loop {} }
+    pub fn store_image<I>(&mut self, mut bytes: I) -> Result<(), Error>
+    where
+        I: Iterator<Item = u8>,
+    {
+        let mut address = EXTF::writable_range().0 + IMAGE_OFFSET;
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        loop {
+            match bytes.collect_slice(&mut buffer) {
+                0 => break Ok(()),
+                n => {
+                    self.external_flash
+                        .write(address, &mut buffer[0..n])
+                        .map_err(|_| Error::DriverError("Flash Write Error"))?;
+                    address = address + n;
+                }
+            }
+        }
+    }
 
-    fn post_test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
+    pub fn test_mcu_flash(&mut self, complex: bool) -> Result<(), Error> {
+        if complex {
+            Self::test_flash_complex_rwc(&mut self.mcu_flash)
+        } else {
+            Self::test_flash_simple_rwc(&mut self.mcu_flash)
+        }
+    }
+
+    pub fn test_external_flash(&mut self, complex: bool) -> Result<(), Error> {
+        if complex {
+            Self::test_flash_complex_rwc(&mut self.external_flash)
+        } else {
+            Self::test_flash_simple_rwc(&mut self.external_flash)
+        }
+    }
+
+    fn test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {
@@ -67,7 +94,7 @@ where
         }
     }
 
-    fn post_test_flash_complex_rwc<F>(flash: &mut F) -> Result<(), Error>
+    fn test_flash_complex_rwc<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {

@@ -1,3 +1,4 @@
+use crate::utilities::memory::Address;
 use core::fmt;
 
 /// Abstract mass erase
@@ -9,7 +10,7 @@ pub trait BulkErase {
 /// Reads a range of bytes, generic over an address
 pub trait Read {
     type Error: Clone + Copy + fmt::Debug;
-    type Address: Clone + Copy + fmt::Debug;
+    type Address: Address;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn readable_range() -> (Self::Address, Self::Address);
 }
@@ -20,7 +21,7 @@ pub trait Read {
 /// page boundaries
 pub trait Write {
     type Error: Clone + Copy + fmt::Debug;
-    type Address: Clone + Copy + fmt::Debug;
+    type Address: Address;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
     fn writable_range() -> (Self::Address, Self::Address);
 }

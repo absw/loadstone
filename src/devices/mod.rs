@@ -4,3 +4,4 @@
 //! handled in the `ports` module.
 
 pub mod bootloader;
+pub mod cli;
