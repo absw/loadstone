@@ -3,13 +3,13 @@ use crate::{
     devices::bootloader::Bootloader,
     error::Error as BootloaderError,
     hal::{flash, serial},
-    utilities::{buffer::CollectSlice, iterator::Unique},
+    utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 
-const GREETING: &str = "--=Lodestone CLI=--\r\ntype `help` for a list of commands.";
-const PROMPT: &str = "> ";
+const GREETING: &str = "--=Lodestone CLI=--\ntype `help` for a list of commands.";
+const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -24,6 +24,7 @@ pub enum Error {
     BadCommandEncoding,
     DuplicateArguments,
     SerialBufferOverflow,
+    SerialReadError,
     BootloaderError(BootloaderError),
 }
 
@@ -95,6 +96,11 @@ trait RetrieveArgument<T> {
 
 impl<'a, T: Parsable<'a>> RetrieveArgument<T> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<T, Error> {
+        // At this point we know the argument is a pair, so we error out if it's single
+        if self.clone().any(|arg| Argument::Single(name) == arg) {
+            return Err(Error::MalformedArguments);
+        }
+
         let argument = self
             .clone()
             .find_map(|arg| match arg {
@@ -114,6 +120,11 @@ impl<'a> RetrieveArgument<bool> for ArgumentIterator<'a> {
 
 impl<'a, T: Parsable<'a>> RetrieveArgument<Option<T>> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<Option<T>, Error> {
+        // At this point we know the argument is a pair, so we error out if it's single
+        if self.clone().any(|arg| Argument::Single(name) == arg) {
+            return Err(Error::MalformedArguments);
+        }
+
         let argument = self.clone().find_map(|arg| match arg {
             Argument::Pair(n, v) if n == name => Some(v),
             _ => None,
@@ -141,13 +152,15 @@ impl<S: serial::ReadWrite> Cli<S> {
             uprintln!(self.serial, GREETING);
             self.greeted = true;
         }
-        self.prompt();
+        if self.needs_prompt {
+            uprint!(self.serial, PROMPT);
+            self.needs_prompt = false;
+        }
         let mut execute_command = || -> Result<(), Error> {
             let mut buffer = [0u8; BUFFER_SIZE];
             block!(self.read_line(&mut buffer))?;
             let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
             let (name, arguments) = Self::parse(text)?;
-            self.needs_prompt = true;
             commands::run(self, bootloader, name, arguments)?;
             Ok(())
         };
@@ -180,17 +193,14 @@ impl<S: serial::ReadWrite> Cli<S> {
             Err(Error::ArgumentOutOfRange) => {
                 uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
             }
+            Err(Error::SerialReadError) => {
+                uprintln!(self.serial, "[CLI Error] Serial Read Failed")
+            }
             Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
-            Err(Error::CommandEmpty) => self.needs_prompt = false,
+            Err(Error::CommandEmpty) => (),
             Ok(_) => (),
         }
-    }
-
-    fn prompt(&mut self) {
-        if self.needs_prompt {
-            uprint!(self.serial, PROMPT);
-            self.needs_prompt = false;
-        }
+        self.needs_prompt = true;
     }
 
     pub fn serial(&mut self) -> &mut S { &mut self.serial }
@@ -232,13 +242,17 @@ impl<S: serial::ReadWrite> Cli<S> {
         Ok((name, arguments))
     }
 
-    pub fn new(serial: S) -> Result<Self, Error> {
-        Ok(Cli { serial, greeted: false, needs_prompt: true })
-    }
+    pub fn new(serial: S) -> Result<Self, Error> { Ok(Cli { serial, greeted: false, needs_prompt: true }) }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
-        let mut bytes = self.serial.bytes().take_while(|b| *b as char != LINE_TERMINATOR);
-        if bytes.collect_slice(buffer) < buffer.len() {
+        let mut bytes = self
+            .serial
+            .bytes()
+            .take_while(|element| match element {
+                Err(_) => true,
+                Ok(b) => *b as char != LINE_TERMINATOR
+            });
+        if bytes.try_collect_slice(buffer).map_err(|_| Error::SerialReadError)? < buffer.len() {
             Ok(())
         } else {
             Err(nb::Error::Other(Error::SerialBufferOverflow))
@@ -272,7 +286,6 @@ impl<S: serial::ReadWrite> Cli<S> {
                 uprintln!(self.serial, range);
             }
         }
-        uprintln!(self.serial, "");
     }
 }
 
@@ -344,8 +357,7 @@ mod test {
         assert_eq!(Argument::Pair("an_option", "5000"), arguments.next().unwrap());
         assert_eq!(Argument::Single("some_flag"), arguments.next().unwrap());
 
-        let sample_command =
-            "command         with_too_much_whitespace   but  still=valid   \r\n\r\n";
+        let sample_command = "command         with_too_much_whitespace   but  still=valid   \n\n";
         let (name, mut arguments) = Cli::<MockSerial>::parse(sample_command).unwrap();
         assert_eq!("command", name);
         assert_eq!(Argument::Single("with_too_much_whitespace"), arguments.next().unwrap());

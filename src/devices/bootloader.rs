@@ -8,7 +8,7 @@ use crate::{
     devices::cli::Cli,
     error::Error,
     hal::{flash, serial},
-    utilities::buffer::CollectSlice,
+    utilities::buffer::TryCollectSlice,
 };
 use nb::block;
 
@@ -39,14 +39,14 @@ where
         }
     }
 
-    pub fn store_image<I>(&mut self, mut bytes: I) -> Result<(), Error>
+    pub fn store_image<I, E>(&mut self, mut bytes: I) -> Result<(), Error>
     where
-        I: Iterator<Item = u8>,
+        I: Iterator<Item = Result<u8, E>>,
     {
         let mut address = EXTF::writable_range().0 + IMAGE_OFFSET;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
-            match bytes.collect_slice(&mut buffer) {
+            match bytes.try_collect_slice(&mut buffer).map_err(|_| Error::DriverError("Serial Read Error"))? {
                 0 => break Ok(()),
                 n => {
                     self.external_flash
