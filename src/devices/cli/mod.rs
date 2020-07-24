@@ -193,9 +193,7 @@ impl<S: serial::ReadWrite> Cli<S> {
             Err(Error::ArgumentOutOfRange) => {
                 uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
             }
-            Err(Error::SerialReadError) => {
-                uprintln!(self.serial, "[CLI Error] Serial Read Failed")
-            }
+            Err(Error::SerialReadError) => uprintln!(self.serial, "[CLI Error] Serial Read Failed"),
             Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
             Err(Error::CommandEmpty) => (),
             Ok(_) => (),
@@ -242,16 +240,15 @@ impl<S: serial::ReadWrite> Cli<S> {
         Ok((name, arguments))
     }
 
-    pub fn new(serial: S) -> Result<Self, Error> { Ok(Cli { serial, greeted: false, needs_prompt: true }) }
+    pub fn new(serial: S) -> Result<Self, Error> {
+        Ok(Cli { serial, greeted: false, needs_prompt: true })
+    }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
-        let mut bytes = self
-            .serial
-            .bytes()
-            .take_while(|element| match element {
-                Err(_) => true,
-                Ok(b) => *b as char != LINE_TERMINATOR
-            });
+        let mut bytes = self.serial.bytes().take_while(|element| match element {
+            Err(_) => true,
+            Ok(b) => *b as char != LINE_TERMINATOR,
+        });
         if bytes.try_collect_slice(buffer).map_err(|_| Error::SerialReadError)? < buffer.len() {
             Ok(())
         } else {

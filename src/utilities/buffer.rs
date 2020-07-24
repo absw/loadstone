@@ -8,8 +8,7 @@ pub trait TryCollectSlice: Iterator {
     fn try_collect_slice(&mut self, slice: &mut [Self::Element]) -> Result<usize, Self::Error>;
 }
 
-impl<I: Iterator> CollectSlice for I
-{
+impl<I: Iterator> CollectSlice for I {
     fn collect_slice(&mut self, slice: &mut [Self::Item]) -> usize {
         slice.iter_mut().zip(self).fold(0, |count, (dest, item)| {
             *dest = item;
@@ -20,7 +19,7 @@ impl<I: Iterator> CollectSlice for I
 
 impl<I, T, E> TryCollectSlice for I
 where
-    I: Iterator<Item=Result<T, E>> ,
+    I: Iterator<Item = Result<T, E>>,
 {
     type Element = T;
     type Error = E;
@@ -58,5 +57,4 @@ mod test {
         let to_collect: [Result<u8, ()>; 3] = [Ok(3), Ok(2), Ok(1)];
         assert_eq!(Ok(3), to_collect.iter().copied().try_collect_slice(&mut ints));
     }
-
 }

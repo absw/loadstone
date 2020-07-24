@@ -21,7 +21,7 @@ pub enum Error {
 }
 
 #[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Address(u32);
+pub struct Address(pub u32);
 
 impl Add<usize> for Address {
     type Output = Self;
@@ -31,6 +31,11 @@ impl Add<usize> for Address {
 impl Sub<usize> for Address {
     type Output = Self;
     fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
+}
+
+impl Sub<Address> for Address {
+    type Output = usize;
+    fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -58,7 +63,7 @@ struct Sector {
 }
 
 #[non_exhaustive]
-struct MemoryMap {
+pub struct MemoryMap {
     sectors: [Sector; SECTOR_NUMBER],
 }
 
@@ -113,6 +118,33 @@ impl MemoryMap {
     }
 
     fn sectors() -> impl Iterator<Item = Sector> { MEMORY_MAP.sectors.iter().cloned() }
+    pub const fn writable_start() -> Address {
+        let mut i = 0;
+        loop {
+            if MEMORY_MAP.sectors[i].is_writable() {
+                break MEMORY_MAP.sectors[i].start();
+            }
+            i += 1;
+        }
+    }
+    pub const fn writable_end() -> Address {
+        let mut i = 0;
+        loop {
+            // Reach the writable area.
+            if MEMORY_MAP.sectors[i].is_writable() {
+                break;
+            }
+            i += 1;
+        }
+
+        loop {
+            // Reach the end of the writable area
+            if !MEMORY_MAP.sectors[i + 1].is_writable() {
+                break MEMORY_MAP.sectors[i].end();
+            }
+            i += 1;
+        }
+    }
 }
 
 impl Range {
@@ -250,10 +282,7 @@ impl Write for McuFlash {
     type Address = Address;
 
     fn writable_range() -> (Address, Address) {
-        let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let (first_sector, last_sector) =
-            (writable_sectors.next().unwrap(), writable_sectors.last().unwrap());
-        (first_sector.start(), last_sector.end())
+        (MemoryMap::writable_start(), MemoryMap::writable_end())
     }
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
@@ -333,5 +362,12 @@ mod test {
         let expected_sectors = &MEMORY_MAP.sectors[4..7];
 
         assert_eq!(expected_sectors, range.span());
+    }
+
+    #[test]
+    fn map_shows_correct_writable_range() {
+        let (start, end) = McuFlash::writable_range();
+        assert_eq!(start, MEMORY_MAP.sectors[4].start());
+        assert_eq!(end, MEMORY_MAP.sectors[11].end())
     }
 }

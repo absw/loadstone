@@ -17,7 +17,7 @@ pub const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip [memory map](../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
 #[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Address(u32);
+pub struct Address(pub u32);
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }

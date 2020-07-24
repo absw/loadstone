@@ -17,8 +17,15 @@ macro_rules! mb {
 /// Generic address for the purpose of this module's methods.
 /// Anything that can be offset by a usize and yield another
 /// address works as an address.
-pub trait Address: Copy + core::ops::Add<usize, Output = Self> {}
-impl<A> Address for A where A: Copy + core::ops::Add<usize, Output = A> {}
+pub trait Address:
+    'static + Copy + core::ops::Add<usize, Output = Self> + core::ops::Sub<Self, Output = usize>
+{
+}
+
+impl<A> Address for A where
+    A: 'static + Copy + core::ops::Add<usize, Output = Self> + core::ops::Sub<Self, Output = usize>
+{
+}
 
 /// Abstract region that can contain addresses
 pub trait Region<A: Address> {

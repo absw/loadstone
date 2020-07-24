@@ -4,6 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
+use super::image;
 use crate::{
     devices::cli::Cli,
     error::Error,
@@ -24,6 +25,8 @@ where
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
     pub(crate) cli: Option<Cli<SRL>>,
+    pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
+    pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
 }
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
@@ -46,7 +49,10 @@ where
         let mut address = EXTF::writable_range().0 + IMAGE_OFFSET;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
-            match bytes.try_collect_slice(&mut buffer).map_err(|_| Error::DriverError("Serial Read Error"))? {
+            match bytes
+                .try_collect_slice(&mut buffer)
+                .map_err(|_| Error::DriverError("Serial Read Error"))?
+            {
                 0 => break Ok(()),
                 n => {
                     self.external_flash
@@ -60,21 +66,21 @@ where
 
     pub fn test_mcu_flash(&mut self, complex: bool) -> Result<(), Error> {
         if complex {
-            Self::test_flash_complex_rwc(&mut self.mcu_flash)
+            Self::test_flash_complex_read_write_cycle(&mut self.mcu_flash)
         } else {
-            Self::test_flash_simple_rwc(&mut self.mcu_flash)
+            Self::test_flash_simple_read_write_cycle(&mut self.mcu_flash)
         }
     }
 
     pub fn test_external_flash(&mut self, complex: bool) -> Result<(), Error> {
         if complex {
-            Self::test_flash_complex_rwc(&mut self.external_flash)
+            Self::test_flash_complex_read_write_cycle(&mut self.external_flash)
         } else {
-            Self::test_flash_simple_rwc(&mut self.external_flash)
+            Self::test_flash_simple_read_write_cycle(&mut self.external_flash)
         }
     }
 
-    fn test_flash_simple_rwc<F>(flash: &mut F) -> Result<(), Error>
+    fn test_flash_simple_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {
@@ -94,7 +100,7 @@ where
         }
     }
 
-    fn test_flash_complex_rwc<F>(flash: &mut F) -> Result<(), Error>
+    fn test_flash_complex_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {

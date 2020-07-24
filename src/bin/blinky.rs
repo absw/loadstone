@@ -4,12 +4,16 @@
 
 #[allow(unused_imports)]
 use cortex_m_rt::{entry, exception};
-use secure_bootloader_lib::drivers::stm32f4::rcc::Clocks;
-use secure_bootloader_lib::stm32pac;
-use secure_bootloader_lib::{hal::time::Seconds, drivers::{led, stm32f4::{systick, gpio::GpioExt}}};
-use secure_bootloader_lib::hal::led::Toggle;
+use secure_bootloader_lib::{
+    drivers::{
+        led,
+        stm32f4::{gpio::GpioExt, rcc::Clocks, systick},
+    },
+    hal::{led::Toggle, time::Seconds},
+    stm32pac,
+};
 
-//#[cfg(target_arch = "arm")]
+#[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
     let mut peripherals = stm32pac::Peripherals::take().unwrap();
