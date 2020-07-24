@@ -15,23 +15,22 @@ commands!( cli, bootloader, names, helpstrings [
     test ["Tests various elements of the bootloader."](
         mcu: bool ["Set to test MCU flash"],
         external: bool ["Set to test external flash"],
-        complex: bool ["Set to perform complex tests"],
     ){
         match (mcu, external) {
             (true, true) => {
-                uprintln!(cli.serial, if complex { "Starting Complex Test..." } else { "Starting Simple Test..." });
-                bootloader.test_mcu_flash(complex)?;
-                bootloader.test_external_flash(complex)?;
+                uprintln!(cli.serial, "Starting Test...");
+                bootloader.test_mcu_flash()?;
+                bootloader.test_external_flash()?;
                 uprintln!(cli.serial, "Both Flash tests successful");
             }
             (true, false) => {
-                uprintln!(cli.serial, if complex { "Starting Complex Test..." } else { "Starting Simple Test..." });
-                bootloader.test_mcu_flash(complex)?;
+                uprintln!(cli.serial, "Starting Test...");
+                bootloader.test_mcu_flash()?;
                 uprintln!(cli.serial, "MCU flash test successful");
             }
             (false, true) => {
-                uprintln!(cli.serial, if complex { "Starting Complex Test..." } else { "Starting Simple Test..." });
-                bootloader.test_external_flash(complex)?;
+                uprintln!(cli.serial, "Starting Test...");
+                bootloader.test_external_flash()?;
                 uprintln!(cli.serial, "External flash test successful");
             }
             (false, false) => {

@@ -1,6 +1,6 @@
 //! Internal Flash controller for the STM32F4 family
 use crate::{
-    hal::flash::{Read, Write},
+    hal::flash::{BulkErase, ReadWrite},
     stm32pac::FLASH,
     utilities::{
         bitwise::SliceBitSubset,
@@ -20,7 +20,7 @@ pub enum Error {
     MisalignedAccess,
 }
 
-#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
 pub struct Address(pub u32);
 
 impl Add<usize> for Address {
@@ -277,11 +277,24 @@ impl McuFlash {
     }
 }
 
-impl Write for McuFlash {
+impl BulkErase for McuFlash {
+    type Error = Error;
+
+    // NOTE: This only erases the sections of the MCU flash that are writable
+    // from the bootloader's perspective. Not the boot sector, system bytes, etc.
+    fn erase(&mut self) -> nb::Result<(), Self::Error> {
+        for sector in MEMORY_MAP.sectors.iter().filter(|s| s.is_writable()) {
+            self.erase(sector)?;
+        }
+        Ok(())
+    }
+}
+
+impl ReadWrite for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn writable_range() -> (Address, Address) {
+    fn range() -> (Address, Address) {
         (MemoryMap::writable_start(), MemoryMap::writable_end())
     }
 
@@ -323,13 +336,7 @@ impl Write for McuFlash {
 
         Ok(())
     }
-}
 
-impl Read for McuFlash {
-    type Error = Error;
-    type Address = Address;
-
-    fn readable_range() -> (Address, Address) { Self::writable_range() }
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if address.0 % 4 != 0 {
@@ -366,7 +373,7 @@ mod test {
 
     #[test]
     fn map_shows_correct_writable_range() {
-        let (start, end) = McuFlash::writable_range();
+        let (start, end) = McuFlash::range();
         assert_eq!(start, MEMORY_MAP.sectors[4].start());
         assert_eq!(end, MEMORY_MAP.sectors[11].end())
     }

@@ -8,7 +8,10 @@ use super::image;
 use crate::{
     devices::cli::Cli,
     error::Error,
-    hal::{flash, serial},
+    hal::{
+        flash::{self, UnportableDeserialize, UnportableSerialize},
+        serial,
+    },
     utilities::buffer::TryCollectSlice,
 };
 use nb::block;
@@ -18,8 +21,8 @@ const TRANSFER_BUFFER_SIZE: usize = 528usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
-    EXTF: flash::ReadWrite,
-    MCUF: flash::ReadWrite,
+    EXTF: flash::ReadWrite + flash::BulkErase,
+    MCUF: flash::ReadWrite + flash::BulkErase,
     SRL: serial::ReadWrite,
 {
     pub(crate) external_flash: EXTF,
@@ -31,8 +34,8 @@ where
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
 where
-    EXTF: flash::ReadWrite,
-    MCUF: flash::ReadWrite,
+    EXTF: flash::ReadWrite + flash::BulkErase,
+    MCUF: flash::ReadWrite + flash::BulkErase,
     SRL: serial::ReadWrite,
 {
     pub fn run(mut self) -> ! {
@@ -46,7 +49,7 @@ where
     where
         I: Iterator<Item = Result<u8, E>>,
     {
-        let mut address = EXTF::writable_range().0 + IMAGE_OFFSET;
+        let mut address = EXTF::range().0 + IMAGE_OFFSET;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
             match bytes
@@ -64,56 +67,40 @@ where
         }
     }
 
-    pub fn test_mcu_flash(&mut self, complex: bool) -> Result<(), Error> {
-        if complex {
-            Self::test_flash_complex_read_write_cycle(&mut self.mcu_flash)
-        } else {
-            Self::test_flash_simple_read_write_cycle(&mut self.mcu_flash)
+    pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
+        block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
+        block!(image::GlobalHeader::format_default(&mut self.mcu_flash))?;
+        for bank in self.mcu_banks {
+            block!(image::ImageHeader::format_default(&mut self.mcu_flash, bank.location))?;
         }
+        unimplemented!()
     }
 
-    pub fn test_external_flash(&mut self, complex: bool) -> Result<(), Error> {
-        if complex {
-            Self::test_flash_complex_read_write_cycle(&mut self.external_flash)
-        } else {
-            Self::test_flash_simple_read_write_cycle(&mut self.external_flash)
-        }
+    pub fn format_external_flash(&mut self) -> Result<(), Error> {
+        unimplemented!();
     }
 
-    fn test_flash_simple_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
+    pub fn test_mcu_flash(&mut self) -> Result<(), Error> {
+        Self::test_flash_read_write_cycle(&mut self.mcu_flash)
+    }
+
+    pub fn test_external_flash(&mut self) -> Result<(), Error> {
+        Self::test_flash_read_write_cycle(&mut self.external_flash)
+    }
+
+    fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
     {
         let failure = Error::PostError("Flash Read Write cycle failed");
-        let mut magic_number_buffer = [0u8; 1];
-        let mut new_magic_number_buffer = [0u8; 1];
-        let (write_start, _) = F::writable_range();
-        let (read_start, _) = F::readable_range();
-        block!(flash.read(read_start, &mut magic_number_buffer)).map_err(|_| failure)?;
-        new_magic_number_buffer[0] = magic_number_buffer[0].wrapping_add(1);
-        block!(flash.write(write_start, &mut new_magic_number_buffer)).map_err(|_| failure)?;
-        block!(flash.read(read_start, &mut magic_number_buffer)).map_err(|_| failure)?;
-        if magic_number_buffer != new_magic_number_buffer {
-            Err(failure)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn test_flash_complex_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
-    where
-        F: flash::ReadWrite,
-    {
-        let failure = Error::PostError("Complex Flash Read Write cycle failed");
         let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
         let superset_byte_buffer = [0xFFu8];
         let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let (write_start, _) = F::writable_range();
-        let (read_start, _) = F::readable_range();
-        block!(flash.write(write_start, &magic_word_buffer)).map_err(|_| failure)?;
-        block!(flash.write(write_start, &superset_byte_buffer)).map_err(|_| failure)?;
+        let (start, _) = F::range();
+        block!(flash.write(start, &magic_word_buffer)).map_err(|_| failure)?;
+        block!(flash.write(start, &superset_byte_buffer)).map_err(|_| failure)?;
         let mut final_buffer = [0x00; 4];
-        block!(flash.read(read_start, &mut final_buffer)).map_err(|_| failure)?;
+        block!(flash.read(start, &mut final_buffer)).map_err(|_| failure)?;
         if expected_final_buffer != final_buffer {
             Err(failure)
         } else {

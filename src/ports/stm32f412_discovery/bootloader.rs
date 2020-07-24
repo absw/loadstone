@@ -13,7 +13,6 @@ use crate::{drivers::{
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::devices::cli::Cli;
-use crate::hal::flash::Write;
 use core::mem::size_of;
 
 // Flash pins and typedefs

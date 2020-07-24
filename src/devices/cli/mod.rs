@@ -145,8 +145,8 @@ const LINE_TERMINATOR: char = '\n';
 impl<S: serial::ReadWrite> Cli<S> {
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, S>)
     where
-        EXTF: flash::ReadWrite,
-        MCUF: flash::ReadWrite,
+        EXTF: flash::ReadWrite + flash::BulkErase,
+        MCUF: flash::ReadWrite + flash::BulkErase,
     {
         if !self.greeted {
             uprintln!(self.serial, GREETING);
@@ -262,9 +262,15 @@ impl<S: serial::ReadWrite> Cli<S> {
         helpstrings: &[(&'static str, &[(&'static str, &'static str)])],
         command: Option<&str>,
     ) {
-        if command.is_none() {
+        if let Some(command) = command {
+            if !names.iter().any(|n| n == &command) {
+                uprintln!(self.serial, "Requested command doesn't exist.");
+                return;
+            }
+        } else {
             uprintln!(self.serial, "List of available commands:");
         }
+
         for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
             if let Some(command) = command.as_ref() {
                 if command != name {
@@ -314,8 +320,8 @@ macro_rules! commands {
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
-            EXTF: flash::ReadWrite,
-            MCUF: flash::ReadWrite,
+            EXTF: flash::ReadWrite + flash::BulkErase,
+            MCUF: flash::ReadWrite + flash::BulkErase,
             SRL: serial::ReadWrite,
         {
             match name {
