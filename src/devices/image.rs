@@ -69,7 +69,7 @@ impl GlobalHeader {
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
         block!(unsafe { flash.serialize(&default_header, address) })
-            .map_err(|_| nb::Error::Other(Error::DriverError("Flash Write Failed")))
+            .map_err(|_| nb::Error::Other(Error::DriverError("Writing a Default global header to flash failed")))
     }
 }
 
@@ -115,6 +115,6 @@ impl ImageHeader {
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
         block!(unsafe { flash.serialize(&default_header, address) })
-            .map_err(|_| nb::Error::Other(Error::DriverError("Flash Write Failed")))
+            .map_err(|_| nb::Error::Other(Error::DriverError("Writing a Default image header to flash failed")))
     }
 }

@@ -73,11 +73,16 @@ where
         for bank in self.mcu_banks {
             block!(image::ImageHeader::format_default(&mut self.mcu_flash, bank.location))?;
         }
-        unimplemented!()
+        Ok(())
     }
 
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
-        unimplemented!();
+        block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
+        block!(image::GlobalHeader::format_default(&mut self.external_flash))?;
+        for bank in self.external_banks {
+            block!(image::ImageHeader::format_default(&mut self.external_flash, bank.location))?;
+        }
+        Ok(())
     }
 
     pub fn test_mcu_flash(&mut self) -> Result<(), Error> {

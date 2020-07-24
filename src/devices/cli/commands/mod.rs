@@ -12,10 +12,10 @@ commands!( cli, bootloader, names, helpstrings [
         cli.print_help(names, helpstrings, command)
     },
 
-    test ["Tests various elements of the bootloader."](
+    test ["Tests various elements of the bootloader."] (
         mcu: bool ["Set to test MCU flash"],
         external: bool ["Set to test external flash"],
-    ){
+    ) {
         match (mcu, external) {
             (true, true) => {
                 uprintln!(cli.serial, "Starting Test...");
@@ -47,4 +47,34 @@ commands!( cli, bootloader, names, helpstrings [
         bootloader.store_image(cli.serial.bytes().take(size as usize))?;
         uprintln!(cli.serial, "Image transfer complete!");
     },
+
+    format ["Erases a flash chip and initializes all headers to default values."] (
+        mcu: bool ["Set to format MCU flash"],
+        external: bool ["Set to format external flash"],
+    ){
+        match (mcu, external) {
+            (true, true) => {
+                uprintln!(cli.serial, "Formatting...");
+                bootloader.format_mcu_flash()?;
+                uprintln!(cli.serial, "MCU Flash formatted successfully.");
+                bootloader.format_external_flash()?;
+                uprintln!(cli.serial, "Both Flash chips formatted successfully.");
+            }
+            (true, false) => {
+                uprintln!(cli.serial, "Formatting...");
+                bootloader.format_mcu_flash()?;
+                uprintln!(cli.serial, "MCU Flash formatted successfully.");
+            }
+            (false, true) => {
+                uprintln!(cli.serial, "Formatting...");
+                bootloader.format_external_flash()?;
+                uprintln!(cli.serial, "External Flash formatted successfully.");
+            }
+            (false, false) => {
+                return Err(Error::MissingArgument);
+            }
+        }
+    },
+
+    //banks ["Retrieves information from FW image banks."] (){ cli.print_image_headers(bootloader.headers()) },
 ]);

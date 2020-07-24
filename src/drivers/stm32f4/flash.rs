@@ -177,7 +177,9 @@ impl Range {
 
     fn overlaps(self, sector: &Sector) -> bool {
         (self.0 <= sector.start()) && (self.1 > sector.start())
-            || (self.0 < sector.end()) && (self.1 > sector.end())
+            || (self.0 < sector.end()) && (self.1 >= sector.end())
+            || (self.0 >= sector.start() && self.0 < sector.end())
+            || (self.1 < sector.end() && self.1 >= sector.start())
     }
 
     /// Verify that all sectors spanned by this range are writable
@@ -364,6 +366,19 @@ mod test {
     use super::*;
 
     #[test]
+    fn ranges_overlap_sectors_correctly() {
+        let sector =  Sector::new(Block::Boot, Address(10), 10usize);
+        assert!(Range(Address(10), Address(20)).overlaps(&sector));
+        assert!(Range(Address(5), Address(15)).overlaps(&sector));
+        assert!(Range(Address(15), Address(25)).overlaps(&sector));
+        assert!(Range(Address(5), Address(25)).overlaps(&sector));
+        assert!(Range(Address(12), Address(18)).overlaps(&sector));
+
+        assert!(!Range(Address(0), Address(5)).overlaps(&sector));
+        assert!(!Range(Address(20), Address(25)).overlaps(&sector));
+    }
+
+    #[test]
     fn ranges_span_the_correct_sectors() {
         let range = Range(Address(0x0801_1234), Address(0x0804_5678));
         let expected_sectors = &MEMORY_MAP.sectors[4..7];
@@ -376,5 +391,12 @@ mod test {
         let (start, end) = McuFlash::range();
         assert_eq!(start, MEMORY_MAP.sectors[4].start());
         assert_eq!(end, MEMORY_MAP.sectors[11].end())
+    }
+
+    #[test]
+    fn ranges_are_correctly_marked_writable() {
+        let (start, size) = (Address(0x0801_0008), 48usize);
+        let range = Range(start, Address(start.0 + size as u32));
+        assert!(range.is_writable());
     }
 }
