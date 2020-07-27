@@ -93,6 +93,32 @@ where
         Self::test_flash_read_write_cycle(&mut self.external_flash)
     }
 
+    pub fn image_at_bank(&mut self, index: u8) -> Option<image::ImageHeader> {
+        let mcu_bank = self.mcu_banks().find(|b| b.index == index);
+        let external_bank = self.external_banks().find(|b| b.index == index);
+
+        let image = if let Some(image::Bank{ location, ..}) = mcu_bank {
+            image::ImageHeader::retrieve(&mut self.mcu_flash, location).ok()
+        } else if let Some(image::Bank{ location, ..}) = external_bank {
+            image::ImageHeader::retrieve(&mut self.external_flash, location).ok()
+        } else {
+            None
+        };
+
+        match image {
+            Some(image) if image.size > 0 => Some(image),
+            _ => None,
+        }
+    }
+
+    pub fn mcu_banks(&self) -> impl Iterator<Item=image::Bank<MCUF::Address>> {
+        self.mcu_banks.iter().cloned()
+    }
+
+    pub fn external_banks(&self) -> impl Iterator<Item=image::Bank<EXTF::Address>> {
+        self.external_banks.iter().cloned()
+    }
+
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,

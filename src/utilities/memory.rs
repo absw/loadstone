@@ -2,13 +2,13 @@
 #![macro_use]
 
 #[macro_export]
-macro_rules! kb {
+macro_rules! KB {
     ($val:expr) => {
         $val * 1024
     };
 }
 #[macro_export]
-macro_rules! mb {
+macro_rules! MB {
     ($val:expr) => {
         $val * 1024 * 1024
     };
@@ -195,7 +195,7 @@ mod test {
 
     #[test]
     fn conversion_macros() {
-        assert_eq!(kb!(16), 0x4000);
-        assert_eq!(mb!(1), 0x100000);
+        assert_eq!(KB!(16), 0x4000);
+        assert_eq!(MB!(1), 0x100000);
     }
 }

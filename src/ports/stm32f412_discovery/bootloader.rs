@@ -58,14 +58,15 @@ const fn mcu_image_offset(index: usize) -> flash::Address {
         + (index * IMAGE_SIZE_WITH_HEADER) as u32)
 }
 
-static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
-    image::Bank { location: external_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
-    image::Bank { location: external_image_offset(1), size: IMAGE_SIZE_WITH_HEADER, },
+static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
+    image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
 ];
 
-static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
-    image::Bank { location: mcu_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
+static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
+    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
+    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE_WITH_HEADER, },
 ];
+
 
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {

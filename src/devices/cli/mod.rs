@@ -327,7 +327,7 @@ macro_rules! commands {
             match name {
                 $(
                     stringify!($c) => {
-                        if arguments.clone().any(|a| true $(&& a.name() != stringify!($a))*) {
+                        if arguments.clone().any(|_a| true $(&& _a.name() != stringify!($a))*) {
                             return Err(Error::UnexpectedArguments);
                         }
 

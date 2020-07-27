@@ -30,6 +30,10 @@ nb = "*"
 paste = "*"
 static_assertions = "*"
 
+[dependencies.arrayvec]
+version = "*"
+default-features = false
+
 [dependencies.stm32f4]
 version = "*"
 features = ["rt"]

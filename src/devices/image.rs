@@ -30,15 +30,18 @@ pub struct GlobalHeader {
 #[repr(C)]
 pub struct ImageHeader {
     magic: u32,
-    size: usize,
-    crc: u32,
-    name: Option<[u8; 32]>,
+    pub size: usize,
+    pub crc: u32,
+    pub name: Option<[u8; 32]>,
 }
 
 /// Image bank descriptor
+#[derive(Clone)]
 pub struct Bank<A: Address> {
+    pub index: u8,
     pub size: usize,
     pub location: A,
+    pub bootable: bool,
 }
 
 impl GlobalHeader {
