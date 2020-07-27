@@ -14,10 +14,11 @@ use crate::{
     },
     utilities::buffer::TryCollectSlice,
 };
+use core::{cmp::min, mem::size_of};
 use nb::block;
 
 const IMAGE_OFFSET: usize = 4usize;
-const TRANSFER_BUFFER_SIZE: usize = 528usize;
+const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -39,24 +40,46 @@ where
     SRL: serial::ReadWrite,
 {
     pub fn run(mut self) -> ! {
+        // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
+        let indices =
+            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
+        assert!((1..).zip(indices).all(|(a, b)| a == b));
+
+        // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
         loop {
             cli.run(&mut self)
         }
     }
 
-    pub fn store_image<I, E>(&mut self, mut bytes: I) -> Result<(), Error>
+    pub fn store_image<I, E>(
+        &mut self,
+        mut bytes: I,
+        size: usize,
+        bank_index: u8,
+    ) -> Result<(), Error>
     where
         I: Iterator<Item = Result<u8, E>>,
     {
-        let mut address = EXTF::range().0 + IMAGE_OFFSET;
+        let bank = self
+            .external_banks()
+            .find(|b| b.index == bank_index)
+            .ok_or(Error::LogicError("Bank Not Found"))?;
+
+        if size > bank.size {
+            return Err(Error::LogicError("Flash image too big for bank."));
+        }
+
+        let bank_start_address = bank.location + size_of::<image::ImageHeader>();
+
+        let mut address = bank_start_address;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
             match bytes
                 .try_collect_slice(&mut buffer)
                 .map_err(|_| Error::DriverError("Serial Read Error"))?
             {
-                0 => break Ok(()),
+                0 => break,
                 n => {
                     self.external_flash
                         .write(address, &mut buffer[0..n])
@@ -65,6 +88,8 @@ where
                 }
             }
         }
+
+        block!(image::ImageHeader::write(&mut self.external_flash, bank.location, size, 0u32))
     }
 
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
@@ -97,9 +122,9 @@ where
         let mcu_bank = self.mcu_banks().find(|b| b.index == index);
         let external_bank = self.external_banks().find(|b| b.index == index);
 
-        let image = if let Some(image::Bank{ location, ..}) = mcu_bank {
+        let image = if let Some(image::Bank { location, .. }) = mcu_bank {
             image::ImageHeader::retrieve(&mut self.mcu_flash, location).ok()
-        } else if let Some(image::Bank{ location, ..}) = external_bank {
+        } else if let Some(image::Bank { location, .. }) = external_bank {
             image::ImageHeader::retrieve(&mut self.external_flash, location).ok()
         } else {
             None
@@ -111,12 +136,59 @@ where
         }
     }
 
-    pub fn mcu_banks(&self) -> impl Iterator<Item=image::Bank<MCUF::Address>> {
+    pub fn mcu_banks(&self) -> impl Iterator<Item = image::Bank<MCUF::Address>> {
         self.mcu_banks.iter().cloned()
     }
 
-    pub fn external_banks(&self) -> impl Iterator<Item=image::Bank<EXTF::Address>> {
+    pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
+    }
+
+    /// Copy from external bank to MCU bank
+    pub fn copy_image(&mut self, input_bank_index: u8, output_bank_index: u8) -> Result<(), Error> {
+        let (input_bank, output_bank) = (
+            self.external_banks()
+                .find(|b| b.index == input_bank_index)
+                .ok_or(Error::LogicError("Input bank doesn't exist or isn't external."))?,
+            self.mcu_banks()
+                .find(|b| b.index == output_bank_index)
+                .ok_or(Error::LogicError("Output bank doesn't exist or isn't in MCU"))?,
+        );
+        let input_header =
+            block!(image::ImageHeader::retrieve(&mut self.external_flash, input_bank.location))?;
+        if input_header.size > output_bank.size {
+            return Err(Error::LogicError("Image doesn't fit in output bank"));
+        } else if input_header.size == 0 {
+            return Err(Error::LogicError("Input image is empty"));
+        }
+
+        let input_image_start_address = input_bank.location + size_of::<image::ImageHeader>();
+        let output_image_start_address = output_bank.location + size_of::<image::ImageHeader>();
+
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let mut byte_index = 0usize;
+
+        while byte_index < input_header.size {
+            let bytes_to_read =
+                min(TRANSFER_BUFFER_SIZE, input_header.size.saturating_sub(byte_index));
+            block!(self
+                .external_flash
+                .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))
+            .map_err(|_| Error::DriverError("Error reading image from external flash"))?;
+            block!(self
+                .mcu_flash
+                .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))
+            .map_err(|_| Error::DriverError("Error writing image to mcu flash"))?;
+            byte_index += bytes_to_read;
+        }
+
+        block!(image::ImageHeader::write(
+            &mut self.mcu_flash,
+            output_bank.location,
+            input_header.size,
+            input_header.crc
+        ))
+        .map_err(|_| Error::DriverError("Error writing header to mcu flash"))
     }
 
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>

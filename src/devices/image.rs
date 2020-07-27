@@ -71,8 +71,9 @@ impl GlobalHeader {
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
-        block!(unsafe { flash.serialize(&default_header, address) })
-            .map_err(|_| nb::Error::Other(Error::DriverError("Writing a Default global header to flash failed")))
+        block!(unsafe { flash.serialize(&default_header, address) }).map_err(|_| {
+            nb::Error::Other(Error::DriverError("Writing a Default global header to flash failed"))
+        })
     }
 }
 
@@ -104,7 +105,10 @@ impl ImageHeader {
     }
 
     // Writes a default image header to flash at a given location
-    pub fn format_default<A: Address, F: flash::ReadWrite<Address = A>>(flash: &mut F, address: A) -> nb::Result<(), Error> {
+    pub fn format_default<A: Address, F: flash::ReadWrite<Address = A>>(
+        flash: &mut F,
+        address: A,
+    ) -> nb::Result<(), Error> {
         let (global_header_address, _) = F::range();
 
         // No matter what, a header can't overlap with the global header.
@@ -113,11 +117,37 @@ impl ImageHeader {
                 "Attempted to write misplaced image header",
             )));
         }
-        let default_header = Self { magic: MAGIC, size: 0, crc: 0, name: None};
+        let default_header = Self { magic: MAGIC, size: 0, crc: 0, name: None };
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
-        block!(unsafe { flash.serialize(&default_header, address) })
-            .map_err(|_| nb::Error::Other(Error::DriverError("Writing a Default image header to flash failed")))
+        block!(unsafe { flash.serialize(&default_header, address) }).map_err(|_| {
+            nb::Error::Other(Error::DriverError("Writing a Default image header to flash failed"))
+        })
+    }
+
+    pub fn write<A: Address, F: flash::ReadWrite<Address = A>>(
+        flash: &mut F,
+        address: A,
+        size: usize,
+        crc: u32,
+    ) -> nb::Result<(), Error> {
+        let (global_header_address, _) = F::range();
+        // No matter what, a header can't overlap with the global header.
+        if address < (global_header_address + size_of::<GlobalHeader>()) {
+            return Err(nb::Error::Other(Error::LogicError(
+                "Attempted to write misplaced image header",
+            )));
+        }
+
+        let header = ImageHeader {
+            name: None, // TODO support named images
+            magic: MAGIC,
+            size,
+            crc,
+        };
+        block!(unsafe { flash.serialize(&header, address) }).map_err(|_| {
+            nb::Error::Other(Error::DriverError("Writing an image header to flash failed"))
+        })
     }
 }

@@ -296,9 +296,7 @@ impl ReadWrite for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn range() -> (Address, Address) {
-        (MemoryMap::writable_start(), MemoryMap::writable_end())
-    }
+    fn range() -> (Address, Address) { (MemoryMap::writable_start(), MemoryMap::writable_end()) }
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address.0 % 4 != 0 {
@@ -367,7 +365,7 @@ mod test {
 
     #[test]
     fn ranges_overlap_sectors_correctly() {
-        let sector =  Sector::new(Block::Boot, Address(10), 10usize);
+        let sector = Sector::new(Block::Boot, Address(10), 10usize);
         assert!(Range(Address(10), Address(20)).overlaps(&sector));
         assert!(Range(Address(5), Address(15)).overlaps(&sector));
         assert!(Range(Address(15), Address(25)).overlaps(&sector));

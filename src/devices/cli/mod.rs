@@ -80,7 +80,19 @@ trait Parsable<'a>: Sized {
     fn parse(text: &'a str) -> Result<Self, Error>;
 }
 
+impl<'a> Parsable<'a> for usize {
+    fn parse(text: &'a str) -> Result<Self, Error> {
+        text.parse().map_err(|_| Error::MalformedArguments)
+    }
+}
+
 impl<'a> Parsable<'a> for u32 {
+    fn parse(text: &'a str) -> Result<Self, Error> {
+        text.parse().map_err(|_| Error::MalformedArguments)
+    }
+}
+
+impl<'a> Parsable<'a> for u8 {
     fn parse(text: &'a str) -> Result<Self, Error> {
         text.parse().map_err(|_| Error::MalformedArguments)
     }
