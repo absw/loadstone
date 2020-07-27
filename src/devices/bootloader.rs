@@ -15,7 +15,7 @@ use crate::{
     utilities::buffer::TryCollectSlice,
 };
 use core::{cmp::min, mem::size_of};
-use cortex_m::{peripheral::SCB, interrupt};
+use cortex_m::peripheral::SCB;
 use nb::block;
 
 const TRANSFER_BUFFER_SIZE: usize = 2048usize;
