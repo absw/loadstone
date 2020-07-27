@@ -95,7 +95,7 @@ macro_rules! gpio {
         // and ">]" delimiters gets concatenated in a single identifier post macro expansion. For
         // example, "[<GPIO $x>]" becomes "GPIOa" when "$x" represents "a". This is used to
         // expand the outer level, simplified "gpio!" instantiation macro into the complex one.
-        paste::item_with_macros! {
+        paste::item! {
             gpio_inner!([<GPIO $x>], [<gpio $x>], [<gpio $x en>], [<gpio $x rst>], [<P $x x>], [
                 $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode, $([<Earmark $x $i>], $function$(<$T>)?)?), )+
             ]);
