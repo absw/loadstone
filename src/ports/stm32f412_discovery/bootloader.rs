@@ -29,7 +29,7 @@ const EXTERNAL_BANK_MAX_IMAGE_SIZE: usize = {
     let (start, end) = (n25q128a_flash::MemoryMap::location(), n25q128a_flash::MemoryMap::end());
     let total_size = (end.0 - start.0) as usize;
     let size_without_header = total_size - size_of::<image::GlobalHeader>();
-    let size_per_image = total_size / EXTERNAL_NUMBER_OF_BANKS;
+    let size_per_image = size_without_header / EXTERNAL_NUMBER_OF_BANKS;
     size_per_image - size_of::<image::ImageHeader>()
 };
 
@@ -38,7 +38,7 @@ const MCU_BANK_MAX_IMAGE_SIZE: usize = {
     let (start, end) = (flash::MemoryMap::writable_start(), flash::MemoryMap::writable_end());
     let total_size = (end.0 - start.0) as usize;
     let size_without_header = total_size - size_of::<image::GlobalHeader>();
-    let size_per_image = total_size / MCU_NUMBER_OF_BANKS;
+    let size_per_image = size_without_header / MCU_NUMBER_OF_BANKS;
     size_per_image - size_of::<image::ImageHeader>()
 };
 
@@ -48,23 +48,21 @@ const IMAGE_SIZE_WITH_HEADER: usize = IMAGE_SIZE + size_of::<image::ImageHeader>
 
 const fn external_image_offset(index: usize) -> n25q128a_flash::Address {
    n25q128a_flash::Address(n25q128a_flash::MemoryMap::location().0
-        + size_of::<image::GlobalHeader>() as u32
         + (index * IMAGE_SIZE_WITH_HEADER) as u32)
 }
 
 const fn mcu_image_offset(index: usize) -> flash::Address {
     flash::Address(flash::MemoryMap::writable_start().0
-        + size_of::<image::GlobalHeader>() as u32
         + (index * IMAGE_SIZE_WITH_HEADER) as u32)
 }
 
 static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
-    image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
+    image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE, },
 ];
 
 static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
-    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE_WITH_HEADER, },
-    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE_WITH_HEADER, },
+    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, },
+    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
 ];
 
 

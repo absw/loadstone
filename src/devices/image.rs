@@ -45,9 +45,9 @@ pub struct Bank<A: Address> {
 }
 
 impl GlobalHeader {
-    pub fn retrieve<F: flash::ReadWrite>(flash: &mut F) -> nb::Result<Self, Error> {
-        // Global header is always at the bottom of the readable region
-        let (address, _) = F::range();
+    pub fn retrieve<F: flash::ReadWrite<Address = A>, A: Address>(flash: &mut F) -> nb::Result<Self, Error> {
+        // Global header is always at the end of the readable region
+        let address = F::range().1 - size_of::<Self>();
 
         // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
         // validity. It will only cause UB when the structs in this file have been modified AND the
@@ -64,9 +64,10 @@ impl GlobalHeader {
     }
 
     // Writes a default global header to flash at the right location.
-    pub fn format_default<F: flash::ReadWrite>(flash: &mut F) -> nb::Result<(), Error> {
+    pub fn format_default<F: flash::ReadWrite<Address = A>, A: Address>(flash: &mut F) -> nb::Result<(), Error> {
         let default_header = Self { magic: MAGIC, test_buffer: [0x00; 4] };
-        let (address, _) = F::range();
+        // Global header is always at the end of the readable region
+        let address = F::range().1 - size_of::<Self>();
 
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
@@ -80,16 +81,10 @@ impl GlobalHeader {
 impl ImageHeader {
     pub fn retrieve<A: Address, F: flash::ReadWrite<Address = A>>(
         flash: &mut F,
-        address: A,
+        bank: &Bank<A>,
     ) -> nb::Result<Self, Error> {
-        let (global_header_address, _) = F::range();
-        // No matter what, a header can't overlap with the global header.
-        if address < (global_header_address + size_of::<GlobalHeader>()) {
-            return Err(nb::Error::Other(Error::LogicError(
-                "Attempted to read misplaced image header",
-            )));
-        }
-
+        // Image headers are stored at the *end* of images to make sure the binary is aligned
+        let address = bank.location + bank.size;
         // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
         // validity. It will only cause UB when the structs in this file have been modified AND the
         // magic value at the top has not.
@@ -107,16 +102,10 @@ impl ImageHeader {
     // Writes a default image header to flash at a given location
     pub fn format_default<A: Address, F: flash::ReadWrite<Address = A>>(
         flash: &mut F,
-        address: A,
+        bank: &Bank<A>,
     ) -> nb::Result<(), Error> {
-        let (global_header_address, _) = F::range();
-
-        // No matter what, a header can't overlap with the global header.
-        if address < (global_header_address + size_of::<GlobalHeader>()) {
-            return Err(nb::Error::Other(Error::LogicError(
-                "Attempted to write misplaced image header",
-            )));
-        }
+        // Image headers are stored at the *end* of images to make sure the binary is aligned
+        let address = bank.location + bank.size;
         let default_header = Self { magic: MAGIC, size: 0, crc: 0, name: None };
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
@@ -128,18 +117,12 @@ impl ImageHeader {
 
     pub fn write<A: Address, F: flash::ReadWrite<Address = A>>(
         flash: &mut F,
-        address: A,
+        bank: &Bank<A>,
         size: usize,
         crc: u32,
     ) -> nb::Result<(), Error> {
-        let (global_header_address, _) = F::range();
-        // No matter what, a header can't overlap with the global header.
-        if address < (global_header_address + size_of::<GlobalHeader>()) {
-            return Err(nb::Error::Other(Error::LogicError(
-                "Attempted to write misplaced image header",
-            )));
-        }
-
+        // Image headers are stored at the *end* of images to make sure the binary is aligned
+        let address = bank.location + bank.size;
         let header = ImageHeader {
             name: None, // TODO support named images
             magic: MAGIC,

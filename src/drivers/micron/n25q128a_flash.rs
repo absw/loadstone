@@ -30,6 +30,9 @@ impl Sub<Address> for Address {
     type Output = usize;
     fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
+impl Into<usize> for Address {
+    fn into(self) -> usize { self.0 as usize }
+}
 
 pub struct MemoryMap {}
 pub struct Sector(usize);

@@ -38,6 +38,10 @@ impl Sub<Address> for Address {
     fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
 
+impl Into<usize> for Address {
+    fn into(self) -> usize { self.0 as usize }
+}
+
 #[derive(Copy, Clone, Debug)]
 struct Range(Address, Address);
 
@@ -388,7 +392,7 @@ mod test {
     fn map_shows_correct_writable_range() {
         let (start, end) = McuFlash::range();
         assert_eq!(start, MEMORY_MAP.sectors[4].start());
-        assert_eq!(end, MEMORY_MAP.sectors[11].end())
+        assert_eq!(end, MEMORY_MAP.sectors[11].end());
     }
 
     #[test]

@@ -327,6 +327,7 @@ macro_rules! commands {
             )+
         ];
 
+        #[allow(unreachable_code)]
         pub(super) fn run<EXTF, MCUF, SRL>(
             $cli: &mut Cli<SRL>,
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,

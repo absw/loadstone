@@ -9,15 +9,15 @@ use crate::{
     devices::cli::Cli,
     error::Error,
     hal::{
-        flash::{self, UnportableDeserialize, UnportableSerialize},
+        flash,
         serial,
     },
     utilities::buffer::TryCollectSlice,
 };
 use core::{cmp::min, mem::size_of};
+use cortex_m::interrupt;
 use nb::block;
 
-const IMAGE_OFFSET: usize = 4usize;
 const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
@@ -70,9 +70,7 @@ where
             return Err(Error::LogicError("Flash image too big for bank."));
         }
 
-        let bank_start_address = bank.location + size_of::<image::ImageHeader>();
-
-        let mut address = bank_start_address;
+        let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
             match bytes
@@ -89,14 +87,46 @@ where
             }
         }
 
-        block!(image::ImageHeader::write(&mut self.external_flash, bank.location, size, 0u32))
+        block!(image::ImageHeader::write(&mut self.external_flash, &bank, size, 0u32))
+    }
+
+    pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
+        let bank = self
+            .mcu_banks
+            .iter()
+            .find(|b| b.index == bank_index)
+            .ok_or(Error::LogicError("Bank doesn't exist or isn't in MCU"))?;
+
+        if !bank.bootable {
+            return Err(Error::LogicError("Bank is not bootable!"));
+        }
+
+        let header = block!(image::ImageHeader::retrieve(&mut self.mcu_flash, &bank))?;
+        if header.size == 0 {
+            return Err(Error::LogicError("Image is empty"));
+        }
+
+        let image_location_raw: usize = bank.location.into();
+
+        // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
+        // entirely different firmware image! We have to assume everything is at the right place,
+        // or literally anything could happen here. After the interrupts are disabled, there is
+        // no turning back.
+        unsafe {
+            let initial_stack_pointer =  *(image_location_raw as *const u32);
+            let reset_handler_pointer = *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
+            let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
+            cortex_m::interrupt::disable();
+            cortex_m::register::msp::write(initial_stack_pointer);
+            reset_handler()
+        }
     }
 
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
         block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
         block!(image::GlobalHeader::format_default(&mut self.mcu_flash))?;
         for bank in self.mcu_banks {
-            block!(image::ImageHeader::format_default(&mut self.mcu_flash, bank.location))?;
+            block!(image::ImageHeader::format_default(&mut self.mcu_flash, bank))?;
         }
         Ok(())
     }
@@ -105,7 +135,7 @@ where
         block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
         block!(image::GlobalHeader::format_default(&mut self.external_flash))?;
         for bank in self.external_banks {
-            block!(image::ImageHeader::format_default(&mut self.external_flash, bank.location))?;
+            block!(image::ImageHeader::format_default(&mut self.external_flash, bank))?;
         }
         Ok(())
     }
@@ -122,10 +152,10 @@ where
         let mcu_bank = self.mcu_banks().find(|b| b.index == index);
         let external_bank = self.external_banks().find(|b| b.index == index);
 
-        let image = if let Some(image::Bank { location, .. }) = mcu_bank {
-            image::ImageHeader::retrieve(&mut self.mcu_flash, location).ok()
-        } else if let Some(image::Bank { location, .. }) = external_bank {
-            image::ImageHeader::retrieve(&mut self.external_flash, location).ok()
+        let image = if let Some(bank) = mcu_bank {
+            image::ImageHeader::retrieve(&mut self.mcu_flash, &bank).ok()
+        } else if let Some(bank) = external_bank {
+            image::ImageHeader::retrieve(&mut self.external_flash, &bank).ok()
         } else {
             None
         };
@@ -155,15 +185,15 @@ where
                 .ok_or(Error::LogicError("Output bank doesn't exist or isn't in MCU"))?,
         );
         let input_header =
-            block!(image::ImageHeader::retrieve(&mut self.external_flash, input_bank.location))?;
+            block!(image::ImageHeader::retrieve(&mut self.external_flash, &input_bank))?;
         if input_header.size > output_bank.size {
             return Err(Error::LogicError("Image doesn't fit in output bank"));
         } else if input_header.size == 0 {
             return Err(Error::LogicError("Input image is empty"));
         }
 
-        let input_image_start_address = input_bank.location + size_of::<image::ImageHeader>();
-        let output_image_start_address = output_bank.location + size_of::<image::ImageHeader>();
+        let input_image_start_address = input_bank.location;
+        let output_image_start_address = output_bank.location;
 
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
@@ -184,7 +214,7 @@ where
 
         block!(image::ImageHeader::write(
             &mut self.mcu_flash,
-            output_bank.location,
+            &output_bank,
             input_header.size,
             input_header.crc
         ))

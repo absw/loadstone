@@ -136,4 +136,16 @@ commands!( cli, bootloader, names, helpstrings [
         bootloader.copy_image(input, output)?;
         uprintln!(cli.serial, "Copy success!");
     },
+
+    boot ["Boot from a bootable MCU bank."] (
+           index: u8 ["Bootable MCU bank index."],
+        )
+    {
+        let mut text = ArrayString::<[_; 64]>::new();
+        write!(text, "Attempting to boot from image {}", index).unwrap();
+        uprintln!(cli.serial, text);
+        text.clear();
+        bootloader.boot(index)?;
+    },
+
 ]);
