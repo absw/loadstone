@@ -9,7 +9,7 @@ use secure_bootloader_lib::{
         led,
         stm32f4::{gpio::GpioExt, rcc::Clocks, systick},
     },
-    hal::{led::Toggle, time::Milliseconds},
+    hal::{led::Toggle, time::Seconds},
     stm32pac,
 };
 
@@ -17,12 +17,15 @@ use secure_bootloader_lib::{
 #[entry]
 fn main() -> ! {
     let mut peripherals = stm32pac::Peripherals::take().unwrap();
+    let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
+
     let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
     let clocks = Clocks::hardcoded(&peripherals.FLASH, peripherals.RCC);
+    let systick = systick::SysTick::new(cortex_peripherals.SYST, clocks);
     let mut led = led::MonochromeLed::new(gpioe.pe1, led::LogicLevel::Inverted);
 
     loop {
-        cortex_m::asm::delay(5_000_000);
+        systick.wait(Seconds(1));
         led.toggle();
     }
 }

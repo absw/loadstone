@@ -15,7 +15,7 @@ use crate::{
     utilities::buffer::TryCollectSlice,
 };
 use core::{cmp::min, mem::size_of};
-use cortex_m::interrupt;
+use cortex_m::{peripheral::SCB, interrupt};
 use nb::block;
 
 const TRANSFER_BUFFER_SIZE: usize = 2048usize;
@@ -117,6 +117,7 @@ where
             let reset_handler_pointer = *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
             cortex_m::interrupt::disable();
+            (*SCB::ptr()).vtor.write(image_location_raw as u32);
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }
