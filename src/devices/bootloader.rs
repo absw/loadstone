@@ -31,6 +31,7 @@ where
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
+    pub(crate) interactive_mode: bool,
 }
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
@@ -47,6 +48,11 @@ where
 
         // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
+        if !self.interactive_mode {
+            self.boot(1).unwrap_err();
+            uprintln!(cli.serial(), "Failed to boot from default bank.")
+        }
+
         loop {
             cli.run(&mut self)
         }

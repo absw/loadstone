@@ -1,6 +1,6 @@
 //! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
 use crate::ports::pin_configuration::*;
-use crate::hal::time;
+use crate::hal::{time, gpio::InputPin};
 use crate::{drivers::{
     stm32f4::gpio::{GpioExt, *},
     stm32f4::qspi::{self, mode, QuadSpi},
@@ -70,6 +70,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
+        let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
@@ -89,6 +90,8 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
-        Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS }
+        let interactive_mode = gpioa.pa0.is_high();
+
+        Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, interactive_mode }
     }
 }
