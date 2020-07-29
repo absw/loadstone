@@ -1,7 +1,7 @@
 //! Device driver for the [Micron N24q128a](../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
     hal::{
-        flash::{BulkErase, Read, Write},
+        flash::{BulkErase, ReadWrite},
         qspi, time,
     },
     utilities::{
@@ -16,8 +16,8 @@ use nb::block;
 pub const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip [memory map](../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
-#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Address(u32);
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+pub struct Address(pub u32);
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
@@ -29,6 +29,9 @@ impl Sub<usize> for Address {
 impl Sub<Address> for Address {
     type Output = usize;
     fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
+}
+impl Into<usize> for Address {
+    fn into(self) -> usize { self.0 as usize }
 }
 
 pub struct MemoryMap {}
@@ -184,7 +187,7 @@ where
     }
 }
 
-impl<QSPI, NOW> Write for MicronN25q128a<QSPI, NOW>
+impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
     NOW: time::Now,
@@ -223,16 +226,6 @@ where
         Ok(())
     }
 
-    fn writable_range() -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
-}
-
-impl<QSPI, NOW> Read for MicronN25q128a<QSPI, NOW>
-where
-    QSPI: qspi::Indirect,
-    NOW: time::Now,
-{
-    type Error = Error;
-    type Address = Address;
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
@@ -246,7 +239,7 @@ where
         }
     }
 
-    fn readable_range() -> (Address, Address) { Self::writable_range() }
+    fn range() -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
 }
 
 impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>

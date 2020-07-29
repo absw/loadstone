@@ -95,7 +95,7 @@ macro_rules! gpio {
         // and ">]" delimiters gets concatenated in a single identifier post macro expansion. For
         // example, "[<GPIO $x>]" becomes "GPIOa" when "$x" represents "a". This is used to
         // expand the outer level, simplified "gpio!" instantiation macro into the complex one.
-        paste::item_with_macros! {
+        paste::item! {
             gpio_inner!([<GPIO $x>], [<gpio $x>], [<gpio $x en>], [<gpio $x rst>], [<P $x x>], [
                 $( [<P $x $i>]: ([<p $x $i>], $i, $default_mode, $([<Earmark $x $i>], $function$(<$T>)?)?), )+
             ]);
@@ -166,7 +166,7 @@ macro_rules! gpio_inner {
         /// GPIO
         pub mod $gpiox {
             use core::marker::PhantomData;
-            use crate::hal::gpio::OutputPin;
+            use crate::hal::gpio::{OutputPin, InputPin};
             use crate::ports::pin_configuration::*;
 
             // Lower case for identifier concatenation
@@ -236,6 +236,19 @@ macro_rules! gpio_inner {
                     // because pins are only reachable by splitting a GPIO struct,
                     // which preserves single ownership of each pin.
                     unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << (16 + self.i))) }
+                }
+            }
+
+            impl<MODE> InputPin for $Pxx<Input<MODE>> {
+                fn is_high(&self) -> bool {
+                    // NOTE(safety) atomic read from a stateless register. It is also safe
+                    // because pins are only reachable by splitting a GPIO struct,
+                    // which preserves single ownership of each pin.
+                    unsafe { (((*$GPIOx::ptr()).idr.read().bits() >> self.i) & 0b1) != 0 }
+                }
+
+                fn is_low(&self) -> bool{
+                    !self.is_high()
                 }
             }
 
@@ -457,6 +470,19 @@ macro_rules! gpio_inner {
                         unsafe { (*$GPIOx::ptr()).bsrr.write(|w| w.bits(1 << (16 + $i))) }
                     }
                 }
+
+            impl<MODE> InputPin for $Pxi<Input<MODE>> {
+                fn is_high(&self) -> bool {
+                    // NOTE(safety) atomic read from a stateless register. It is also safe
+                    // because pins are only reachable by splitting a GPIO struct,
+                    // which preserves single ownership of each pin.
+                    unsafe { (((*$GPIOx::ptr()).idr.read().bits() >> $i) & 0b1) != 0 }
+                }
+
+                fn is_low(&self) -> bool{
+                    !self.is_high()
+                }
+            }
             )+
         }
     }

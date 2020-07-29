@@ -4,6 +4,7 @@ edition = "2018"
 readme = "README.md"
 name = "secure_bootloader"
 version = "0.1.0"
+default-run = "secure_bootloader"
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -28,6 +29,10 @@ panic-abort = "*"
 nb = "*"
 paste = "*"
 static_assertions = "*"
+
+[dependencies.arrayvec]
+version = "*"
+default-features = false
 
 [dependencies.stm32f4]
 version = "*"

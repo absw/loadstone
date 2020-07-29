@@ -3,13 +3,13 @@ use crate::{
     devices::bootloader::Bootloader,
     error::Error as BootloaderError,
     hal::{flash, serial},
-    utilities::{buffer::CollectSlice, iterator::Unique},
+    utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 
-const GREETING: &str = "--=Lodestone CLI=--\r\ntype `help` for a list of commands.";
-const PROMPT: &str = "> ";
+const GREETING: &str = "--=Lodestone CLI=--\ntype `help` for a list of commands.";
+const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -24,6 +24,7 @@ pub enum Error {
     BadCommandEncoding,
     DuplicateArguments,
     SerialBufferOverflow,
+    SerialReadError,
     BootloaderError(BootloaderError),
 }
 
@@ -79,7 +80,19 @@ trait Parsable<'a>: Sized {
     fn parse(text: &'a str) -> Result<Self, Error>;
 }
 
+impl<'a> Parsable<'a> for usize {
+    fn parse(text: &'a str) -> Result<Self, Error> {
+        text.parse().map_err(|_| Error::MalformedArguments)
+    }
+}
+
 impl<'a> Parsable<'a> for u32 {
+    fn parse(text: &'a str) -> Result<Self, Error> {
+        text.parse().map_err(|_| Error::MalformedArguments)
+    }
+}
+
+impl<'a> Parsable<'a> for u8 {
     fn parse(text: &'a str) -> Result<Self, Error> {
         text.parse().map_err(|_| Error::MalformedArguments)
     }
@@ -95,6 +108,11 @@ trait RetrieveArgument<T> {
 
 impl<'a, T: Parsable<'a>> RetrieveArgument<T> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<T, Error> {
+        // At this point we know the argument is a pair, so we error out if it's single
+        if self.clone().any(|arg| Argument::Single(name) == arg) {
+            return Err(Error::MalformedArguments);
+        }
+
         let argument = self
             .clone()
             .find_map(|arg| match arg {
@@ -114,6 +132,11 @@ impl<'a> RetrieveArgument<bool> for ArgumentIterator<'a> {
 
 impl<'a, T: Parsable<'a>> RetrieveArgument<Option<T>> for ArgumentIterator<'a> {
     fn retrieve(&self, name: &str) -> Result<Option<T>, Error> {
+        // At this point we know the argument is a pair, so we error out if it's single
+        if self.clone().any(|arg| Argument::Single(name) == arg) {
+            return Err(Error::MalformedArguments);
+        }
+
         let argument = self.clone().find_map(|arg| match arg {
             Argument::Pair(n, v) if n == name => Some(v),
             _ => None,
@@ -134,20 +157,22 @@ const LINE_TERMINATOR: char = '\n';
 impl<S: serial::ReadWrite> Cli<S> {
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, S>)
     where
-        EXTF: flash::ReadWrite,
-        MCUF: flash::ReadWrite,
+        EXTF: flash::ReadWrite + flash::BulkErase,
+        MCUF: flash::ReadWrite + flash::BulkErase,
     {
         if !self.greeted {
             uprintln!(self.serial, GREETING);
             self.greeted = true;
         }
-        self.prompt();
+        if self.needs_prompt {
+            uprint!(self.serial, PROMPT);
+            self.needs_prompt = false;
+        }
         let mut execute_command = || -> Result<(), Error> {
             let mut buffer = [0u8; BUFFER_SIZE];
             block!(self.read_line(&mut buffer))?;
             let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
             let (name, arguments) = Self::parse(text)?;
-            self.needs_prompt = true;
             commands::run(self, bootloader, name, arguments)?;
             Ok(())
         };
@@ -180,17 +205,12 @@ impl<S: serial::ReadWrite> Cli<S> {
             Err(Error::ArgumentOutOfRange) => {
                 uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
             }
+            Err(Error::SerialReadError) => uprintln!(self.serial, "[CLI Error] Serial Read Failed"),
             Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
-            Err(Error::CommandEmpty) => self.needs_prompt = false,
+            Err(Error::CommandEmpty) => (),
             Ok(_) => (),
         }
-    }
-
-    fn prompt(&mut self) {
-        if self.needs_prompt {
-            uprint!(self.serial, PROMPT);
-            self.needs_prompt = false;
-        }
+        self.needs_prompt = true;
     }
 
     pub fn serial(&mut self) -> &mut S { &mut self.serial }
@@ -237,8 +257,11 @@ impl<S: serial::ReadWrite> Cli<S> {
     }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
-        let mut bytes = self.serial.bytes().take_while(|b| *b as char != LINE_TERMINATOR);
-        if bytes.collect_slice(buffer) < buffer.len() {
+        let mut bytes = self.serial.bytes().take_while(|element| match element {
+            Err(_) => true,
+            Ok(b) => *b as char != LINE_TERMINATOR,
+        });
+        if bytes.try_collect_slice(buffer).map_err(|_| Error::SerialReadError)? < buffer.len() {
             Ok(())
         } else {
             Err(nb::Error::Other(Error::SerialBufferOverflow))
@@ -251,9 +274,15 @@ impl<S: serial::ReadWrite> Cli<S> {
         helpstrings: &[(&'static str, &[(&'static str, &'static str)])],
         command: Option<&str>,
     ) {
-        if command.is_none() {
+        if let Some(command) = command {
+            if !names.iter().any(|n| n == &command) {
+                uprintln!(self.serial, "Requested command doesn't exist.");
+                return;
+            }
+        } else {
             uprintln!(self.serial, "List of available commands:");
         }
+
         for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
             if let Some(command) = command.as_ref() {
                 if command != name {
@@ -272,7 +301,6 @@ impl<S: serial::ReadWrite> Cli<S> {
                 uprintln!(self.serial, range);
             }
         }
-        uprintln!(self.serial, "");
     }
 }
 
@@ -299,19 +327,20 @@ macro_rules! commands {
             )+
         ];
 
+        #[allow(unreachable_code)]
         pub(super) fn run<EXTF, MCUF, SRL>(
             $cli: &mut Cli<SRL>,
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
-            EXTF: flash::ReadWrite,
-            MCUF: flash::ReadWrite,
+            EXTF: flash::ReadWrite + flash::BulkErase,
+            MCUF: flash::ReadWrite + flash::BulkErase,
             SRL: serial::ReadWrite,
         {
             match name {
                 $(
                     stringify!($c) => {
-                        if arguments.clone().any(|a| true $(&& a.name() != stringify!($a))*) {
+                        if arguments.clone().any(|_a| true $(&& _a.name() != stringify!($a))*) {
                             return Err(Error::UnexpectedArguments);
                         }
 
@@ -344,8 +373,7 @@ mod test {
         assert_eq!(Argument::Pair("an_option", "5000"), arguments.next().unwrap());
         assert_eq!(Argument::Single("some_flag"), arguments.next().unwrap());
 
-        let sample_command =
-            "command         with_too_much_whitespace   but  still=valid   \r\n\r\n";
+        let sample_command = "command         with_too_much_whitespace   but  still=valid   \n\n";
         let (name, mut arguments) = Cli::<MockSerial>::parse(sample_command).unwrap();
         assert_eq!("command", name);
         assert_eq!(Argument::Single("with_too_much_whitespace"), arguments.next().unwrap());

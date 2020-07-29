@@ -1,6 +1,6 @@
 //! Internal Flash controller for the STM32F4 family
 use crate::{
-    hal::flash::{Read, Write},
+    hal::flash::{BulkErase, ReadWrite},
     stm32pac::FLASH,
     utilities::{
         bitwise::SliceBitSubset,
@@ -20,8 +20,8 @@ pub enum Error {
     MisalignedAccess,
 }
 
-#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Address(u32);
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq, Ord, Eq)]
+pub struct Address(pub u32);
 
 impl Add<usize> for Address {
     type Output = Self;
@@ -31,6 +31,15 @@ impl Add<usize> for Address {
 impl Sub<usize> for Address {
     type Output = Self;
     fn sub(self, rhs: usize) -> Address { Address(self.0.saturating_sub(rhs as u32)) }
+}
+
+impl Sub<Address> for Address {
+    type Output = usize;
+    fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
+}
+
+impl Into<usize> for Address {
+    fn into(self) -> usize { self.0 as usize }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -58,7 +67,7 @@ struct Sector {
 }
 
 #[non_exhaustive]
-struct MemoryMap {
+pub struct MemoryMap {
     sectors: [Sector; SECTOR_NUMBER],
 }
 
@@ -71,19 +80,19 @@ const SECTOR_NUMBER: usize = 15;
 #[cfg(feature = "stm32f412")]
 const MEMORY_MAP: MemoryMap = MemoryMap {
     sectors: [
-        Sector::new(Block::Boot, Address(0x0800_0000), kb!(16)),
-        Sector::new(Block::Boot, Address(0x0800_4000), kb!(16)),
-        Sector::new(Block::Boot, Address(0x0800_8000), kb!(16)),
-        Sector::new(Block::Boot, Address(0x0800_C000), kb!(16)),
-        Sector::new(Block::Main, Address(0x0801_0000), kb!(64)),
-        Sector::new(Block::Main, Address(0x0802_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x0804_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x0806_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x0808_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x080A_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x080C_0000), kb!(128)),
-        Sector::new(Block::Main, Address(0x080E_0000), kb!(128)),
-        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), kb!(32)),
+        Sector::new(Block::Boot, Address(0x0800_0000), KB!(16)),
+        Sector::new(Block::Boot, Address(0x0800_4000), KB!(16)),
+        Sector::new(Block::Boot, Address(0x0800_8000), KB!(16)),
+        Sector::new(Block::Boot, Address(0x0800_C000), KB!(16)),
+        Sector::new(Block::Main, Address(0x0801_0000), KB!(64)),
+        Sector::new(Block::Main, Address(0x0802_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x0804_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x0806_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x0808_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x080A_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x080C_0000), KB!(128)),
+        Sector::new(Block::Main, Address(0x080E_0000), KB!(128)),
+        Sector::new(Block::SystemMemory, Address(0x1FFF_0000), KB!(32)),
         Sector::new(Block::OneTimeProgrammable, Address(0x1FFF_7800), 528),
         Sector::new(Block::OptionBytes, Address(0x1FFF_C000), 16),
     ],
@@ -113,6 +122,33 @@ impl MemoryMap {
     }
 
     fn sectors() -> impl Iterator<Item = Sector> { MEMORY_MAP.sectors.iter().cloned() }
+    pub const fn writable_start() -> Address {
+        let mut i = 0;
+        loop {
+            if MEMORY_MAP.sectors[i].is_writable() {
+                break MEMORY_MAP.sectors[i].start();
+            }
+            i += 1;
+        }
+    }
+    pub const fn writable_end() -> Address {
+        let mut i = 0;
+        loop {
+            // Reach the writable area.
+            if MEMORY_MAP.sectors[i].is_writable() {
+                break;
+            }
+            i += 1;
+        }
+
+        loop {
+            // Reach the end of the writable area
+            if !MEMORY_MAP.sectors[i + 1].is_writable() {
+                break MEMORY_MAP.sectors[i].end();
+            }
+            i += 1;
+        }
+    }
 }
 
 impl Range {
@@ -145,7 +181,9 @@ impl Range {
 
     fn overlaps(self, sector: &Sector) -> bool {
         (self.0 <= sector.start()) && (self.1 > sector.start())
-            || (self.0 < sector.end()) && (self.1 > sector.end())
+            || (self.0 < sector.end()) && (self.1 >= sector.end())
+            || (self.0 >= sector.start() && self.0 < sector.end())
+            || (self.1 < sector.end() && self.1 >= sector.start())
     }
 
     /// Verify that all sectors spanned by this range are writable
@@ -245,16 +283,24 @@ impl McuFlash {
     }
 }
 
-impl Write for McuFlash {
+impl BulkErase for McuFlash {
+    type Error = Error;
+
+    // NOTE: This only erases the sections of the MCU flash that are writable
+    // from the bootloader's perspective. Not the boot sector, system bytes, etc.
+    fn erase(&mut self) -> nb::Result<(), Self::Error> {
+        for sector in MEMORY_MAP.sectors.iter().filter(|s| s.is_writable()) {
+            self.erase(sector)?;
+        }
+        Ok(())
+    }
+}
+
+impl ReadWrite for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn writable_range() -> (Address, Address) {
-        let mut writable_sectors = MEMORY_MAP.sectors.iter().filter(|s| s.is_writable());
-        let (first_sector, last_sector) =
-            (writable_sectors.next().unwrap(), writable_sectors.last().unwrap());
-        (first_sector.start(), last_sector.end())
-    }
+    fn range() -> (Address, Address) { (MemoryMap::writable_start(), MemoryMap::writable_end()) }
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address.0 % 4 != 0 {
@@ -294,13 +340,7 @@ impl Write for McuFlash {
 
         Ok(())
     }
-}
 
-impl Read for McuFlash {
-    type Error = Error;
-    type Address = Address;
-
-    fn readable_range() -> (Address, Address) { Self::writable_range() }
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         let range = Range(address, Address(address.0 + bytes.len() as u32));
         if address.0 % 4 != 0 {
@@ -328,10 +368,37 @@ mod test {
     use super::*;
 
     #[test]
+    fn ranges_overlap_sectors_correctly() {
+        let sector = Sector::new(Block::Boot, Address(10), 10usize);
+        assert!(Range(Address(10), Address(20)).overlaps(&sector));
+        assert!(Range(Address(5), Address(15)).overlaps(&sector));
+        assert!(Range(Address(15), Address(25)).overlaps(&sector));
+        assert!(Range(Address(5), Address(25)).overlaps(&sector));
+        assert!(Range(Address(12), Address(18)).overlaps(&sector));
+
+        assert!(!Range(Address(0), Address(5)).overlaps(&sector));
+        assert!(!Range(Address(20), Address(25)).overlaps(&sector));
+    }
+
+    #[test]
     fn ranges_span_the_correct_sectors() {
         let range = Range(Address(0x0801_1234), Address(0x0804_5678));
         let expected_sectors = &MEMORY_MAP.sectors[4..7];
 
         assert_eq!(expected_sectors, range.span());
+    }
+
+    #[test]
+    fn map_shows_correct_writable_range() {
+        let (start, end) = McuFlash::range();
+        assert_eq!(start, MEMORY_MAP.sectors[4].start());
+        assert_eq!(end, MEMORY_MAP.sectors[11].end());
+    }
+
+    #[test]
+    fn ranges_are_correctly_marked_writable() {
+        let (start, size) = (Address(0x0801_0008), 48usize);
+        let range = Range(start, Address(start.0 + size as u32));
+        assert!(range.is_writable());
     }
 }

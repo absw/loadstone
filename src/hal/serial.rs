@@ -18,7 +18,7 @@ pub trait Read {
 
     /// Reads a single byte
     fn read(&mut self) -> nb::Result<u8, Self::Error>;
-    fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self } }
+    fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self, errored: false } }
 }
 
 /// UART write half
@@ -31,11 +31,24 @@ pub trait Write {
 
 pub struct ReadIterator<'a, R: Read + ?Sized> {
     reader: &'a mut R,
+    errored: bool,
 }
 
 impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
-    type Item = u8;
-    fn next(&mut self) -> Option<Self::Item> { block!(self.reader.read()).ok() }
+    type Item = Result<u8, <R as Read>::Error>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.errored {
+            None
+        } else {
+            match block!(self.reader.read()) {
+                Ok(byte) => Some(Ok(byte)),
+                Err(e) => {
+                    self.errored = true;
+                    Some(Err(e))
+                }
+            }
+        }
+    }
 }
 
 /// Prints to an abstract serial device.
