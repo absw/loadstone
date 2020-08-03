@@ -19,20 +19,20 @@ commands!( cli, bootloader, names, helpstrings [
     ) {
         match (mcu, external) {
             (true, true) => {
-                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
+                uprintln!(cli.serial, "Starting Test...");
                 bootloader.test_mcu_flash()?;
                 bootloader.test_external_flash()?;
-                uwriteln!(cli.serial, "Both Flash tests successful").ok().unwrap();
+                uprintln!(cli.serial, "Both Flash tests successful");
             }
             (true, false) => {
-                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
+                uprintln!(cli.serial, "Starting Test...");
                 bootloader.test_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU flash test successful").ok().unwrap();
+                uprintln!(cli.serial, "MCU flash test successful");
             }
             (false, true) => {
-                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
+                uprintln!(cli.serial, "Starting Test...");
                 bootloader.test_external_flash()?;
-                uwriteln!(cli.serial, "External flash test successful").ok().unwrap();
+                uprintln!(cli.serial, "External flash test successful");
             }
             (false, false) => {
                 return Err(Error::MissingArgument);
@@ -50,11 +50,11 @@ commands!( cli, bootloader, names, helpstrings [
         }
         let exists = bootloader.external_banks().any(|b| b.index == bank);
         if exists {
-            uwriteln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.").ok().unwrap();
+            uprintln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.");
             bootloader.store_image(cli.serial.bytes().take(size as usize), size, bank)?;
-            uwriteln!(cli.serial, "Image transfer complete!").ok().unwrap();
+            uprintln!(cli.serial, "Image transfer complete!");
         } else {
-            uwriteln!(cli.serial, "Index supplied does not correspond to an external bank.").ok().unwrap();
+            uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");
         }
 
     },
@@ -65,21 +65,21 @@ commands!( cli, bootloader, names, helpstrings [
     ){
         match (mcu, external) {
             (true, true) => {
-                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
+                uprintln!(cli.serial, "Formatting...");
                 bootloader.format_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU Flash formatted successfully.").ok().unwrap();
+                uprintln!(cli.serial, "MCU Flash formatted successfully.");
                 bootloader.format_external_flash()?;
-                uwriteln!(cli.serial, "Both Flash chips formatted successfully.").ok().unwrap();
+                uprintln!(cli.serial, "Both Flash chips formatted successfully.");
             }
             (true, false) => {
-                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
+                uprintln!(cli.serial, "Formatting...");
                 bootloader.format_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU Flash formatted successfully.").ok().unwrap();
+                uprintln!(cli.serial, "MCU Flash formatted successfully.");
             }
             (false, true) => {
-                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
+                uprintln!(cli.serial, "Formatting...");
                 bootloader.format_external_flash()?;
-                uwriteln!(cli.serial, "External Flash formatted successfully.").ok().unwrap();
+                uprintln!(cli.serial, "External Flash formatted successfully.");
             }
             (false, false) => {
                 return Err(Error::MissingArgument);
@@ -88,7 +88,7 @@ commands!( cli, bootloader, names, helpstrings [
     },
 
     banks ["Retrieves information from FW image banks."] (){
-        uwriteln!(cli.serial, "MCU Banks:").ok().unwrap();
+        uprintln!(cli.serial, "MCU Banks:");
         for bank in bootloader.mcu_banks() {
             uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
                 bank.index,
@@ -102,7 +102,7 @@ commands!( cli, bootloader, names, helpstrings [
             }
 
         }
-        uwriteln!(cli.serial, "External Banks:").ok().unwrap();
+        uprintln!(cli.serial, "External Banks:");
         for bank in bootloader.external_banks() {
             uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
                 bank.index,
@@ -123,14 +123,14 @@ commands!( cli, bootloader, names, helpstrings [
         )
     {
         bootloader.copy_image(input, output)?;
-        uwriteln!(cli.serial, "Copy success!").ok().unwrap();
+        uprintln!(cli.serial, "Copy success!");
     },
 
     boot ["Boot from a bootable MCU bank."] (
            bank: u8 ["Bootable MCU bank index."],
         )
     {
-        uwriteln!(cli.serial, "Attempting to boot from bank {}", bank).ok().unwrap();
+        uprintln!(cli.serial, "Attempting to boot from bank {}", bank);
         bootloader.boot(bank)?;
     },
 

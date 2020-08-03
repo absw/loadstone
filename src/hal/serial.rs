@@ -45,6 +45,38 @@ impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
     }
 }
 
+/// Carries on silently if uncapable of writing.
+#[macro_export]
+macro_rules! uprint {
+    ($serial:expr, $($arg:tt)+) => {
+        let _ = uwrite!($serial, $($arg)+ );
+    };
+}
+
+/// Carries on silently if uncapable of writing.
+#[macro_export]
+macro_rules! uprintln {
+    ($serial:expr, $($arg:tt)+) => {
+        let _ = uwriteln!($serial, $($arg)+ );
+    };
+}
+
+/// Panics if uncapable of writing.
+#[macro_export]
+macro_rules! critical_uprint {
+    ($serial:expr, $($arg:tt)+) => {
+        uprint!($serial, $($arg)+ ).ok().unwrap();
+    };
+}
+
+/// Panics if uncapable of writing.
+#[macro_export]
+macro_rules! critical_uprintln {
+    ($serial:expr, $($arg:tt)+) => {
+        uprintln!($serial, $($arg)+ ).ok().unwrap();
+    };
+}
+
 #[cfg(test)]
 mod test {
     #[derive(Debug, Default)]
@@ -86,7 +118,7 @@ mod test {
             arbitrary_message.as_bytes().iter().cloned().collect();
 
         // When
-        uwrite!(mock_usart, "{}", arbitrary_message).unwrap();
+        uprint!(mock_usart, "{}", arbitrary_message);
 
         // Then
         assert_eq!(arbitrary_message_as_bytes, mock_usart.write_record);

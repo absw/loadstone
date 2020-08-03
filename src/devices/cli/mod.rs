@@ -162,11 +162,11 @@ impl<S: serial::ReadWrite> Cli<S> {
         MCUF: flash::ReadWrite + flash::BulkErase,
     {
         if !self.greeted {
-            uwriteln!(self.serial, "{}", GREETING).ok().unwrap();
+            uprintln!(self.serial, "{}", GREETING);
             self.greeted = true;
         }
         if self.needs_prompt {
-            uwrite!(self.serial, "{}", PROMPT).ok().unwrap();
+            uprint!(self.serial, "{}", PROMPT);
             self.needs_prompt = false;
         }
         let mut execute_command = || -> Result<(), Error> {
@@ -185,7 +185,7 @@ impl<S: serial::ReadWrite> Cli<S> {
             Err(Error::MissingArgument) => uwriteln!(self.serial, "[CLI Error] Command Missing An Argument"),
             Err(Error::DuplicateArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments"),
             Err(Error::BootloaderError(e)) => {
-                uwriteln!(self.serial, "[CLI Error] Internal Bootloader Error: ").ok().unwrap();
+                uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
                 Ok(e.report(&mut self.serial))
             },
             Err(Error::UnexpectedArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument"),
@@ -261,11 +261,11 @@ impl<S: serial::ReadWrite> Cli<S> {
     ) {
         if let Some(command) = command {
             if !names.iter().any(|n| n == &command) {
-                uwriteln!(self.serial, "Requested command doesn't exist.").ok().unwrap();
+                uprintln!(self.serial, "Requested command doesn't exist.");
                 return;
             }
         } else {
-            uwriteln!(self.serial, "List of available commands:").ok().unwrap();
+            uprintln!(self.serial, "List of available commands:");
         }
 
         for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
@@ -275,9 +275,9 @@ impl<S: serial::ReadWrite> Cli<S> {
                 }
             }
 
-            uwriteln!(self.serial, "[{}] - {}", name, help).ok().unwrap();
+            uprintln!(self.serial, "[{}] - {}", name, help);
             for (argument, range) in arguments_help.iter() {
-                uwriteln!(self.serial, "    * {} -> {}", argument, range).ok().unwrap();
+                uprintln!(self.serial, "    * {} -> {}", argument, range);
             }
         }
     }

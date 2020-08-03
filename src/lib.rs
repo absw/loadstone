@@ -27,7 +27,6 @@ pub mod utilities {
     pub mod memory;
     pub mod guard;
     pub mod buffer;
-    pub mod error;
     mod macros;
 }
 

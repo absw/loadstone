@@ -49,7 +49,7 @@ impl<T, S: Write> ReportOnUnwrapWithPrefix<T, S> for Result<T, Error> {
         match self {
             Ok(value) => value,
             Err(error) => {
-                uwrite!(serial, "{}", prefix).ok().unwrap();
+                uprint!(serial, "{}", prefix);
                 error.report(serial);
                 panic!();
             }
