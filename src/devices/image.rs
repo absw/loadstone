@@ -57,9 +57,7 @@ impl GlobalHeader {
         if header.magic == MAGIC {
             Ok(header)
         } else {
-            Err(nb::Error::Other(Error::LogicError(
-                "Attempted to read global header from a corrupted/outdated flash.",
-            )))
+            Err(nb::Error::Other(Error::FlashCorrupted))
         }
     }
 
@@ -93,9 +91,7 @@ impl ImageHeader {
         if header.magic == MAGIC {
             Ok(header)
         } else {
-            Err(nb::Error::Other(Error::LogicError(
-                "Attempted to read global header from a corrupted/outdated flash.",
-            )))
+            Err(nb::Error::Other(Error::FlashCorrupted))
         }
     }
 

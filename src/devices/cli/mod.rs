@@ -7,6 +7,7 @@ use crate::{
 };
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
+use ufmt::{uwrite, uwriteln};
 
 const GREETING: &str = "--=Lodestone CLI=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
@@ -161,11 +162,11 @@ impl<S: serial::ReadWrite> Cli<S> {
         MCUF: flash::ReadWrite + flash::BulkErase,
     {
         if !self.greeted {
-            uprintln!(self.serial, GREETING);
+            uwriteln!(self.serial, "{}", GREETING);
             self.greeted = true;
         }
         if self.needs_prompt {
-            uprint!(self.serial, PROMPT);
+            uwrite!(self.serial, "{}", PROMPT);
             self.needs_prompt = false;
         }
         let mut execute_command = || -> Result<(), Error> {
@@ -178,38 +179,38 @@ impl<S: serial::ReadWrite> Cli<S> {
         };
         match execute_command() {
             Err(Error::BadCommandEncoding) => {
-                uprintln!(self.serial, "[CLI Error] Bad Command Encoding")
+                uwriteln!(self.serial, "[CLI Error] Bad Command Encoding");
             }
             Err(Error::CharactersNotAllowed) => {
-                uprintln!(self.serial, "[CLI Error] Illegal Characters In Command")
+                uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command");
             }
             Err(Error::MalformedArguments) => {
-                uprintln!(self.serial, "[CLI Error] Malformed Command Arguments")
+                uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments");
             }
             Err(Error::SerialBufferOverflow) => {
-                uprintln!(self.serial, "[CLI Error] Command String Too Long")
+                uwriteln!(self.serial, "[CLI Error] Command String Too Long");
             }
             Err(Error::MissingArgument) => {
-                uprintln!(self.serial, "[CLI Error] Command Missing An Argument")
+                uwriteln!(self.serial, "[CLI Error] Command Missing An Argument");
             }
             Err(Error::DuplicateArguments) => {
-                uprintln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
+                uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments");
             }
             Err(Error::BootloaderError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
+                uwriteln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
                 e.report(&mut self.serial);
             }
             Err(Error::UnexpectedArguments) => {
-                uprintln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
+                uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument");
             }
             Err(Error::ArgumentOutOfRange) => {
-                uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
+                uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range");
             }
-            Err(Error::SerialReadError) => uprintln!(self.serial, "[CLI Error] Serial Read Failed"),
-            Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
+            Err(Error::SerialReadError) => { uwriteln!(self.serial, "[CLI Error] Serial Read Failed"); },
+            Err(Error::CommandUnknown) => { uwriteln!(self.serial, "Unknown Command"); },
             Err(Error::CommandEmpty) => (),
             Ok(_) => (),
-        }
+        };
         self.needs_prompt = true;
     }
 
@@ -276,11 +277,11 @@ impl<S: serial::ReadWrite> Cli<S> {
     ) {
         if let Some(command) = command {
             if !names.iter().any(|n| n == &command) {
-                uprintln!(self.serial, "Requested command doesn't exist.");
+                uwriteln!(self.serial, "Requested command doesn't exist.");
                 return;
             }
         } else {
-            uprintln!(self.serial, "List of available commands:");
+            uwriteln!(self.serial, "List of available commands:");
         }
 
         for (name, (help, arguments_help)) in names.iter().zip(helpstrings.iter()) {
@@ -289,16 +290,10 @@ impl<S: serial::ReadWrite> Cli<S> {
                     continue;
                 }
             }
-            uprintln!(self.serial, "");
-            uprint!(self.serial, "[");
-            uprint!(self.serial, name);
-            uprint!(self.serial, "] - ");
-            uprintln!(self.serial, help);
+
+            uwriteln!(self.serial, "[{}] - {}", name, help);
             for (argument, range) in arguments_help.iter() {
-                uprint!(self.serial, "    * ");
-                uprint!(self.serial, argument);
-                uprint!(self.serial, " -> ");
-                uprintln!(self.serial, range);
+                uwriteln!(self.serial, "    * {} -> {}", argument, range);
             }
         }
     }

@@ -30,6 +30,10 @@ nb = "*"
 paste = "*"
 static_assertions = "*"
 
+[dependencies.ufmt]
+version = "*"
+default-features = false
+
 [dependencies.arrayvec]
 version = "*"
 default-features = false

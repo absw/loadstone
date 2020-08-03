@@ -4,7 +4,9 @@ pub struct MockSerial {}
 
 impl serial::Write for MockSerial {
     type Error = ();
-    fn write(&mut self, _byte: u8) -> nb::Result<(), Self::Error> { Ok(()) }
+    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+        Ok(())
+    }
 }
 
 impl serial::Read for MockSerial {
