@@ -418,15 +418,14 @@ macro_rules! hal_usart_impl {
 
                 fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
                     for character in s.chars() {
-                        self.write_char(character);
+                        self.write_char(character)?;
                     }
                     Ok(())
                 }
 
                 fn write_char(&mut self, c: char) -> Result<(), Self::Error> {
                     // NOTE(Safety) atomic read with no side effects
-                    let sr = unsafe { (*$USARTX::ptr()).sr.read() };
-                    while !sr.txe().bit_is_set() {}
+                    while ! unsafe { (*$USARTX::ptr()).sr.read().txe().bit_is_set() } {}
                     // NOTE(Safety) atomic write to stateless register
                     // NOTE(write_volatile) 8-bit write that's not possible through the svd2rust API
                     unsafe { ptr::write_volatile(&(*$USARTX::ptr()).dr as *const _ as *mut _, c as u8) }

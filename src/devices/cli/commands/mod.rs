@@ -19,20 +19,20 @@ commands!( cli, bootloader, names, helpstrings [
     ) {
         match (mcu, external) {
             (true, true) => {
-                uwriteln!(cli.serial, "Starting Test...");
+                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
                 bootloader.test_mcu_flash()?;
                 bootloader.test_external_flash()?;
-                uwriteln!(cli.serial, "Both Flash tests successful");
+                uwriteln!(cli.serial, "Both Flash tests successful").ok().unwrap();
             }
             (true, false) => {
-                uwriteln!(cli.serial, "Starting Test...");
+                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
                 bootloader.test_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU flash test successful");
+                uwriteln!(cli.serial, "MCU flash test successful").ok().unwrap();
             }
             (false, true) => {
-                uwriteln!(cli.serial, "Starting Test...");
+                uwriteln!(cli.serial, "Starting Test...").ok().unwrap();
                 bootloader.test_external_flash()?;
-                uwriteln!(cli.serial, "External flash test successful");
+                uwriteln!(cli.serial, "External flash test successful").ok().unwrap();
             }
             (false, false) => {
                 return Err(Error::MissingArgument);
@@ -50,11 +50,11 @@ commands!( cli, bootloader, names, helpstrings [
         }
         let exists = bootloader.external_banks().any(|b| b.index == bank);
         if exists {
-            uwriteln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.");
+            uwriteln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.").ok().unwrap();
             bootloader.store_image(cli.serial.bytes().take(size as usize), size, bank)?;
-            uwriteln!(cli.serial, "Image transfer complete!");
+            uwriteln!(cli.serial, "Image transfer complete!").ok().unwrap();
         } else {
-            uwriteln!(cli.serial, "Index supplied does not correspond to an external bank.");
+            uwriteln!(cli.serial, "Index supplied does not correspond to an external bank.").ok().unwrap();
         }
 
     },
@@ -65,21 +65,21 @@ commands!( cli, bootloader, names, helpstrings [
     ){
         match (mcu, external) {
             (true, true) => {
-                uwriteln!(cli.serial, "Formatting...");
+                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
                 bootloader.format_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU Flash formatted successfully.");
+                uwriteln!(cli.serial, "MCU Flash formatted successfully.").ok().unwrap();
                 bootloader.format_external_flash()?;
-                uwriteln!(cli.serial, "Both Flash chips formatted successfully.");
+                uwriteln!(cli.serial, "Both Flash chips formatted successfully.").ok().unwrap();
             }
             (true, false) => {
-                uwriteln!(cli.serial, "Formatting...");
+                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
                 bootloader.format_mcu_flash()?;
-                uwriteln!(cli.serial, "MCU Flash formatted successfully.");
+                uwriteln!(cli.serial, "MCU Flash formatted successfully.").ok().unwrap();
             }
             (false, true) => {
-                uwriteln!(cli.serial, "Formatting...");
+                uwriteln!(cli.serial, "Formatting...").ok().unwrap();
                 bootloader.format_external_flash()?;
-                uwriteln!(cli.serial, "External Flash formatted successfully.");
+                uwriteln!(cli.serial, "External Flash formatted successfully.").ok().unwrap();
             }
             (false, false) => {
                 return Err(Error::MissingArgument);
@@ -88,42 +88,33 @@ commands!( cli, bootloader, names, helpstrings [
     },
 
     banks ["Retrieves information from FW image banks."] (){
-    //    uwriteln!(cli.serial, "MCU Banks:");
-    //    let mut text = ArrayString::<[_; 64]>::new();
-    //    for bank in bootloader.mcu_banks() {
-    //        write!(text, "   - [{}] {} - Size: {}b",
-    //            bank.index,
-    //            if bank.bootable { "Bootable" } else { "Non-Bootable" },
-    //            bank.size).expect("Not enough space to format bank string description.");
-    //        uwriteln!(cli.serial, text);
-    //        text.clear();
-    //        if let Some(image) = bootloader.image_at_bank(bank.index) {
-    //            write!(text, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
-    //                if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
-    //                image.size,
-    //                image.crc).expect("Not enough space to format image description");
-    //            uwriteln!(cli.serial, text);
-    //            text.clear();
-    //        }
+        uwriteln!(cli.serial, "MCU Banks:").ok().unwrap();
+        for bank in bootloader.mcu_banks() {
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
+                bank.index,
+                if bank.bootable { "Bootable" } else { "Non-Bootable" },
+                bank.size).ok().unwrap();
+            if let Some(image) = bootloader.image_at_bank(bank.index) {
+                uwriteln!(cli.serial, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
+                    if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
+                    image.size,
+                    image.crc).ok().unwrap();
+            }
 
-    //    }
-    //    uwriteln!(cli.serial, "External Banks:");
-    //    for bank in bootloader.external_banks() {
-    //        write!(text, "   - [{}] {} - Size: {}b",
-    //            bank.index,
-    //            if bank.bootable { "Bootable" } else { "Non-Bootable" },
-    //            bank.size).expect("Not enough space to format bank string description.");
-    //        uwriteln!(cli.serial, text);
-    //        text.clear();
-    //        if let Some(image) = bootloader.image_at_bank(bank.index) {
-    //            write!(text, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
-    //                if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
-    //                image.size,
-    //                image.crc).expect("Not enough space to format image description");
-    //            uwriteln!(cli.serial, text);
-    //            text.clear();
-    //        }
-    //    }
+        }
+        uwriteln!(cli.serial, "External Banks:").ok().unwrap();
+        for bank in bootloader.external_banks() {
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
+                bank.index,
+                if bank.bootable { "Bootable" } else { "Non-Bootable" },
+                bank.size).ok().unwrap();
+            if let Some(image) = bootloader.image_at_bank(bank.index) {
+                uwriteln!(cli.serial, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
+                    if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
+                    image.size,
+                    image.crc).ok().unwrap();
+            }
+        }
     },
 
     copy ["Copy an image from an external bank to an MCU bank."] (
@@ -132,20 +123,15 @@ commands!( cli, bootloader, names, helpstrings [
         )
     {
         bootloader.copy_image(input, output)?;
-        uwriteln!(cli.serial, "Copy success!");
+        uwriteln!(cli.serial, "Copy success!").ok().unwrap();
     },
 
     boot ["Boot from a bootable MCU bank."] (
-           index: u8 ["Bootable MCU bank index."],
+           bank: u8 ["Bootable MCU bank index."],
         )
     {
-        //use ufmt::uwrite;
-        //let mut text = ArrayString::<[_; 64]>::new();
-        let mut text = [0u8; 64];
-        //uwrite!(&mut text[..], "Attempting to boot from image {}", index).unwrap();
-        //uwriteln!(cli.serial, text);
-        //text.clear();
-        //bootloader.boot(index)?;
+        uwriteln!(cli.serial, "Attempting to boot from bank {}", bank).ok().unwrap();
+        bootloader.boot(bank)?;
     },
 
 ]);

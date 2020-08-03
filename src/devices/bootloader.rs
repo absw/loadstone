@@ -51,7 +51,7 @@ where
         let mut cli = self.cli.take().unwrap();
         if !self.interactive_mode {
             self.boot(1).unwrap_err();
-            uwriteln!(cli.serial(), "Failed to boot from default bank.");
+            uwriteln!(cli.serial(), "Failed to boot from default bank.").ok().unwrap();
         }
 
         loop {

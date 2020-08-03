@@ -97,7 +97,7 @@ mod test {
         // Given
         let mut mock_usart = MockUsart::default();
         let arbitrary_message = "Hello world with newline!";
-        let newline = "\r\n";
+        let newline = "\n";
         let mut expected_message: Vec<u8> = arbitrary_message.as_bytes().iter().cloned().collect();
         expected_message.append(&mut newline.as_bytes().iter().cloned().collect());
 
