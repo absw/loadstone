@@ -5,9 +5,7 @@ use crate::{
     },
     hal::{flash, serial},
 };
-
-use arrayvec::ArrayString;
-use core::fmt::Write;
+use ufmt::uwriteln;
 
 commands!( cli, bootloader, names, helpstrings [
 
@@ -91,39 +89,30 @@ commands!( cli, bootloader, names, helpstrings [
 
     banks ["Retrieves information from FW image banks."] (){
         uprintln!(cli.serial, "MCU Banks:");
-        let mut text = ArrayString::<[_; 64]>::new();
         for bank in bootloader.mcu_banks() {
-            write!(text, "   - [{}] {} - Size: {}b",
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
                 bank.index,
                 if bank.bootable { "Bootable" } else { "Non-Bootable" },
-                bank.size).expect("Not enough space to format bank string description.");
-            uprintln!(cli.serial, text);
-            text.clear();
+                bank.size).ok().unwrap();
             if let Some(image) = bootloader.image_at_bank(bank.index) {
-                write!(text, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
+                uwriteln!(cli.serial, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
                     if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
                     image.size,
-                    image.crc).expect("Not enough space to format image description");
-                uprintln!(cli.serial, text);
-                text.clear();
+                    image.crc).ok().unwrap();
             }
 
         }
         uprintln!(cli.serial, "External Banks:");
         for bank in bootloader.external_banks() {
-            write!(text, "   - [{}] {} - Size: {}b",
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b",
                 bank.index,
                 if bank.bootable { "Bootable" } else { "Non-Bootable" },
-                bank.size).expect("Not enough space to format bank string description.");
-            uprintln!(cli.serial, text);
-            text.clear();
+                bank.size).ok().unwrap();
             if let Some(image) = bootloader.image_at_bank(bank.index) {
-                write!(text, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
+                uwriteln!(cli.serial, "        - [IMAGE] {} - Size: {}b - CRC: {} ",
                     if let Some(_) = image.name { "Placeholder Name" } else { "Anonymous" },
                     image.size,
-                    image.crc).expect("Not enough space to format image description");
-                uprintln!(cli.serial, text);
-                text.clear();
+                    image.crc).ok().unwrap();
             }
         }
     },
@@ -138,14 +127,11 @@ commands!( cli, bootloader, names, helpstrings [
     },
 
     boot ["Boot from a bootable MCU bank."] (
-           index: u8 ["Bootable MCU bank index."],
+           bank: u8 ["Bootable MCU bank index."],
         )
     {
-        let mut text = ArrayString::<[_; 64]>::new();
-        write!(text, "Attempting to boot from image {}", index).unwrap();
-        uprintln!(cli.serial, text);
-        text.clear();
-        bootloader.boot(index)?;
+        uprintln!(cli.serial, "Attempting to boot from bank {}", bank);
+        bootloader.boot(bank)?;
     },
 
 ]);

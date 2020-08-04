@@ -180,7 +180,7 @@ impl Range {
     }
 
     fn overlaps(self, sector: &Sector) -> bool {
-        (self.0 <= sector.start()) && (self.1 > sector.start())
+        (self.0 <= sector.start()) && (self.1 > sector.end())
             || (self.0 < sector.end()) && (self.1 >= sector.end())
             || (self.0 >= sector.start() && self.0 < sector.end())
             || (self.1 < sector.end() && self.1 >= sector.start())

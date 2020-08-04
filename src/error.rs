@@ -1,6 +1,7 @@
 //! Error types and methods for the Secure Bootloader project.
 
 use crate::hal::serial::Write;
+use ufmt::{uwriteln, uwrite};
 
 /// Top level error type for the bootloader. Unlike the specific
 /// module errors, this error contains textual descriptions of the
@@ -13,10 +14,10 @@ pub enum Error {
     ConfigurationError(&'static str),
     /// Error caused by a high level device driver
     DeviceError(&'static str),
-    /// Error caused by faulty business logic
-    LogicError(&'static str),
-    /// Error caused at Power On Self Test
-    PostError(&'static str),
+    BankInvalid,
+    BankEmpty,
+    ImageTooBig,
+    FlashCorrupted,
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -48,7 +49,7 @@ impl<T, S: Write> ReportOnUnwrapWithPrefix<T, S> for Result<T, Error> {
         match self {
             Ok(value) => value,
             Err(error) => {
-                uprint!(serial, prefix);
+                uprint!(serial, "{}", prefix);
                 error.report(serial);
                 panic!();
             }
@@ -60,26 +61,13 @@ impl Error {
     /// Reports error via abstract serial device
     pub fn report<S: Write>(&self, serial: &mut S) {
         match self {
-            Error::DriverError(text) => {
-                uprint!(serial, "[DriverError] -> ");
-                uprintln!(serial, text);
-            }
-            Error::ConfigurationError(text) => {
-                uprint!(serial, "[ConfigurationError] -> ");
-                uprintln!(serial, text);
-            }
-            Error::DeviceError(text) => {
-                uprint!(serial, "[DeviceError] -> ");
-                uprintln!(serial, text);
-            }
-            Error::LogicError(text) => {
-                uprint!(serial, "[LogicError] -> ");
-                uprintln!(serial, text);
-            }
-            Error::PostError(text) => {
-                uprint!(serial, "[POSTError] -> ");
-                uprintln!(serial, text);
-            }
-        };
+            Error::DriverError(text) => uwriteln!(serial, "[DriverError] -> {}", text),
+            Error::ConfigurationError(text) => uwriteln!(serial, "[ConfigurationError] -> {}", text),
+            Error::DeviceError(text) => uwriteln!(serial, "[DeviceError] -> {}", text),
+            Error::ImageTooBig => uwriteln!(serial, "[LogicError] -> Firmware Image too big"),
+            Error::BankInvalid => uwriteln!(serial, "[LogicError] -> Bank doesn't exist or is invalid in this context"),
+            Error::BankEmpty => uwriteln!(serial, "[LogicError] -> Bank is empty (contains no firmware image)"),
+            Error::FlashCorrupted => uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated"),
+        }.ok().unwrap();
     }
 }

@@ -17,6 +17,7 @@ use crate::{
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use nb::block;
+use ufmt::uwriteln;
 
 const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
@@ -50,7 +51,7 @@ where
         let mut cli = self.cli.take().unwrap();
         if !self.interactive_mode {
             self.boot(1).unwrap_err();
-            uprintln!(cli.serial(), "Failed to boot from default bank.")
+            uprintln!(cli.serial(), "Failed to boot from default bank.");
         }
 
         loop {
@@ -70,10 +71,10 @@ where
         let bank = self
             .external_banks()
             .find(|b| b.index == bank_index)
-            .ok_or(Error::LogicError("Bank Not Found"))?;
+            .ok_or(Error::BankInvalid)?;
 
         if size > bank.size {
-            return Err(Error::LogicError("Flash image too big for bank."));
+            return Err(Error::ImageTooBig);
         }
 
         let mut address = bank.location;
@@ -101,15 +102,15 @@ where
             .mcu_banks
             .iter()
             .find(|b| b.index == bank_index)
-            .ok_or(Error::LogicError("Bank doesn't exist or isn't in MCU"))?;
+            .ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
-            return Err(Error::LogicError("Bank is not bootable!"));
+            return Err(Error::BankInvalid);
         }
 
         let header = block!(image::ImageHeader::retrieve(&mut self.mcu_flash, &bank))?;
         if header.size == 0 {
-            return Err(Error::LogicError("Image is empty"));
+            return Err(Error::BankEmpty);
         }
 
         let image_location_raw: usize = bank.location.into();
@@ -139,7 +140,7 @@ where
     }
 
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
-        block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
+        block!(self.external_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
         block!(image::GlobalHeader::format_default(&mut self.external_flash))?;
         for bank in self.external_banks {
             block!(image::ImageHeader::format_default(&mut self.external_flash, bank))?;
@@ -186,17 +187,17 @@ where
         let (input_bank, output_bank) = (
             self.external_banks()
                 .find(|b| b.index == input_bank_index)
-                .ok_or(Error::LogicError("Input bank doesn't exist or isn't external."))?,
+                .ok_or(Error::BankInvalid)?,
             self.mcu_banks()
                 .find(|b| b.index == output_bank_index)
-                .ok_or(Error::LogicError("Output bank doesn't exist or isn't in MCU"))?,
+                .ok_or(Error::BankInvalid)?,
         );
         let input_header =
             block!(image::ImageHeader::retrieve(&mut self.external_flash, &input_bank))?;
         if input_header.size > output_bank.size {
-            return Err(Error::LogicError("Image doesn't fit in output bank"));
+            return Err(Error::ImageTooBig);
         } else if input_header.size == 0 {
-            return Err(Error::LogicError("Input image is empty"));
+            return Err(Error::BankEmpty);
         }
 
         let input_image_start_address = input_bank.location;
@@ -232,7 +233,7 @@ where
     where
         F: flash::ReadWrite,
     {
-        let failure = Error::PostError("Flash Read Write cycle failed");
+        let failure = Error::DriverError("Flash Read Write cycle failed");
         let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
         let superset_byte_buffer = [0xFFu8];
         let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];

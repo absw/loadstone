@@ -7,6 +7,7 @@ use crate::{
 };
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
+use ufmt::{uwrite, uwriteln};
 
 const GREETING: &str = "--=Lodestone CLI=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
@@ -161,11 +162,11 @@ impl<S: serial::ReadWrite> Cli<S> {
         MCUF: flash::ReadWrite + flash::BulkErase,
     {
         if !self.greeted {
-            uprintln!(self.serial, GREETING);
+            uprintln!(self.serial, "{}", GREETING);
             self.greeted = true;
         }
         if self.needs_prompt {
-            uprint!(self.serial, PROMPT);
+            uprint!(self.serial, "{}", PROMPT);
             self.needs_prompt = false;
         }
         let mut execute_command = || -> Result<(), Error> {
@@ -177,39 +178,23 @@ impl<S: serial::ReadWrite> Cli<S> {
             Ok(())
         };
         match execute_command() {
-            Err(Error::BadCommandEncoding) => {
-                uprintln!(self.serial, "[CLI Error] Bad Command Encoding")
-            }
-            Err(Error::CharactersNotAllowed) => {
-                uprintln!(self.serial, "[CLI Error] Illegal Characters In Command")
-            }
-            Err(Error::MalformedArguments) => {
-                uprintln!(self.serial, "[CLI Error] Malformed Command Arguments")
-            }
-            Err(Error::SerialBufferOverflow) => {
-                uprintln!(self.serial, "[CLI Error] Command String Too Long")
-            }
-            Err(Error::MissingArgument) => {
-                uprintln!(self.serial, "[CLI Error] Command Missing An Argument")
-            }
-            Err(Error::DuplicateArguments) => {
-                uprintln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
-            }
+            Err(Error::BadCommandEncoding) => uwriteln!(self.serial, "[CLI Error] Bad Command Encoding"),
+            Err(Error::CharactersNotAllowed) => uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command"),
+            Err(Error::MalformedArguments) => uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments"),
+            Err(Error::SerialBufferOverflow) => uwriteln!(self.serial, "[CLI Error] Command String Too Long"),
+            Err(Error::MissingArgument) => uwriteln!(self.serial, "[CLI Error] Command Missing An Argument"),
+            Err(Error::DuplicateArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments"),
             Err(Error::BootloaderError(e)) => {
                 uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
-                e.report(&mut self.serial);
-            }
-            Err(Error::UnexpectedArguments) => {
-                uprintln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
-            }
-            Err(Error::ArgumentOutOfRange) => {
-                uprintln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
-            }
-            Err(Error::SerialReadError) => uprintln!(self.serial, "[CLI Error] Serial Read Failed"),
-            Err(Error::CommandUnknown) => uprintln!(self.serial, "Unknown Command"),
-            Err(Error::CommandEmpty) => (),
-            Ok(_) => (),
-        }
+                Ok(e.report(&mut self.serial))
+            },
+            Err(Error::UnexpectedArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument"),
+            Err(Error::ArgumentOutOfRange) => uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range"),
+            Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial Read Failed"),
+            Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown Command"),
+            Err(Error::CommandEmpty) => Ok(()),
+            Ok(_) => Ok(()),
+        }.ok().unwrap();
         self.needs_prompt = true;
     }
 
@@ -289,16 +274,10 @@ impl<S: serial::ReadWrite> Cli<S> {
                     continue;
                 }
             }
-            uprintln!(self.serial, "");
-            uprint!(self.serial, "[");
-            uprint!(self.serial, name);
-            uprint!(self.serial, "] - ");
-            uprintln!(self.serial, help);
+
+            uprintln!(self.serial, "[{}] - {}", name, help);
             for (argument, range) in arguments_help.iter() {
-                uprint!(self.serial, "    * ");
-                uprint!(self.serial, argument);
-                uprint!(self.serial, " -> ");
-                uprintln!(self.serial, range);
+                uprintln!(self.serial, "    * {} -> {}", argument, range);
             }
         }
     }
@@ -368,13 +347,13 @@ mod test {
     #[test]
     fn basic_command_parsing() {
         let sample_command = "my_command an_option=5000 some_flag";
-        let (name, mut arguments) = Cli::<MockSerial>::parse(sample_command).unwrap();
+        let (name, mut arguments) = Cli::<SerialStub>::parse(sample_command).unwrap();
         assert_eq!("my_command", name);
         assert_eq!(Argument::Pair("an_option", "5000"), arguments.next().unwrap());
         assert_eq!(Argument::Single("some_flag"), arguments.next().unwrap());
 
         let sample_command = "command         with_too_much_whitespace   but  still=valid   \n\n";
-        let (name, mut arguments) = Cli::<MockSerial>::parse(sample_command).unwrap();
+        let (name, mut arguments) = Cli::<SerialStub>::parse(sample_command).unwrap();
         assert_eq!("command", name);
         assert_eq!(Argument::Single("with_too_much_whitespace"), arguments.next().unwrap());
         assert_eq!(Argument::Single("but"), arguments.next().unwrap());
@@ -386,19 +365,19 @@ mod test {
         let bad_command_no_fields = "";
         assert_eq!(
             Error::CommandEmpty,
-            Cli::<MockSerial>::parse(bad_command_no_fields).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_no_fields).err().unwrap()
         );
 
         let bad_command_strange_formatting = "command with=a=strange=argument";
         assert_eq!(
             Error::MalformedArguments,
-            Cli::<MockSerial>::parse(bad_command_strange_formatting).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_strange_formatting).err().unwrap()
         );
 
         let bad_command_characters_not_allowed = "com-mand with? bad+characters";
         assert_eq!(
             Error::CharactersNotAllowed,
-            Cli::<MockSerial>::parse(bad_command_characters_not_allowed).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_characters_not_allowed).err().unwrap()
         );
     }
 }
