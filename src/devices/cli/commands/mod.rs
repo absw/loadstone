@@ -3,6 +3,7 @@ use crate::{
         bootloader::Bootloader,
         cli::{ArgumentIterator, Cli, Error, Name, RetrieveArgument},
     },
+    error::Error as BootloaderError,
     hal::{flash, serial},
 };
 use ufmt::uwriteln;
@@ -41,16 +42,15 @@ commands!( cli, bootloader, names, helpstrings [
     },
 
     flash ["Stores a FW image in an external Bank."] (
-        size: usize ["[0-2000]"],
+        size: usize ["Image size in bytes"],
         bank: u8 ["External Bank Index"],
         )
     {
-        if size > 2000 {
-            return Err(Error::ArgumentOutOfRange);
-        }
-        let exists = bootloader.external_banks().any(|b| b.index == bank);
-        if exists {
-            uprintln!(cli.serial, "Starting raw read mode! [size] bytes will be read directly from now on.");
+        if let Some(bank) = bootloader.external_banks().find(|b| b.index == bank) {
+            if size > bank.size {
+                return Err(Error::ArgumentOutOfRange);
+            }
+            uprintln!(cli.serial, "Starting raw read mode! {} bytes will be read directly from now on.", size);
             bootloader.store_image(cli.serial.bytes().take(size as usize), size, bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {

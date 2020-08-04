@@ -1,9 +1,6 @@
 //! Device driver for the [Micron N24q128a](../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
-    hal::{
-        flash::{BulkErase, ReadWrite},
-        qspi, time,
-    },
+    hal::{flash::ReadWrite, qspi, time},
     utilities::{
         bitwise::{BitFlags, SliceBitSubset},
         memory::{self, IterableByOverlaps, Region},
@@ -168,12 +165,14 @@ enum CommandData<'a> {
     None,
 }
 
-impl<QSPI, NOW> BulkErase for MicronN25q128a<QSPI, NOW>
+impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
     NOW: time::Now,
 {
     type Error = Error;
+    type Address = Address;
+
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
         // Early yield if flash is not ready for writing
         if Self::status(&mut self.qspi)?.write_in_progress {
@@ -185,15 +184,6 @@ where
             Ok(())
         }
     }
-}
-
-impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
-where
-    QSPI: qspi::Indirect,
-    NOW: time::Now,
-{
-    type Error = Error;
-    type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {

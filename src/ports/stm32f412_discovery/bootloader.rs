@@ -13,6 +13,7 @@ use crate::{drivers::{
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::devices::cli::Cli;
+use crate::error::Error;
 use core::mem::size_of;
 
 // Flash pins and typedefs
@@ -65,7 +66,6 @@ static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF
     image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
 ];
 
-
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
@@ -93,5 +93,37 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let interactive_mode = gpioa.pa0.is_high();
 
         Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, interactive_mode }
+    }
+}
+
+impl From<flash::Error> for Error {
+    fn from(error: flash::Error) -> Self {
+        match error {
+            flash::Error::MemoryNotReachable => Error::DriverError("[MCU Flash] Memory not reachable"),
+            flash::Error::MisalignedAccess => Error::DriverError("[MCU Flash] Misaligned memory access"),
+        }
+    }
+}
+
+impl From<n25q128a_flash::Error> for Error {
+    fn from(error: n25q128a_flash::Error) -> Self {
+        match error {
+            n25q128a_flash::Error::TimeOut => Error::DriverError("[External Flash] Operation timed out"),
+            n25q128a_flash::Error::QspiError => Error::DriverError("[External Flash] Qspi Error"),
+            n25q128a_flash::Error::WrongManufacturerId => Error::DriverError("[External Flash] Wrong manufacturer ID"),
+            n25q128a_flash::Error::MisalignedAccess => Error::DriverError("[External Flash] Misaligned memory access"),
+            n25q128a_flash::Error::AddressOutOfRange => Error::DriverError("[External Flash] Address out of range"),
+        }
+    }
+}
+
+impl From<serial::Error> for Error {
+    fn from(error: serial::Error) -> Self {
+        match error {
+            serial::Error::Framing => Error::DriverError("[Serial] Framing Error"),
+            serial::Error::Noise => Error::DriverError("[Serial] Noise Error"),
+            serial::Error::Overrun => Error::DriverError("[Serial] Overrun Error"),
+            serial::Error::Parity => Error::DriverError("[Serial] Parity Error"),
+        }
     }
 }

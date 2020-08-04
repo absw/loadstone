@@ -8,10 +8,7 @@ use super::image;
 use crate::{
     devices::cli::Cli,
     error::Error,
-    hal::{
-        flash,
-        serial,
-    },
+    hal::{flash, serial},
     utilities::buffer::TryCollectSlice,
 };
 use core::{cmp::min, mem::size_of};
@@ -23,9 +20,12 @@ const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
-    EXTF: flash::ReadWrite + flash::BulkErase,
-    MCUF: flash::ReadWrite + flash::BulkErase,
+    EXTF: flash::ReadWrite,
+    Error: From<EXTF::Error>,
+    MCUF: flash::ReadWrite,
+    Error: From<MCUF::Error>,
     SRL: serial::ReadWrite,
+    Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
@@ -37,9 +37,12 @@ where
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
 where
-    EXTF: flash::ReadWrite + flash::BulkErase,
-    MCUF: flash::ReadWrite + flash::BulkErase,
+    EXTF: flash::ReadWrite,
+    Error: From<EXTF::Error>,
+    MCUF: flash::ReadWrite,
+    Error: From<MCUF::Error>,
     SRL: serial::ReadWrite,
+    Error: From<<SRL as serial::Read>::Error>,
 {
     pub fn run(mut self) -> ! {
         // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
@@ -63,16 +66,12 @@ where
         &mut self,
         mut bytes: I,
         size: usize,
-        bank_index: u8,
+        bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
         I: Iterator<Item = Result<u8, E>>,
+        Error: From<E>,
     {
-        let bank = self
-            .external_banks()
-            .find(|b| b.index == bank_index)
-            .ok_or(Error::BankInvalid)?;
-
         if size > bank.size {
             return Err(Error::ImageTooBig);
         }
@@ -80,35 +79,27 @@ where
         let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
-            match bytes
-                .try_collect_slice(&mut buffer)
-                .map_err(|_| Error::DriverError("Serial Read Error"))?
-            {
+            match bytes.try_collect_slice(&mut buffer)? {
                 0 => break,
                 n => {
-                    self.external_flash
-                        .write(address, &mut buffer[0..n])
-                        .map_err(|_| Error::DriverError("Flash Write Error"))?;
+                    block!(self.external_flash.write(address, &mut buffer[0..n]))?;
                     address = address + n;
                 }
             }
         }
 
-        block!(image::ImageHeader::write(&mut self.external_flash, &bank, size, 0u32))
+        image::ImageHeader::write(&mut self.external_flash, &bank, size, 0u32)
     }
 
     pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
-        let bank = self
-            .mcu_banks
-            .iter()
-            .find(|b| b.index == bank_index)
-            .ok_or(Error::BankInvalid)?;
+        let bank =
+            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);
         }
 
-        let header = block!(image::ImageHeader::retrieve(&mut self.mcu_flash, &bank))?;
+        let header = image::ImageHeader::retrieve(&mut self.mcu_flash, &bank)?;
         if header.size == 0 {
             return Err(Error::BankEmpty);
         }
@@ -120,8 +111,9 @@ where
         // or literally anything could happen here. After the interrupts are disabled, there is
         // no turning back.
         unsafe {
-            let initial_stack_pointer =  *(image_location_raw as *const u32);
-            let reset_handler_pointer = *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
+            let initial_stack_pointer = *(image_location_raw as *const u32);
+            let reset_handler_pointer =
+                *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
             cortex_m::interrupt::disable();
             (*SCB::ptr()).vtor.write(image_location_raw as u32);
@@ -131,19 +123,19 @@ where
     }
 
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
-        block!(self.mcu_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
-        block!(image::GlobalHeader::format_default(&mut self.mcu_flash))?;
+        block!(self.mcu_flash.erase())?;
+        image::GlobalHeader::format_default(&mut self.mcu_flash)?;
         for bank in self.mcu_banks {
-            block!(image::ImageHeader::format_default(&mut self.mcu_flash, bank))?;
+            image::ImageHeader::format_default(&mut self.mcu_flash, bank)?;
         }
         Ok(())
     }
 
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
-        block!(self.external_flash.erase()).map_err(|_| Error::DriverError("Flash Erase Error"))?;
-        block!(image::GlobalHeader::format_default(&mut self.external_flash))?;
+        block!(self.external_flash.erase())?;
+        image::GlobalHeader::format_default(&mut self.external_flash)?;
         for bank in self.external_banks {
-            block!(image::ImageHeader::format_default(&mut self.external_flash, bank))?;
+            image::ImageHeader::format_default(&mut self.external_flash, bank)?;
         }
         Ok(())
     }
@@ -188,12 +180,9 @@ where
             self.external_banks()
                 .find(|b| b.index == input_bank_index)
                 .ok_or(Error::BankInvalid)?,
-            self.mcu_banks()
-                .find(|b| b.index == output_bank_index)
-                .ok_or(Error::BankInvalid)?,
+            self.mcu_banks().find(|b| b.index == output_bank_index).ok_or(Error::BankInvalid)?,
         );
-        let input_header =
-            block!(image::ImageHeader::retrieve(&mut self.external_flash, &input_bank))?;
+        let input_header = image::ImageHeader::retrieve(&mut self.external_flash, &input_bank)?;
         if input_header.size > output_bank.size {
             return Err(Error::ImageTooBig);
         } else if input_header.size == 0 {
@@ -211,39 +200,36 @@ where
                 min(TRANSFER_BUFFER_SIZE, input_header.size.saturating_sub(byte_index));
             block!(self
                 .external_flash
-                .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))
-            .map_err(|_| Error::DriverError("Error reading image from external flash"))?;
+                .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
             block!(self
                 .mcu_flash
-                .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))
-            .map_err(|_| Error::DriverError("Error writing image to mcu flash"))?;
+                .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
             byte_index += bytes_to_read;
         }
 
-        block!(image::ImageHeader::write(
+        image::ImageHeader::write(
             &mut self.mcu_flash,
             &output_bank,
             input_header.size,
-            input_header.crc
-        ))
-        .map_err(|_| Error::DriverError("Error writing header to mcu flash"))
+            input_header.crc,
+        )
     }
 
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite,
+        Error: From<<F as flash::ReadWrite>::Error>,
     {
-        let failure = Error::DriverError("Flash Read Write cycle failed");
         let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
         let superset_byte_buffer = [0xFFu8];
         let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];
         let (start, _) = F::range();
-        block!(flash.write(start, &magic_word_buffer)).map_err(|_| failure)?;
-        block!(flash.write(start, &superset_byte_buffer)).map_err(|_| failure)?;
+        block!(flash.write(start, &magic_word_buffer))?;
+        block!(flash.write(start, &superset_byte_buffer))?;
         let mut final_buffer = [0x00; 4];
-        block!(flash.read(start, &mut final_buffer)).map_err(|_| failure)?;
+        block!(flash.read(start, &mut final_buffer))?;
         if expected_final_buffer != final_buffer {
-            Err(failure)
+            Err(Error::DriverError("Flash Read Write cycle failed"))
         } else {
             Ok(())
         }

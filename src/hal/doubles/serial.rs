@@ -4,9 +4,7 @@ pub struct SerialStub {}
 
 impl serial::Write for SerialStub {
     type Error = ();
-    fn write_str(&mut self, _s: &str) -> Result<(), Self::Error> {
-        Ok(())
-    }
+    fn write_str(&mut self, _s: &str) -> Result<(), Self::Error> { Ok(()) }
 }
 
 impl serial::Read for SerialStub {
