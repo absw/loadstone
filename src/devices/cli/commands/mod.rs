@@ -50,7 +50,7 @@ commands!( cli, bootloader, names, helpstrings [
             if size > bank.size {
                 return Err(Error::ArgumentOutOfRange);
             }
-            uprintln!(cli.serial, "Starting raw read mode! {} bytes will be read directly from now on.", size);
+            uprintln!(cli.serial, "Starting raw transfer mode! {} bytes will be read directly from now on.", size);
             bootloader.store_image(cli.serial.bytes().take(size as usize), size, bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {

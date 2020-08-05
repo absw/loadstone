@@ -287,7 +287,7 @@ impl ReadWrite for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn range() -> (Address, Address) { (MemoryMap::writable_start(), MemoryMap::writable_end()) }
+    fn range(&self) -> (Address, Address) { (MemoryMap::writable_start(), MemoryMap::writable_end()) }
 
     // NOTE: This only erases the sections of the MCU flash that are writable
     // from the bootloader's perspective. Not the boot sector, system bytes, etc.
@@ -386,7 +386,7 @@ mod test {
 
     #[test]
     fn map_shows_correct_writable_range() {
-        let (start, end) = McuFlash::range();
+        let (start, end) = (MemoryMap::writable_start(), MemoryMap::writable_end());
         assert_eq!(start, MEMORY_MAP.sectors[4].start());
         assert_eq!(end, MEMORY_MAP.sectors[11].end());
     }

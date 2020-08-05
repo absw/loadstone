@@ -229,7 +229,7 @@ where
         }
     }
 
-    fn range() -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
+    fn range(&self) -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
 }
 
 impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>

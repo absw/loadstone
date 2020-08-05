@@ -18,6 +18,7 @@ pub enum Error {
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
+    CrcInvalid,
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -77,6 +78,7 @@ impl Error {
             Error::FlashCorrupted => {
                 uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated")
             }
+            Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
         }
         .ok()
         .unwrap();

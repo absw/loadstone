@@ -15,8 +15,8 @@ use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use nb::block;
 use ufmt::uwriteln;
+use image::TRANSFER_BUFFER_SIZE;
 
-const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -88,7 +88,7 @@ where
             }
         }
 
-        image::ImageHeader::write(&mut self.external_flash, &bank, size, 0u32)
+        image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
     pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
@@ -211,7 +211,6 @@ where
             &mut self.mcu_flash,
             &output_bank,
             input_header.size,
-            input_header.crc,
         )
     }
 
@@ -223,7 +222,7 @@ where
         let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
         let superset_byte_buffer = [0xFFu8];
         let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let (start, _) = F::range();
+        let (start, _) = flash.range();
         block!(flash.write(start, &magic_word_buffer))?;
         block!(flash.write(start, &superset_byte_buffer))?;
         let mut final_buffer = [0x00; 4];

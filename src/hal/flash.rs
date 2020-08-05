@@ -11,7 +11,7 @@ pub trait ReadWrite {
     type Address: Address;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
-    fn range() -> (Self::Address, Self::Address);
+    fn range(&self) -> (Self::Address, Self::Address);
     fn erase(&mut self) -> nb::Result<(), Self::Error>;
 }
 
