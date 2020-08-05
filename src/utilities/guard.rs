@@ -6,10 +6,10 @@
 //!
 //! Example
 //! ```
-//! # use secure_bootloader_lib::hal::led::*;
-//! # use secure_bootloader_lib::drivers::led::*;
-//! # use secure_bootloader_lib::hal::doubles::gpio::*;
-//! # use secure_bootloader_lib::utilities::guard::*;
+//! # use loadstone_lib::hal::led::*;
+//! # use loadstone_lib::drivers::led::*;
+//! # use loadstone_lib::hal::doubles::gpio::*;
+//! # use loadstone_lib::utilities::guard::*;
 //! # let pin = MockPin::default();
 //! # let mut led = MonochromeLed::new(pin, LogicLevel::Direct);
 //! {

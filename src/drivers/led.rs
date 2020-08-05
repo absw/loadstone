@@ -19,9 +19,9 @@ pub enum RgbPalette {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::hal::led::*;
-/// # use secure_bootloader_lib::drivers::led::*;
-/// # use secure_bootloader_lib::hal::doubles::gpio::*;
+/// # use loadstone_lib::hal::led::*;
+/// # use loadstone_lib::drivers::led::*;
+/// # use loadstone_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// # let (red_pin, green_pin, blue_pin) = (pin.clone(), pin.clone(), pin.clone());
 /// let mut led = RgbLed::new(red_pin, green_pin, blue_pin, LogicLevel::Direct);
@@ -60,9 +60,9 @@ pub struct RgbLed<Pin: OutputPin> {
 ///
 /// # Example
 /// ```
-/// # use secure_bootloader_lib::hal::led::*;
-/// # use secure_bootloader_lib::drivers::led::*;
-/// # use secure_bootloader_lib::hal::doubles::gpio::*;
+/// # use loadstone_lib::hal::led::*;
+/// # use loadstone_lib::drivers::led::*;
+/// # use loadstone_lib::hal::doubles::gpio::*;
 /// # let pin = MockPin::default();
 /// let mut led = MonochromeLed::new(pin, LogicLevel::Direct);
 ///
