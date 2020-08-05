@@ -76,6 +76,10 @@ where
             return Err(Error::ImageTooBig);
         }
 
+        // Header must be re-formatted before any writing takes place, to ensure
+        // a valid header and an invalid image never coexist.
+        image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
+
         let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
@@ -190,6 +194,9 @@ where
         }
 
         input_bank.sanity_check(&mut self.external_flash)?;
+        // Output header must be re-formatted before any writing takes place, to ensure
+        // a valid header and an invalid image never coexist.
+        image::ImageHeader::format_default(&mut self.mcu_flash, &output_bank)?;
 
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
