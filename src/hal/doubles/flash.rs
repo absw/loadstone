@@ -21,6 +21,7 @@ pub struct Address(pub u32);
 impl flash::ReadWrite for FakeFlash {
     type Error = FakeError;
     type Address = Address;
+
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if address < self.base {
             Err(nb::Error::Other(FakeError))
@@ -29,17 +30,20 @@ impl flash::ReadWrite for FakeFlash {
             Ok(())
         }
     }
+
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if address < self.base {
             Err(nb::Error::Other(FakeError))
         } else {
             let offset = address - self.base;
             self.data.resize_with(max(self.data.len(), offset + bytes.len()), Default::default);
-            self.data.iter_mut().skip(address - self.base).zip(bytes).for_each(|(o, i)| *o = *i);
+            self.data.iter_mut().skip(offset).zip(bytes).for_each(|(o, i)| *o = *i);
             Ok(())
         }
     }
+
     fn range(&self) -> (Self::Address, Self::Address) { (self.base, self.base + self.length) }
+
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
         self.data.clear();
         Ok(())
