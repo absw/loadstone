@@ -34,6 +34,10 @@ static_assertions = "*"
 version = "*"
 default-features = false
 
+[dependencies.crc]
+version = "*"
+default-features = false
+
 [dependencies.arrayvec]
 version = "*"
 default-features = false

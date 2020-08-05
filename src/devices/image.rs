@@ -5,6 +5,10 @@ use crate::{
 };
 use core::mem::size_of;
 use nb::{self, block};
+use crc::{Hasher32, crc32};
+use core::cmp::min;
+
+pub(crate) const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
 /// Changing this magic will force any headers in
 /// flash memory to be considered incorrect. Change it
@@ -45,78 +49,89 @@ pub struct Bank<A: Address> {
 }
 
 impl GlobalHeader {
-    pub fn retrieve<F: flash::ReadWrite<Address = A>, A: Address>(flash: &mut F) -> nb::Result<Self, Error> {
+    pub fn retrieve<F, A>(flash: &mut F) -> Result<Self, Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
         // Global header is always at the end of the readable region
-        let address = F::range().1 - size_of::<Self>();
+        let address = flash.range().1 - size_of::<Self>();
 
         // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
         // validity. It will only cause UB when the structs in this file have been modified AND the
         // magic value at the top has not.
-        let header: Self = block!(unsafe { flash.deserialize(address) })
-            .map_err(|_| Error::DriverError("Flash Read Failed"))?;
+        let header: Self = block!(unsafe { flash.deserialize(address) })?;
         if header.magic == MAGIC {
             Ok(header)
         } else {
-            Err(nb::Error::Other(Error::FlashCorrupted))
+            Err(Error::FlashCorrupted)
         }
     }
 
     // Writes a default global header to flash at the right location.
-    pub fn format_default<F: flash::ReadWrite<Address = A>, A: Address>(flash: &mut F) -> nb::Result<(), Error> {
+    pub fn format_default<F, A>(flash: &mut F) -> Result<(), Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
         let default_header = Self { magic: MAGIC, test_buffer: [0x00; 4] };
         // Global header is always at the end of the readable region
-        let address = F::range().1 - size_of::<Self>();
+        let address = flash.range().1 - size_of::<Self>();
 
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
-        block!(unsafe { flash.serialize(&default_header, address) }).map_err(|_| {
-            nb::Error::Other(Error::DriverError("Writing a Default global header to flash failed"))
-        })
+        Ok(block!(unsafe { flash.serialize(&default_header, address) })?)
     }
 }
 
 impl ImageHeader {
-    pub fn retrieve<A: Address, F: flash::ReadWrite<Address = A>>(
-        flash: &mut F,
-        bank: &Bank<A>,
-    ) -> nb::Result<Self, Error> {
+    pub fn retrieve<F, A>(flash: &mut F, bank: &Bank<A>) -> Result<Self, Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
         // Image headers are stored at the *end* of images to make sure the binary is aligned
         let address = bank.location + bank.size;
         // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
         // validity. It will only cause UB when the structs in this file have been modified AND the
         // magic value at the top has not.
-        let header: Self = block!(unsafe { flash.deserialize(address) })
-            .map_err(|_| Error::DriverError("Flash Read Failed"))?;
+        let header: Self = block!(unsafe { flash.deserialize(address) })?;
         if header.magic == MAGIC {
             Ok(header)
         } else {
-            Err(nb::Error::Other(Error::FlashCorrupted))
+            Err(Error::FlashCorrupted)
         }
     }
 
     // Writes a default image header to flash at a given location
-    pub fn format_default<A: Address, F: flash::ReadWrite<Address = A>>(
-        flash: &mut F,
-        bank: &Bank<A>,
-    ) -> nb::Result<(), Error> {
+    pub fn format_default<A, F>(flash: &mut F, bank: &Bank<A>) -> Result<(), Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
         // Image headers are stored at the *end* of images to make sure the binary is aligned
         let address = bank.location + bank.size;
         let default_header = Self { magic: MAGIC, size: 0, crc: 0, name: None };
         // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
         // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
         // alongside a magic number that guarantees its safe retrieval from flash.
-        block!(unsafe { flash.serialize(&default_header, address) }).map_err(|_| {
-            nb::Error::Other(Error::DriverError("Writing a Default image header to flash failed"))
-        })
+        Ok(block!(unsafe { flash.serialize(&default_header, address) })?)
     }
 
-    pub fn write<A: Address, F: flash::ReadWrite<Address = A>>(
-        flash: &mut F,
-        bank: &Bank<A>,
-        size: usize,
-        crc: u32,
-    ) -> nb::Result<(), Error> {
+    pub fn write<A, F>(flash: &mut F, bank: &Bank<A>, size: usize) -> Result<(), Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
+        // Header can **only ever** be written if the image is valid.
+        let crc = Self::validate_image(flash, bank.location, size)?;
+
         // Image headers are stored at the *end* of images to make sure the binary is aligned
         let address = bank.location + bank.size;
         let header = ImageHeader {
@@ -125,8 +140,74 @@ impl ImageHeader {
             size,
             crc,
         };
-        block!(unsafe { flash.serialize(&header, address) }).map_err(|_| {
-            nb::Error::Other(Error::DriverError("Writing an image header to flash failed"))
-        })
+
+        Ok(block!(unsafe { flash.serialize(&header, address) })?)
+    }
+
+    pub fn validate_image<A, F>(flash: &mut F, location: A, size: usize) -> Result<u32, Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
+        if size <= size_of::<u32>() {
+            return Err(Error::BankEmpty);
+        }
+
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let mut byte_index = 0usize;
+        let mut digest = crc32::Digest::new(crc32::IEEE);
+        let size_before_crc = size.saturating_sub(size_of::<u32>());
+
+        while byte_index < size_before_crc {
+            let remaining_size = size_before_crc.saturating_sub(byte_index);
+            let bytes_to_read = min(TRANSFER_BUFFER_SIZE, remaining_size);
+            let slice = &mut buffer[0..min(TRANSFER_BUFFER_SIZE, remaining_size)];
+            block!(flash.read(location + byte_index, slice))?;
+            digest.write(slice);
+            byte_index += bytes_to_read;
+        }
+
+        let mut crc_bytes = [0u8; 4];
+        block!(flash.read(location + byte_index, &mut crc_bytes))?;
+        let crc = u32::from_le_bytes(crc_bytes);
+        let calculated_crc = digest.sum32();
+        if crc == calculated_crc {
+            Ok(crc)
+        } else {
+            Err(Error::CrcInvalid)
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::hal::{flash::ReadWrite, doubles::flash::{Address, FakeFlash}};
+    use super::*;
+
+    #[test]
+    fn writing_header_with_correct_crc() {
+        // Given
+        let mut flash = FakeFlash::new(Address(0));
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let image_with_crc = [0xAAu8, 0xBB, /*CRC*/ 0x98, 0x2c, 0x82, 0x49];
+        flash.write(Address(0), &image_with_crc).unwrap();
+
+        // Then
+        ImageHeader::write(&mut flash, &bank, image_with_crc.len()).unwrap();
+    }
+
+    #[test]
+    fn attempting_to_write_header_with_wrong_crc() {
+        // Given
+        let mut flash = FakeFlash::new(Address(0));
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let image_with_crc = [0xAAu8, 0xBB, /*CRC*/ 0x01, 0x02, 0x03, 0x04];
+        flash.write(Address(0), &image_with_crc).unwrap();
+
+        // Then
+        let _result = ImageHeader::write(&mut flash, &bank, image_with_crc.len()).unwrap_err();
+        assert!(matches!(Error::CrcInvalid, _result));
     }
 }

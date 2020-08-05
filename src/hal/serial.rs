@@ -107,7 +107,7 @@ mod test {
     }
 
     use super::*;
-    use ufmt::{uwriteln, uwrite};
+    use ufmt::{uwrite, uwriteln};
 
     #[test]
     fn uwrite_macro_writes_bytes_with_no_newline() {

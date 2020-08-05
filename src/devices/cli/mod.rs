@@ -155,11 +155,15 @@ const ARGUMENT_SEPARATOR: char = '=';
 const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
-impl<S: serial::ReadWrite> Cli<S> {
-    pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, S>)
+impl<SRL: serial::ReadWrite> Cli<SRL> {
+    pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, SRL>)
     where
-        EXTF: flash::ReadWrite + flash::BulkErase,
-        MCUF: flash::ReadWrite + flash::BulkErase,
+        EXTF: flash::ReadWrite,
+        BootloaderError: From<EXTF::Error>,
+        MCUF: flash::ReadWrite,
+        BootloaderError: From<MCUF::Error>,
+        SRL: serial::ReadWrite,
+        BootloaderError: From<<SRL as serial::Read>::Error>,
     {
         if !self.greeted {
             uprintln!(self.serial, "{}", GREETING);
@@ -178,27 +182,45 @@ impl<S: serial::ReadWrite> Cli<S> {
             Ok(())
         };
         match execute_command() {
-            Err(Error::BadCommandEncoding) => uwriteln!(self.serial, "[CLI Error] Bad Command Encoding"),
-            Err(Error::CharactersNotAllowed) => uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command"),
-            Err(Error::MalformedArguments) => uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments"),
-            Err(Error::SerialBufferOverflow) => uwriteln!(self.serial, "[CLI Error] Command String Too Long"),
-            Err(Error::MissingArgument) => uwriteln!(self.serial, "[CLI Error] Command Missing An Argument"),
-            Err(Error::DuplicateArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments"),
+            Err(Error::BadCommandEncoding) => {
+                uwriteln!(self.serial, "[CLI Error] Bad Command Encoding")
+            }
+            Err(Error::CharactersNotAllowed) => {
+                uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command")
+            }
+            Err(Error::MalformedArguments) => {
+                uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments")
+            }
+            Err(Error::SerialBufferOverflow) => {
+                uwriteln!(self.serial, "[CLI Error] Command String Too Long")
+            }
+            Err(Error::MissingArgument) => {
+                uwriteln!(self.serial, "[CLI Error] Command Missing An Argument")
+            }
+            Err(Error::DuplicateArguments) => {
+                uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
+            }
             Err(Error::BootloaderError(e)) => {
                 uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
                 Ok(e.report(&mut self.serial))
-            },
-            Err(Error::UnexpectedArguments) => uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument"),
-            Err(Error::ArgumentOutOfRange) => uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range"),
+            }
+            Err(Error::UnexpectedArguments) => {
+                uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
+            }
+            Err(Error::ArgumentOutOfRange) => {
+                uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
+            }
             Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial Read Failed"),
             Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown Command"),
             Err(Error::CommandEmpty) => Ok(()),
             Ok(_) => Ok(()),
-        }.ok().unwrap();
+        }
+        .ok()
+        .unwrap();
         self.needs_prompt = true;
     }
 
-    pub fn serial(&mut self) -> &mut S { &mut self.serial }
+    pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
 
     fn parse<'a>(text: &'a str) -> Result<(Name, ArgumentIterator), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
@@ -237,7 +259,7 @@ impl<S: serial::ReadWrite> Cli<S> {
         Ok((name, arguments))
     }
 
-    pub fn new(serial: S) -> Result<Self, Error> {
+    pub fn new(serial: SRL) -> Result<Self, Error> {
         Ok(Cli { serial, greeted: false, needs_prompt: true })
     }
 
@@ -312,9 +334,9 @@ macro_rules! commands {
             $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
-            EXTF: flash::ReadWrite + flash::BulkErase,
-            MCUF: flash::ReadWrite + flash::BulkErase,
-            SRL: serial::ReadWrite,
+            EXTF: flash::ReadWrite, BootloaderError: From<EXTF::Error>,
+            MCUF: flash::ReadWrite, BootloaderError: From<MCUF::Error>,
+            SRL: serial::ReadWrite, BootloaderError: From<<SRL as serial::Read>::Error>,
         {
             match name {
                 $(

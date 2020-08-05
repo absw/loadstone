@@ -5,19 +5,14 @@ use core::{
     slice,
 };
 
-/// Abstract mass erase of the writable regions
-pub trait BulkErase {
-    type Error;
-    fn erase(&mut self) -> nb::Result<(), Self::Error>;
-}
-
 /// Reads and writes a range of bytes, generic over an address
 pub trait ReadWrite {
     type Error: Clone + Copy + fmt::Debug;
     type Address: Address;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;
-    fn range() -> (Self::Address, Self::Address);
+    fn range(&self) -> (Self::Address, Self::Address);
+    fn erase(&mut self) -> nb::Result<(), Self::Error>;
 }
 
 pub trait UnportableSerialize: ReadWrite {

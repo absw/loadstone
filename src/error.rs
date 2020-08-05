@@ -1,7 +1,7 @@
 //! Error types and methods for the Secure Bootloader project.
 
 use crate::hal::serial::Write;
-use ufmt::{uwriteln, uwrite};
+use ufmt::{uwrite, uwriteln};
 
 /// Top level error type for the bootloader. Unlike the specific
 /// module errors, this error contains textual descriptions of the
@@ -18,6 +18,7 @@ pub enum Error {
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
+    CrcInvalid,
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -62,12 +63,26 @@ impl Error {
     pub fn report<S: Write>(&self, serial: &mut S) {
         match self {
             Error::DriverError(text) => uwriteln!(serial, "[DriverError] -> {}", text),
-            Error::ConfigurationError(text) => uwriteln!(serial, "[ConfigurationError] -> {}", text),
+            Error::ConfigurationError(text) => {
+                uwriteln!(serial, "[ConfigurationError] -> {}", text)
+            }
             Error::DeviceError(text) => uwriteln!(serial, "[DeviceError] -> {}", text),
             Error::ImageTooBig => uwriteln!(serial, "[LogicError] -> Firmware Image too big"),
-            Error::BankInvalid => uwriteln!(serial, "[LogicError] -> Bank doesn't exist or is invalid in this context"),
-            Error::BankEmpty => uwriteln!(serial, "[LogicError] -> Bank is empty (contains no firmware image)"),
-            Error::FlashCorrupted => uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated"),
-        }.ok().unwrap();
+            Error::BankInvalid => uwriteln!(
+                serial,
+                "[LogicError] -> Bank doesn't exist or is invalid in this context"
+            ),
+            Error::BankEmpty => {
+                uwriteln!(serial, "[LogicError] -> Bank is empty (contains no firmware image)")
+            }
+            Error::FlashCorrupted => {
+                uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated")
+            }
+            Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
+        }
+        .ok()
+        .unwrap();
     }
 }
+
+pub trait ConvertibleToBootloaderError {}
