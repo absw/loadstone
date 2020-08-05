@@ -131,7 +131,6 @@ impl ImageHeader {
     {
         // Header can **only ever** be written if the image is valid.
         let crc = Self::validate_image(flash, bank.location, size)?;
-
         // Image headers are stored at the *end* of images to make sure the binary is aligned
         let address = bank.location + bank.size;
         let header = ImageHeader {
@@ -141,7 +140,12 @@ impl ImageHeader {
             crc,
         };
 
-        Ok(block!(unsafe { flash.serialize(&header, address) })?)
+        block!(unsafe { flash.serialize(&header, address) })?;
+        if bank.sanity_check(flash).is_err() {
+            Self::format_default(flash, bank).expect("FATAL: Flash unrecoverably corrupted");
+            return Err(Error::FlashCorrupted)
+        }
+        Ok(())
     }
 
     pub fn validate_image<A, F>(flash: &mut F, location: A, size: usize) -> Result<u32, Error>
@@ -174,6 +178,30 @@ impl ImageHeader {
         let calculated_crc = digest.sum32();
         if crc == calculated_crc {
             Ok(crc)
+        } else {
+            Err(Error::CrcInvalid)
+        }
+    }
+}
+
+impl<A> Bank<A>
+where
+    A: Address,
+{
+    /// Ensures that a bank's CRC is still valid and reflects the image within.
+    pub fn sanity_check<F>(&self, flash: &mut F) -> Result<(), Error>
+    where
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>
+    {
+        let header = ImageHeader::retrieve(flash, self)?;
+        let header_crc = header.crc;
+        let crc_location = self.location + header.size - size_of::<u32>();
+        let mut crc_bytes = [0u8; 4];
+        block!(flash.read(crc_location, &mut crc_bytes))?;
+        let stored_crc = u32::from_le_bytes(crc_bytes);
+        if header_crc == stored_crc {
+            Ok(())
         } else {
             Err(Error::CrcInvalid)
         }

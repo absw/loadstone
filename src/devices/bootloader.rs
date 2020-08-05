@@ -189,6 +189,8 @@ where
             return Err(Error::BankEmpty);
         }
 
+        input_bank.sanity_check(&mut self.external_flash)?;
+
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
