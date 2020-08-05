@@ -13,10 +13,9 @@ use crate::{
 };
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
+use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
 use ufmt::uwriteln;
-use image::TRANSFER_BUFFER_SIZE;
-
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -216,11 +215,7 @@ where
             byte_index += bytes_to_read;
         }
 
-        image::ImageHeader::write(
-            &mut self.mcu_flash,
-            &output_bank,
-            input_header.size,
-        )
+        image::ImageHeader::write(&mut self.mcu_flash, &output_bank, input_header.size)
     }
 
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>

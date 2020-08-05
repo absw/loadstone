@@ -3,10 +3,9 @@ use crate::{
     hal::flash::{self, UnportableDeserialize, UnportableSerialize},
     utilities::memory::Address,
 };
-use core::mem::size_of;
+use core::{cmp::min, mem::size_of};
+use crc::{crc32, Hasher32};
 use nb::{self, block};
-use crc::{Hasher32, crc32};
-use core::cmp::min;
 
 pub(crate) const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
@@ -143,7 +142,7 @@ impl ImageHeader {
         block!(unsafe { flash.serialize(&header, address) })?;
         if bank.sanity_check(flash).is_err() {
             Self::format_default(flash, bank).expect("FATAL: Flash unrecoverably corrupted");
-            return Err(Error::FlashCorrupted)
+            return Err(Error::FlashCorrupted);
         }
         Ok(())
     }
@@ -184,15 +183,12 @@ impl ImageHeader {
     }
 }
 
-impl<A> Bank<A>
-where
-    A: Address,
-{
+impl<A: Address> Bank<A> {
     /// Ensures that a bank's CRC is still valid and reflects the image within.
     pub fn sanity_check<F>(&self, flash: &mut F) -> Result<(), Error>
     where
         F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>
+        Error: From<F::Error>,
     {
         let header = ImageHeader::retrieve(flash, self)?;
         let header_crc = header.crc;
@@ -208,11 +204,13 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::hal::{flash::ReadWrite, doubles::flash::{Address, FakeFlash}};
     use super::*;
+    use crate::hal::{
+        doubles::flash::{Address, FakeFlash},
+        flash::ReadWrite,
+    };
 
     #[test]
     fn writing_header_with_correct_crc() {
