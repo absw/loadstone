@@ -1,6 +1,8 @@
 #!groovy
 
-podTemplate(
+pipeline {
+    agent {
+        kubernetes {
     yaml: """
 apiVersion: v1
 kind: Pod
@@ -21,8 +23,9 @@ spec:
         cpu: 300m
         memory: 512Mi
 """
-    ) {
-    node(POD_LABEL) {
+        }
+    }
+    stages {
         stage('Checkout SCM') {
             checkout([
                 $class: "GitSCM",
@@ -37,9 +40,16 @@ spec:
             stage('Test') {
                 sh 'cargo test'
             }
-            stage('Build') {
+            stage('Check Build') {
                 sh 'rustup target add thumbv7em-none-eabihf'
-                sh './cargo_emb build'
+                sh './cargo_emb check'
+            }
+            stage('Build binary') {
+                when { tag "*" }
+                steps {
+                    echo 'Building binary only because this commit is tagged...'
+                    sh './cargo_emb build'
+                }
             }
             stage('Documentation') {
                 sh './cargo_emb doc'
