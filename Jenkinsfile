@@ -41,8 +41,9 @@ spec:
         }
         stage('Build binary') {
             when { tag "*" }
+            steps {
                 container('rust') {
-                    steps {
+
                         echo 'Building binary only because this commit is tagged...'
                         sh './cargo_emb build'
                     }
