@@ -1,5 +1,3 @@
-#!groovy
-
 pipeline {
     agent {
         kubernetes {
