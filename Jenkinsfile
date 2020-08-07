@@ -56,7 +56,7 @@ spec:
             }
             post {
                 success {
-                    archiveArtifacts artifacts: '**/target/release/secure_bootloader', onlyIfSuccessful: true
+                    archiveArtifacts artifacts: '**/target/release/secure_bootloader'
                 }
             }
         }
