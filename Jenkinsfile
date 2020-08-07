@@ -24,34 +24,23 @@ spec:
     }
   }
   stages {
-    stage('Checkout SCM') {
-            checkout([
-                $class: "GitSCM",
-                branches: scm.branches,
-                extensions: scm.extensions + [
-                    [$class: "GitLFSPull"]
-                ],
-                userRemoteConfigs: scm.userRemoteConfigs
-            ])
+        stage('Test') {
+            sh 'cargo test'
         }
-        container('rust') {
-            stage('Test') {
-                sh 'cargo test'
-            }
-            stage('Check Build') {
-                sh 'rustup target add thumbv7em-none-eabihf'
-                sh './cargo_emb check'
-            }
-            stage('Build binary') {
-                when { tag "*" }
-                steps {
-                    echo 'Building binary only because this commit is tagged...'
-                    sh './cargo_emb build'
-                }
-            }
-            stage('Documentation') {
-                sh './cargo_emb doc'
+        stage('Check Build') {
+            sh 'rustup target add thumbv7em-none-eabihf'
+            sh './cargo_emb check'
+        }
+        stage('Build binary') {
+            when { tag "*" }
+            steps {
+                echo 'Building binary only because this commit is tagged...'
+                sh './cargo_emb build'
             }
         }
+        stage('Documentation') {
+            sh './cargo_emb doc'
+        }
+    }
   }
 }
