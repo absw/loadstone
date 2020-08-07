@@ -2,13 +2,13 @@
 #![macro_use]
 
 #[macro_export]
-macro_rules! kb {
+macro_rules! KB {
     ($val:expr) => {
         $val * 1024
     };
 }
 #[macro_export]
-macro_rules! mb {
+macro_rules! MB {
     ($val:expr) => {
         $val * 1024 * 1024
     };
@@ -17,8 +17,27 @@ macro_rules! mb {
 /// Generic address for the purpose of this module's methods.
 /// Anything that can be offset by a usize and yield another
 /// address works as an address.
-pub trait Address: Copy + core::ops::Add<usize, Output = Self> {}
-impl<A> Address for A where A: Copy + core::ops::Add<usize, Output = A> {}
+pub trait Address:
+    'static
+    + Ord
+    + Copy
+    + core::ops::Add<usize, Output = Self>
+    + core::ops::Sub<usize, Output = Self>
+    + core::ops::Sub<Self, Output = usize>
+    + Into<usize>
+{
+}
+
+impl<A> Address for A where
+    A: 'static
+        + Ord
+        + Copy
+        + core::ops::Add<usize, Output = Self>
+        + core::ops::Sub<usize, Output = Self>
+        + core::ops::Sub<Self, Output = usize>
+        + Into<usize>
+{
+}
 
 /// Abstract region that can contain addresses
 pub trait Region<A: Address> {
@@ -184,7 +203,7 @@ mod test {
 
     #[test]
     fn conversion_macros() {
-        assert_eq!(kb!(16), 0x4000);
-        assert_eq!(mb!(1), 0x100000);
+        assert_eq!(KB!(16), 0x4000);
+        assert_eq!(MB!(1), 0x100000);
     }
 }

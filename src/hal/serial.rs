@@ -7,7 +7,12 @@
 #![macro_use]
 
 use core::fmt::Debug;
-use nb;
+use nb::{self, block};
+
+pub trait ReadWrite: Read + Write {}
+impl<T: Read + Write> ReadWrite for T {}
+
+pub use ufmt::uWrite as Write;
 
 /// UART read half
 pub trait Read {
@@ -15,38 +20,60 @@ pub trait Read {
 
     /// Reads a single byte
     fn read(&mut self) -> nb::Result<u8, Self::Error>;
+    fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self, errored: false } }
 }
 
-/// UART write half
-pub trait Write {
-    type Error: Copy + Clone + Debug;
-
-    /// Writes a single byte
-    fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error>;
+pub struct ReadIterator<'a, R: Read + ?Sized> {
+    reader: &'a mut R,
+    errored: bool,
 }
 
-/// Prints to an abstract serial device.
-/// ```ignore
-/// uprint!(serial, "Hello World!");
-/// ```
+impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
+    type Item = Result<u8, <R as Read>::Error>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.errored {
+            None
+        } else {
+            match block!(self.reader.read()) {
+                Ok(byte) => Some(Ok(byte)),
+                Err(e) => {
+                    self.errored = true;
+                    Some(Err(e))
+                }
+            }
+        }
+    }
+}
+
+/// Carries on silently if uncapable of writing.
 #[macro_export]
 macro_rules! uprint {
-    ($serial:expr, $arg:expr) => {
-        $arg.as_bytes().iter().for_each(|&b| nb::block!($serial.write(b)).unwrap());
+    ($serial:expr, $($arg:tt)+) => {
+        let _ = uwrite!($serial, $($arg)+ );
     };
 }
 
-/// Prints to an abstract serial device, with newline.
-///
-/// # Example
-/// ```ignore
-/// uprintln!(serial, "Hello World!");
-/// ```
+/// Carries on silently if uncapable of writing.
 #[macro_export]
 macro_rules! uprintln {
-    ($serial:expr, $arg:expr) => {
-        uprint!($serial, $arg);
-        uprint!($serial, "\r\n");
+    ($serial:expr, $($arg:tt)+) => {
+        let _ = uwriteln!($serial, $($arg)+ );
+    };
+}
+
+/// Panics if uncapable of writing.
+#[macro_export]
+macro_rules! critical_uprint {
+    ($serial:expr, $($arg:tt)+) => {
+        uprint!($serial, $($arg)+ ).ok().unwrap();
+    };
+}
+
+/// Panics if uncapable of writing.
+#[macro_export]
+macro_rules! critical_uprintln {
+    ($serial:expr, $($arg:tt)+) => {
+        uprintln!($serial, $($arg)+ ).ok().unwrap();
     };
 }
 
@@ -61,9 +88,14 @@ mod test {
     impl Write for MockUsart {
         type Error = ();
 
-        fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
-            self.write_record.push(word);
+        fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+            for byte in s.as_bytes() {
+                self.write_record.push(*byte);
+            }
             Ok(())
+        }
+        fn write_char(&mut self, c: char) -> Result<(), Self::Error> {
+            Ok(self.write_record.push(c as u8))
         }
     }
 
@@ -75,9 +107,10 @@ mod test {
     }
 
     use super::*;
+    use ufmt::{uwrite, uwriteln};
 
     #[test]
-    fn uprint_macro_writes_bytes_with_no_newline() {
+    fn uwrite_macro_writes_bytes_with_no_newline() {
         // Given
         let mut mock_usart = MockUsart::default();
         let arbitrary_message = "Hello world!";
@@ -85,23 +118,23 @@ mod test {
             arbitrary_message.as_bytes().iter().cloned().collect();
 
         // When
-        uprint!(mock_usart, arbitrary_message);
+        uprint!(mock_usart, "{}", arbitrary_message);
 
         // Then
         assert_eq!(arbitrary_message_as_bytes, mock_usart.write_record);
     }
 
     #[test]
-    fn uprintln_macro_writes_bytes_with_newline() {
+    fn uwriteln_macro_writes_bytes_with_newline() {
         // Given
         let mut mock_usart = MockUsart::default();
         let arbitrary_message = "Hello world with newline!";
-        let newline = "\r\n";
+        let newline = "\n";
         let mut expected_message: Vec<u8> = arbitrary_message.as_bytes().iter().cloned().collect();
         expected_message.append(&mut newline.as_bytes().iter().cloned().collect());
 
         // When
-        uprintln!(mock_usart, arbitrary_message);
+        uwriteln!(mock_usart, "{}", arbitrary_message).unwrap();
 
         // Then
         assert_eq!(expected_message, mock_usart.write_record);

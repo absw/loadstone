@@ -398,29 +398,38 @@ macro_rules! hal_usart_impl {
             impl<PINS> serial::Write for Serial<$USARTX, PINS> {
                 type Error = Error;
 
-                fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {
+                fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
                     let mut tx: Tx<$USARTX> = Tx {
                         _usart: PhantomData,
                     };
-                    tx.write(byte)
+                    tx.write_str(s)
+                }
+
+                fn write_char(&mut self, c: char) -> Result<(), Self::Error> {
+                    let mut tx: Tx<$USARTX> = Tx {
+                        _usart: PhantomData,
+                    };
+                    tx.write_char(c)
                 }
             }
 
             impl serial::Write for Tx<$USARTX> {
                 type Error = Error;
 
-                fn write(&mut self, byte: u8) -> nb::Result<(), Self::Error> {
-                    // NOTE(Safety) atomic read with no side effects
-                    let sr = unsafe { (*$USARTX::ptr()).sr.read() };
-
-                    if sr.txe().bit_is_set() {
-                        // NOTE(Safety) atomic write to stateless register
-                        // NOTE(write_volatile) 8-bit write that's not possible through the svd2rust API
-                        unsafe { ptr::write_volatile(&(*$USARTX::ptr()).dr as *const _ as *mut _, byte) }
-                        Ok(())
-                    } else {
-                        Err(nb::Error::WouldBlock)
+                fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+                    for character in s.chars() {
+                        self.write_char(character)?;
                     }
+                    Ok(())
+                }
+
+                fn write_char(&mut self, c: char) -> Result<(), Self::Error> {
+                    // NOTE(Safety) atomic read with no side effects
+                    while ! unsafe { (*$USARTX::ptr()).sr.read().txe().bit_is_set() } {}
+                    // NOTE(Safety) atomic write to stateless register
+                    // NOTE(write_volatile) 8-bit write that's not possible through the svd2rust API
+                    unsafe { ptr::write_volatile(&(*$USARTX::ptr()).dr as *const _ as *mut _, c as u8) }
+                    Ok(())
                 }
             }
         )+

@@ -1,9 +1,6 @@
 //! Device driver for the [Micron N24q128a](../../../../../../documentation/hardware/micron_flash.pdf#page=0)
 use crate::{
-    hal::{
-        flash::{BulkErase, Read, Write},
-        qspi, time,
-    },
+    hal::{flash::ReadWrite, qspi, time},
     utilities::{
         bitwise::{BitFlags, SliceBitSubset},
         memory::{self, IterableByOverlaps, Region},
@@ -16,8 +13,8 @@ use nb::block;
 pub const MANUFACTURER_ID: u8 = 0x20;
 
 /// Address into the micron chip [memory map](../../../../../../../documentation/hardware/micron_flash.pdf#page=14)
-#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq)]
-pub struct Address(u32);
+#[derive(Default, Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Ord)]
+pub struct Address(pub u32);
 impl Add<usize> for Address {
     type Output = Self;
     fn add(self, rhs: usize) -> Address { Address(self.0 + rhs as u32) }
@@ -30,6 +27,9 @@ impl Sub<Address> for Address {
     type Output = usize;
     fn sub(self, rhs: Address) -> usize { self.0.saturating_sub(rhs.0) as usize }
 }
+impl Into<usize> for Address {
+    fn into(self) -> usize { self.0 as usize }
+}
 
 pub struct MemoryMap {}
 pub struct Sector(usize);
@@ -38,7 +38,9 @@ pub struct Page(usize);
 
 impl MemoryMap {
     pub fn sectors() -> impl Iterator<Item = Sector> { (0..NUMBER_OF_SECTORS).map(Sector) }
-    pub fn subsectors() -> impl Iterator<Item = Subsector> { (0..NUMBER_OF_SUBSECTORS).map(Subsector) }
+    pub fn subsectors() -> impl Iterator<Item = Subsector> {
+        (0..NUMBER_OF_SUBSECTORS).map(Subsector)
+    }
     pub fn pages() -> impl Iterator<Item = Page> { (0..NUMBER_OF_PAGES).map(Page) }
     pub const fn location() -> Address { BASE_ADDRESS }
     pub const fn end() -> Address { Address(BASE_ADDRESS.0 + MEMORY_SIZE as u32) }
@@ -49,7 +51,9 @@ impl Sector {
     pub fn subsectors(&self) -> impl Iterator<Item = Subsector> {
         ((self.0 * SUBSECTORS_PER_SECTOR)..((1 + self.0) * SUBSECTORS_PER_SECTOR)).map(Subsector)
     }
-    pub fn pages(&self) -> impl Iterator<Item = Page> { ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page) }
+    pub fn pages(&self) -> impl Iterator<Item = Page> {
+        ((self.0 * PAGES_PER_SECTOR)..((1 + self.0) * PAGES_PER_SECTOR)).map(Page)
+    }
     pub fn location(&self) -> Address { BASE_ADDRESS + self.0 * Self::size() }
     pub fn end(&self) -> Address { self.location() + Self::size() }
     pub fn at(address: Address) -> Option<Self> {
@@ -161,12 +165,14 @@ enum CommandData<'a> {
     None,
 }
 
-impl<QSPI, NOW> BulkErase for MicronN25q128a<QSPI, NOW>
+impl<QSPI, NOW> ReadWrite for MicronN25q128a<QSPI, NOW>
 where
     QSPI: qspi::Indirect,
     NOW: time::Now,
 {
     type Error = Error;
+    type Address = Address;
+
     fn erase(&mut self) -> nb::Result<(), Self::Error> {
         // Early yield if flash is not ready for writing
         if Self::status(&mut self.qspi)?.write_in_progress {
@@ -178,15 +184,6 @@ where
             Ok(())
         }
     }
-}
-
-impl<QSPI, NOW> Write for MicronN25q128a<QSPI, NOW>
-where
-    QSPI: qspi::Indirect,
-    NOW: time::Now,
-{
-    type Error = Error;
-    type Address = Address;
 
     fn write(&mut self, address: Address, bytes: &[u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
@@ -219,16 +216,6 @@ where
         Ok(())
     }
 
-    fn writable_range() -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
-}
-
-impl<QSPI, NOW> Read for MicronN25q128a<QSPI, NOW>
-where
-    QSPI: qspi::Indirect,
-    NOW: time::Now,
-{
-    type Error = Error;
-    type Address = Address;
     fn read(&mut self, address: Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error> {
         if Self::status(&mut self.qspi)?.write_in_progress {
             Err(nb::Error::WouldBlock)
@@ -242,7 +229,7 @@ where
         }
     }
 
-    fn readable_range() -> (Address, Address) { Self::writable_range() }
+    fn range(&self) -> (Address, Address) { (MemoryMap::location(), MemoryMap::end()) }
 }
 
 impl<QSPI, NOW> MicronN25q128a<QSPI, NOW>
@@ -538,16 +525,14 @@ mod test {
     }
 
     fn wrote_a_whole_subsector(data: &[u8], address: Address, commands: &[CommandRecord]) -> bool {
-        (0..PAGES_PER_SUBSECTOR)
-            .map(|i| (i, i * COMMANDS_PER_PAGE_WRITE))
-            .all(|(page, i)| {
-                commands[i].instruction == Some(Command::ReadStatus as u8)
-                    && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
-                    && commands[i + 2].instruction == Some(Command::PageProgram as u8)
-                    && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
-                    && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
-                    && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
-            })
+        (0..PAGES_PER_SUBSECTOR).map(|i| (i, i * COMMANDS_PER_PAGE_WRITE)).all(|(page, i)| {
+            commands[i].instruction == Some(Command::ReadStatus as u8)
+                && commands[i + 1].instruction == Some(Command::WriteEnable as u8)
+                && commands[i + 2].instruction == Some(Command::PageProgram as u8)
+                && commands[i + 2].address == Some((address + page * PAGE_SIZE).0)
+                && commands[i + 2].contains(&data[page * PAGE_SIZE..(page + 1) * PAGE_SIZE])
+                && commands[i + 3].instruction == Some(Command::ReadStatus as u8)
+        })
     }
 
     #[test]
@@ -641,6 +626,10 @@ mod test {
         assert_eq!(records[index + 1].instruction, Some(Command::Read as u8));
 
         // And second subsector write
-        assert!(wrote_a_whole_subsector(&data_to_write[SUBSECTOR_SIZE..], address + SUBSECTOR_SIZE, &records[index + 2..]));
+        assert!(wrote_a_whole_subsector(
+            &data_to_write[SUBSECTOR_SIZE..],
+            address + SUBSECTOR_SIZE,
+            &records[index + 2..]
+        ));
     }
 }

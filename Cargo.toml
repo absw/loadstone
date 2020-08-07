@@ -4,6 +4,7 @@ edition = "2018"
 readme = "README.md"
 name = "secure_bootloader"
 version = "0.1.0"
+default-run = "secure_bootloader"
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -20,7 +21,6 @@ stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
 
-
 [dependencies]
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
@@ -29,6 +29,18 @@ panic-abort = "*"
 nb = "*"
 paste = "*"
 static_assertions = "*"
+
+[dependencies.ufmt]
+version = "*"
+default-features = false
+
+[dependencies.crc]
+version = "*"
+default-features = false
+
+[dependencies.arrayvec]
+version = "*"
+default-features = false
 
 [dependencies.stm32f4]
 version = "*"
@@ -45,6 +57,7 @@ test = true
 bench = false
 
 [profile.release]
+opt-level = "s"
 codegen-units = 1 # better optimizations
 debug = true # symbols are nice and they don't increase the size on Flash
 lto = true # better optimizations

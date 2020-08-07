@@ -11,7 +11,8 @@ use crate::drivers::stm32f4::qspi::{
 };
 
 pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
-gpio!(e, [(1, Output<PushPull>),]);
+gpio!(a, [(0, Input<Floating>),]); // Boot mode
+gpio!(e, [(1, Output<PushPull>),]); // LED
 gpio!(b, [(2, AF9 as QspiClk),]);
 gpio!(f, [
     (6, AF9 as QspiSecondaryInput),
