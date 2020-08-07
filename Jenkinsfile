@@ -26,13 +26,17 @@ spec:
   stages {
         stage('Test') {
             steps {
-                sh 'cargo test'
+                container('rust') {
+                    sh 'cargo test'
+                }
             }
         }
         stage('Check Build') {
             steps {
-                sh 'rustup target add thumbv7em-none-eabihf'
-                sh './cargo_emb check'
+                container('rust') {
+                    sh 'rustup target add thumbv7em-none-eabihf'
+                    sh './cargo_emb check'
+                }
             }
         }
         stage('Build binary') {
