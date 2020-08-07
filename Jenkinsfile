@@ -56,4 +56,9 @@ spec:
             }
         }
     }
+    post {
+        always {
+            archiveArtifacts artifacts: '*secure_bootloader', onlyIfSuccessful: true
+        }
+    }
 }
