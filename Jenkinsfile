@@ -39,15 +39,6 @@ spec:
                 }
             }
         }
-        stage('Build binary') {
-            when { branch "master" }
-            steps {
-                container('rust') {
-                        echo 'Building binary only because this commit is tagged...'
-                        sh './cargo_emb build'
-                    }
-                }
-        }
         stage('Documentation') {
             steps {
                 container('rust') {
@@ -55,10 +46,19 @@ spec:
                 }
             }
         }
-    }
-    post {
-        always {
-            archiveArtifacts artifacts: '**/target/release/secure_bootloader', onlyIfSuccessful: true
+        stage('Build binary') {
+            when { branch "PublishArtifact" }
+            steps {
+                container('rust') {
+                        echo 'Building binary only because this commit is tagged...'
+                        sh './cargo_emb build'
+                }
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: '**/target/release/secure_bootloader', onlyIfSuccessful: true
+                }
+            }
         }
     }
 }
