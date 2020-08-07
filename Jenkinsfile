@@ -25,11 +25,15 @@ spec:
   }
   stages {
         stage('Test') {
-            sh 'cargo test'
+            steps {
+                sh 'cargo test'
+            }
         }
         stage('Check Build') {
-            sh 'rustup target add thumbv7em-none-eabihf'
-            sh './cargo_emb check'
+            steps {
+                sh 'rustup target add thumbv7em-none-eabihf'
+                sh './cargo_emb check'
+            }
         }
         stage('Build binary') {
             when { tag "*" }
@@ -39,7 +43,9 @@ spec:
             }
         }
         stage('Documentation') {
-            sh './cargo_emb doc'
+            steps {
+                sh './cargo_emb doc'
+            }
         }
     }
 }
