@@ -1,6 +1,6 @@
 pipeline {
-  agent {
-    kubernetes {
+    agent {
+        kubernetes {
       yaml """
 apiVersion: v1
 kind: Pod
@@ -21,7 +21,7 @@ spec:
         cpu: 300m
         memory: 512Mi
 """
-    }
+        }
   }
   stages {
         stage('Test') {
@@ -40,7 +40,7 @@ spec:
             }
         }
         stage('Build binary') {
-            when { tag "*" }
+            when { branch "master" }
             steps {
                 container('rust') {
                         echo 'Building binary only because this commit is tagged...'
