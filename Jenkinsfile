@@ -42,5 +42,4 @@ spec:
             sh './cargo_emb doc'
         }
     }
-  }
 }
