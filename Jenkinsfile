@@ -71,8 +71,6 @@ spec:
                     sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
                     archiveArtifacts artifacts: '**/bootloader.bin'
                     archiveArtifacts artifacts: '**/target/thumbv7em-none-eabihf/doc/**'
-                ])
-            }
                 }
             }
         }
