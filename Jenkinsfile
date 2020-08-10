@@ -40,13 +40,6 @@ spec:
                 }
             }
         }
-        stage('Security Audit') {
-            steps {
-                container('rust') {
-                    sh 'cargo audit'
-                }
-            }
-        }
         stage('Static analysis') {
             steps {
                 container('rust') {
