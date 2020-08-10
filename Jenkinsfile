@@ -44,6 +44,12 @@ spec:
             stage('Documentation') {
                 sh './cargo_emb doc'
             }
+            stage('Linting') {
+                sh './cargo_emb clippy'
+            }
+            stage('Security Audit') {
+                sh 'cargo audit'
+            }
         }
     }
 }
