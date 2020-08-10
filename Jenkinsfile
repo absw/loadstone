@@ -61,7 +61,7 @@ spec:
                     sh 'cargo install cargo-binutils'
                     sh 'rustup component add llvm-tools-preview'
                     sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
-                    archiveArtifacts artifacts: '**/target/release/bootloader.bin'
+                    archiveArtifacts artifacts: '**/bootloader.bin'
                 }
             }
         }
