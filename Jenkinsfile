@@ -47,9 +47,6 @@ spec:
             stage('Linting') {
                 sh './cargo_emb clippy'
             }
-            stage('Security Audit') {
-                sh 'cargo audit'
-            }
         }
     }
 }
