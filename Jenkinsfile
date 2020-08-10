@@ -54,7 +54,7 @@ spec:
                         allowMissing: false,
                         alwaysLinkToLastBuild: false,
                         keepAll: true,
-                        reportDir: '/target/thumbv7em-none-eabihf/doc/',
+                        reportDir: './target/thumbv7em-none-eabihf/doc/',
                         reportFiles: 'secure_bootloader/index.html',
                         reportName: "Loadstone Documentation"
                     ])
@@ -70,7 +70,6 @@ spec:
                     sh 'rustup component add llvm-tools-preview'
                     sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
                     archiveArtifacts artifacts: '**/bootloader.bin'
-                    archiveArtifacts artifacts: '**/target/thumbv7em-none-eabihf/doc/**'
                 }
             }
         }
