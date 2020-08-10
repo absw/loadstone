@@ -36,6 +36,21 @@ spec:
                 container('rust') {
                     sh 'rustup target add thumbv7em-none-eabihf'
                     sh './cargo_emb check'
+                    sh 'cargo audit'
+                }
+            }
+        }
+        stage('Security Audit') {
+            steps {
+                container('rust') {
+                    sh 'cargo audit'
+                }
+            }
+        }
+        stage('Static analysis') {
+            steps {
+                container('rust') {
+                    sh 'cargo clippy'
                 }
             }
         }
@@ -50,12 +65,10 @@ spec:
             when { branch "PublishArtifact" }
             steps {
                 container('rust') {
-                        echo 'Building binary only because this commit is tagged...'
-                        sh './cargo_emb build'
-                }
-            }
-            post {
-                success {
+                    echo 'Building binary only on master branch...'
+                    sh 'cargo install cargo-binutils'
+                    sh 'rustup component add llvm-tools-preview'
+                    sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
                     archiveArtifacts artifacts: '**/target/release/secure_bootloader'
                 }
             }
