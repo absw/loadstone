@@ -31,14 +31,14 @@ spec:
         //         }
         //     }
         // }
-        // stage('Check Build') {
-        //     steps {
-        //         container('rust') {
-        //             sh 'rustup target add thumbv7em-none-eabihf'
-        //             sh './cargo_emb check'
-        //         }
-        //     }
-        // }
+        stage('Check Build') {
+            steps {
+                container('rust') {
+                    sh 'rustup target add thumbv7em-none-eabihf'
+                    //sh './cargo_emb check'
+                }
+            }
+        }
         // stage('Static analysis') {
         //     steps {
         //         container('rust') {
