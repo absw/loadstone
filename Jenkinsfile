@@ -50,14 +50,6 @@ spec:
             steps {
                 container('rust') {
                     sh './cargo_emb doc'
-                    publishHTML (target: [
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: false,
-                        keepAll: true,
-                        reportDir: './target/thumbv7em-none-eabihf/doc/',
-                        reportFiles: 'secure_bootloader/index.html',
-                        reportName: "Loadstone Documentation"
-                    ])
                 }
             }
         }
@@ -69,7 +61,18 @@ spec:
                     sh 'cargo install cargo-binutils'
                     sh 'rustup component add llvm-tools-preview'
                     sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
-                    archiveArtifacts artifacts: '**/bootloader.bin'
+
+                    echo 'Archive Artifacts'
+                    archiveArtifacts artifacts: 'bootloader.bin'
+                    archiveArtifacts artifacts: 'target/thumbv7em-none-eabihf/doc/**'
+                    publishHTML (target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'target/thumbv7em-none-eabihf/doc/',
+                        reportFiles: 'secure_bootloader/index.html',
+                        reportName: "Loadstone Documentation"
+                    ])
                 }
             }
         }
