@@ -344,7 +344,7 @@ impl ReadWrite for McuFlash {
         if address.0 % 4 != 0 {
             Err(nb::Error::Other(Error::MisalignedAccess))
         } else if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotReachable));
+            Err(nb::Error::Other(Error::MemoryNotReachable))
         } else {
             let base = address.0 as *const u8;
             for (index, byte) in bytes.iter_mut().enumerate() {

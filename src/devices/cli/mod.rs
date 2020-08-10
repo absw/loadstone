@@ -202,7 +202,8 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
             }
             Err(Error::BootloaderError(e)) => {
                 uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
-                Ok(e.report(&mut self.serial))
+                e.report(&mut self.serial);
+                Ok(())
             }
             Err(Error::UnexpectedArguments) => {
                 uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
@@ -222,7 +223,7 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
 
     pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
 
-    fn parse<'a>(text: &'a str) -> Result<(Name, ArgumentIterator), Error> {
+    fn parse(text: &str) -> Result<(Name, ArgumentIterator), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
         if text.is_empty() {
             return Err(Error::CommandEmpty);
@@ -235,8 +236,8 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
         // Ensure no bad formatting
         let badly_formatted = tokens.clone().any(|token| {
             token.chars().filter(|c| *c == ARGUMENT_SEPARATOR).count() > 1
-                || token.chars().next() == Some(ARGUMENT_SEPARATOR)
-                || token.chars().last() == Some(ARGUMENT_SEPARATOR)
+                || token.starts_with(ARGUMENT_SEPARATOR)
+                || token.ends_with(ARGUMENT_SEPARATOR)
         });
 
         if badly_formatted {

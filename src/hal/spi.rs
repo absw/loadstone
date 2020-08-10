@@ -1,5 +1,3 @@
-use nb;
-
 pub trait FullDuplex<WORD> {
     type Error;
 

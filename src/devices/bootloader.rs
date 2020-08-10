@@ -85,7 +85,7 @@ where
             match bytes.try_collect_slice(&mut buffer)? {
                 0 => break,
                 n => {
-                    block!(self.external_flash.write(address, &mut buffer[0..n]))?;
+                    block!(self.external_flash.write(address, &buffer[0..n]))?;
                     address = address + n;
                 }
             }

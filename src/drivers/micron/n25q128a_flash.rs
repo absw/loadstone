@@ -194,7 +194,7 @@ where
             let offset_into_subsector = address - subsector.location();
             let mut subsector_data = [0x00u8; SUBSECTOR_SIZE];
             block!(self.read(subsector.location(), &mut subsector_data))?;
-            if bytes.is_subset_of(&mut subsector_data[offset_into_subsector..]) {
+            if bytes.is_subset_of(&subsector_data[offset_into_subsector..]) {
                 for (bytes, page, address) in subsector.pages().overlaps(bytes, address) {
                     block!(self.write_page(&page, bytes, address))?;
                 }
