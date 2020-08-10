@@ -62,7 +62,7 @@ spec:
                     sh 'rustup component add llvm-tools-preview'
                     sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
 
-                    echo 'Archive Artifacts'
+                    echo 'Archiving Artifacts'
                     archiveArtifacts artifacts: 'bootloader.bin'
                     archiveArtifacts artifacts: 'target/thumbv7em-none-eabihf/doc/**'
                     publishHTML (target: [
