@@ -165,7 +165,7 @@ impl ImageHeader {
         while byte_index < size_before_crc {
             let remaining_size = size_before_crc.saturating_sub(byte_index);
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, remaining_size);
-            let slice = &mut buffer[0..min(TRANSFER_BUFFER_SIZE, remaining_size)];
+            let slice = &mut buffer[0..bytes_to_read];
             block!(flash.read(location + byte_index, slice))?;
             digest.write(slice);
             byte_index += bytes_to_read;

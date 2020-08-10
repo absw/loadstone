@@ -38,10 +38,6 @@ default-features = false
 version = "*"
 default-features = false
 
-[dependencies.arrayvec]
-version = "*"
-default-features = false
-
 [dependencies.stm32f4]
 version = "*"
 features = ["rt"]
