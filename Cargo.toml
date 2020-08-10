@@ -2,9 +2,9 @@
 authors = ["PabloMansanet <pablomansanet@gmail.com>"]
 edition = "2018"
 readme = "README.md"
-name = "secure_bootloader"
+name = "loadstone"
 version = "0.1.0"
-default-run = "secure_bootloader"
+default-run = "loadstone"
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -38,21 +38,17 @@ default-features = false
 version = "*"
 default-features = false
 
-[dependencies.arrayvec]
-version = "*"
-default-features = false
-
 [dependencies.stm32f4]
 version = "*"
 features = ["rt"]
 
 [lib]
-name = "secure_bootloader_lib"
+name = "loadstone_lib"
 test = true
 bench = false
 
 [[bin]]
-name = "secure_bootloader"
+name = "loadstone"
 test = true
 bench = false
 

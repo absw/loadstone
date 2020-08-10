@@ -287,7 +287,9 @@ impl ReadWrite for McuFlash {
     type Error = Error;
     type Address = Address;
 
-    fn range(&self) -> (Address, Address) { (MemoryMap::writable_start(), MemoryMap::writable_end()) }
+    fn range(&self) -> (Address, Address) {
+        (MemoryMap::writable_start(), MemoryMap::writable_end())
+    }
 
     // NOTE: This only erases the sections of the MCU flash that are writable
     // from the bootloader's perspective. Not the boot sector, system bytes, etc.
@@ -342,7 +344,7 @@ impl ReadWrite for McuFlash {
         if address.0 % 4 != 0 {
             Err(nb::Error::Other(Error::MisalignedAccess))
         } else if !range.is_writable() {
-            return Err(nb::Error::Other(Error::MemoryNotReachable));
+            Err(nb::Error::Other(Error::MemoryNotReachable))
         } else {
             let base = address.0 as *const u8;
             for (index, byte) in bytes.iter_mut().enumerate() {

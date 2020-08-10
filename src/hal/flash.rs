@@ -16,7 +16,9 @@ pub trait ReadWrite {
 }
 
 pub trait UnportableSerialize: ReadWrite {
-    /// NOTE(Safety): This is a very raw serialization (the bytes are written as-is). Should be
+    /// # Safety
+    ///
+    /// This is a very raw serialization (the bytes are written as-is). Should be
     /// only used with repr(C) types with no internal references. It *will break* if any change
     /// to the struct to serialize is made between serialization and deserialization, and it
     /// *will* cause undefined behaviour. Make sure to erase the flash whenever there is an
@@ -34,7 +36,9 @@ pub trait UnportableSerialize: ReadWrite {
 impl<F: ReadWrite> UnportableSerialize for F {}
 
 pub trait UnportableDeserialize: ReadWrite {
-    /// NOTE(Safety): This is a very raw serialization (the bytes are written as-is). Should be
+    /// # Safety
+    ///
+    /// This is a very raw serialization (the bytes are written as-is). Should be
     /// only used in repr(C) types. It *will break* if any change to the struct to serialize is
     /// made between serialization and deserialization, and it *will* cause undefined
     /// behaviour. Make sure to erase the flash whenever there is an update to the serializable

@@ -66,6 +66,10 @@ static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF
     image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
 ];
 
+impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
+    fn default() -> Self { Self::new() }
+}
+
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
