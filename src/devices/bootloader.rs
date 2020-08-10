@@ -13,10 +13,9 @@ use crate::{
 };
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
+use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
 use ufmt::uwriteln;
-use image::TRANSFER_BUFFER_SIZE;
-
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -76,13 +75,17 @@ where
             return Err(Error::ImageTooBig);
         }
 
+        // Header must be re-formatted before any writing takes place, to ensure
+        // a valid header and an invalid image never coexist.
+        image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
+
         let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         loop {
             match bytes.try_collect_slice(&mut buffer)? {
                 0 => break,
                 n => {
-                    block!(self.external_flash.write(address, &mut buffer[0..n]))?;
+                    block!(self.external_flash.write(address, &buffer[0..n]))?;
                     address = address + n;
                 }
             }
@@ -189,6 +192,11 @@ where
             return Err(Error::BankEmpty);
         }
 
+        input_bank.sanity_check(&mut self.external_flash)?;
+        // Output header must be re-formatted before any writing takes place, to ensure
+        // a valid header and an invalid image never coexist.
+        image::ImageHeader::format_default(&mut self.mcu_flash, &output_bank)?;
+
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
@@ -207,11 +215,7 @@ where
             byte_index += bytes_to_read;
         }
 
-        image::ImageHeader::write(
-            &mut self.mcu_flash,
-            &output_bank,
-            input_header.size,
-        )
+        image::ImageHeader::write(&mut self.mcu_flash, &output_bank, input_header.size)
     }
 
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>

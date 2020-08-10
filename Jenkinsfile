@@ -76,6 +76,9 @@ spec:
                     ])
                 }
             }
+            stage('Linting') {
+                sh './cargo_emb clippy'
+            }
         }
     }
 }

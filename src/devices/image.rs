@@ -3,10 +3,9 @@ use crate::{
     hal::flash::{self, UnportableDeserialize, UnportableSerialize},
     utilities::memory::Address,
 };
-use core::mem::size_of;
+use core::{cmp::min, mem::size_of};
+use crc::{crc32, Hasher32};
 use nb::{self, block};
-use crc::{Hasher32, crc32};
-use core::cmp::min;
 
 pub(crate) const TRANSFER_BUFFER_SIZE: usize = 2048usize;
 
@@ -131,7 +130,6 @@ impl ImageHeader {
     {
         // Header can **only ever** be written if the image is valid.
         let crc = Self::validate_image(flash, bank.location, size)?;
-
         // Image headers are stored at the *end* of images to make sure the binary is aligned
         let address = bank.location + bank.size;
         let header = ImageHeader {
@@ -141,7 +139,12 @@ impl ImageHeader {
             crc,
         };
 
-        Ok(block!(unsafe { flash.serialize(&header, address) })?)
+        block!(unsafe { flash.serialize(&header, address) })?;
+        if bank.sanity_check(flash).is_err() {
+            Self::format_default(flash, bank).expect("FATAL: Flash unrecoverably corrupted");
+            return Err(Error::FlashCorrupted);
+        }
+        Ok(())
     }
 
     pub fn validate_image<A, F>(flash: &mut F, location: A, size: usize) -> Result<u32, Error>
@@ -162,7 +165,7 @@ impl ImageHeader {
         while byte_index < size_before_crc {
             let remaining_size = size_before_crc.saturating_sub(byte_index);
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, remaining_size);
-            let slice = &mut buffer[0..min(TRANSFER_BUFFER_SIZE, remaining_size)];
+            let slice = &mut buffer[0..bytes_to_read];
             block!(flash.read(location + byte_index, slice))?;
             digest.write(slice);
             byte_index += bytes_to_read;
@@ -180,11 +183,34 @@ impl ImageHeader {
     }
 }
 
+impl<A: Address> Bank<A> {
+    /// Ensures that a bank's CRC is still valid and reflects the image within.
+    pub fn sanity_check<F>(&self, flash: &mut F) -> Result<(), Error>
+    where
+        F: flash::ReadWrite<Address = A>,
+        Error: From<F::Error>,
+    {
+        let header = ImageHeader::retrieve(flash, self)?;
+        let header_crc = header.crc;
+        let crc_location = self.location + header.size - size_of::<u32>();
+        let mut crc_bytes = [0u8; 4];
+        block!(flash.read(crc_location, &mut crc_bytes))?;
+        let stored_crc = u32::from_le_bytes(crc_bytes);
+        if header_crc == stored_crc {
+            Ok(())
+        } else {
+            Err(Error::CrcInvalid)
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
-    use crate::hal::{flash::ReadWrite, doubles::flash::{Address, FakeFlash}};
     use super::*;
+    use crate::hal::{
+        doubles::flash::{Address, FakeFlash},
+        flash::ReadWrite,
+    };
 
     #[test]
     fn writing_header_with_correct_crc() {

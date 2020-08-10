@@ -8,7 +8,7 @@ use cortex_m_rt::{entry, exception};
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
-    use secure_bootloader_lib::{
+    use loadstone_lib::{
         drivers::{
             led,
             stm32f4::{gpio::GpioExt, rcc::Clocks, systick},

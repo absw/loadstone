@@ -273,15 +273,9 @@ macro_rules! hal_usart_impl {
                                 WordLength::DataBits9 => true,
                             })
                             .pce()
-                            .bit(match config.parity {
-                                Parity::ParityNone => false,
-                                _ => true,
-                            })
+                            .bit( ! matches!(config.parity, Parity::ParityNone))
                             .ps()
-                            .bit(match config.parity {
-                                Parity::ParityOdd => true,
-                                _ => false,
-                            })
+                            .bit(matches!(config.parity, Parity::ParityOdd))
                     });
 
                     Ok(Serial { usart, pins }.config_stop(config))
