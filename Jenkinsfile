@@ -39,10 +39,10 @@ spec:
                 }
             }
         }
-        stage('Static analysis') {
+        stage('Linting') {
             steps {
                 container('rust') {
-                    sh 'cargo clippy'
+                    sh './cargo_emb clippy'
                 }
             }
         }
@@ -75,9 +75,6 @@ spec:
                         reportName: "Loadstone Documentation"
                     ])
                 }
-            }
-            stage('Linting') {
-                sh './cargo_emb clippy'
             }
         }
     }
