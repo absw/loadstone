@@ -51,12 +51,13 @@ spec:
                 container('rust') {
                     sh './cargo_emb doc'
                     publishHTML (target: [
-                    allowMissing: false,
-                    alwaysLinkToLastBuild: false,
-                    keepAll: true,
-                    reportDir: '/target/thumbv7em-none-eabihf/doc/',
-                    reportFiles: 'secure_bootloader/index.html',
-                    reportName: "Loadstone Documentation"
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: '/target/thumbv7em-none-eabihf/doc/',
+                        reportFiles: 'secure_bootloader/index.html',
+                        reportName: "Loadstone Documentation"
+                    ])
                 }
             }
         }
