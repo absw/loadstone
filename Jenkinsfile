@@ -24,28 +24,28 @@ spec:
         }
   }
   stages {
-        stage('Test') {
-            steps {
-                container('rust') {
-                    sh 'cargo test'
-                }
-            }
-        }
-        stage('Check Build') {
-            steps {
-                container('rust') {
-                    sh 'rustup target add thumbv7em-none-eabihf'
-                    sh './cargo_emb check'
-                }
-            }
-        }
-        stage('Static analysis') {
-            steps {
-                container('rust') {
-                    sh 'cargo clippy'
-                }
-            }
-        }
+        // stage('Test') {
+        //     steps {
+        //         container('rust') {
+        //             sh 'cargo test'
+        //         }
+        //     }
+        // }
+        // stage('Check Build') {
+        //     steps {
+        //         container('rust') {
+        //             sh 'rustup target add thumbv7em-none-eabihf'
+        //             sh './cargo_emb check'
+        //         }
+        //     }
+        // }
+        // stage('Static analysis') {
+        //     steps {
+        //         container('rust') {
+        //             sh 'cargo clippy'
+        //         }
+        //     }
+        // }
         stage('Documentation') {
             steps {
                 container('rust') {
@@ -57,13 +57,14 @@ spec:
             when { branch "PublishArtifact" }
             steps {
                 container('rust') {
-                    echo 'Building binary only on master branch...'
-                    sh 'cargo install cargo-binutils'
-                    sh 'rustup component add llvm-tools-preview'
-                    sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
+                    // echo 'Building binary only on master branch...'
+                    // sh 'cargo install cargo-binutils'
+                    // sh 'rustup component add llvm-tools-preview'
+                    // sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
 
                     echo 'Archiving Artifacts'
-                    archiveArtifacts artifacts: 'bootloader.bin'
+                    // archiveArtifacts artifacts: 'bootloader.bin'
+                    sh 'rm -f target/thumbv7em-none-eabihf/doc/.lock'
                     archiveArtifacts artifacts: 'target/thumbv7em-none-eabihf/doc/**'
                     publishHTML (target: [
                         allowMissing: false,
