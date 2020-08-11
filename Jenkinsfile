@@ -60,7 +60,7 @@ spec:
                     echo 'Building binary only on master branch...'
                     sh 'cargo install cargo-binutils'
                     sh 'rustup component add llvm-tools-preview'
-                    sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
+                    sh './generate_bin'
 
                     echo 'Archiving Artifacts'
                     archiveArtifacts artifacts: 'bootloader.bin'
