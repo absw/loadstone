@@ -1,7 +1,8 @@
-//! High level, application specific devices.
+//! Complex modules with business logic related to the problem
+//! domain, that lay on top of abstract drivers. Devices are
+//! generic, while board specifics (pins, board config) are
+//! handled in the `ports` module.
 
-/// Generic interfaces in trait form.
-pub mod interfaces;
-
-/// Concrete implentations.
-pub mod implementations;
+pub mod bootloader;
+pub mod image;
+pub mod cli;

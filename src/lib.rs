@@ -3,28 +3,36 @@
 //! This crate contains all functionality for the
 //! secure bootloader project in library form.
 #![feature(never_type)]
+#![feature(bool_to_option)]
+#![feature(associated_type_bounds)]
 #![cfg_attr(test, allow(unused_imports))]
-#![cfg_attr(not(test), no_std)]
+#![cfg_attr(target_arch = "arm", no_std)]
 
 #[cfg(feature = "stm32f407")]
-#[doc(hidden)]
 pub use stm32f4::stm32f407 as stm32pac;
+#[cfg(feature = "stm32f412")]
+pub use stm32f4::stm32f412 as stm32pac;
 #[cfg(feature = "stm32f429")]
-#[doc(hidden)]
 pub use stm32f4::stm32f429 as stm32pac;
 #[cfg(feature = "stm32f469")]
-#[doc(hidden)]
 pub use stm32f4::stm32f469 as stm32pac;
 
 #[cfg(target_arch = "arm")]
-extern crate panic_semihosting; // logs messages to the host stderr
+extern crate panic_abort;
+extern crate static_assertions;
 
 #[macro_use]
-pub mod drivers;
+pub mod utilities {
+    pub mod bitwise;
+    pub mod iterator;
+    pub mod memory;
+    pub mod guard;
+    pub mod buffer;
+    mod macros;
+}
 
-/// Hardware Abstraction Layer, containing interfaces
-/// for low level drivers.
-#[macro_use]
 pub mod hal;
-pub mod pin_configuration;
+pub mod drivers;
 pub mod devices;
+pub mod error;
+pub mod ports;

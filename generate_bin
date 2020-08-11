@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin
