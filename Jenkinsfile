@@ -54,7 +54,7 @@ spec:
             }
         }
         stage('Build binary') {
-            when { branch "PublishArtifact" }
+            when { tag "*" }
             steps {
                 container('rust') {
                     echo 'Building binary only on master branch...'
