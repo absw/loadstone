@@ -1,7 +1,7 @@
-#!groovy
-
-podTemplate(
-    yaml: """
+pipeline {
+    agent {
+        kubernetes {
+      yaml """
 apiVersion: v1
 kind: Pod
 metadata:
@@ -21,31 +21,60 @@ spec:
         cpu: 300m
         memory: 512Mi
 """
-    ) {
-    node(POD_LABEL) {
-        stage('Checkout SCM') {
-            checkout([
-                $class: "GitSCM",
-                branches: scm.branches,
-                extensions: scm.extensions + [
-                    [$class: "GitLFSPull"]
-                ],
-                userRemoteConfigs: scm.userRemoteConfigs
-            ])
         }
-        container('rust') {
-            stage('Test') {
-                sh 'cargo test'
+  }
+  stages {
+        stage('Test') {
+            steps {
+                container('rust') {
+                    sh 'cargo test'
+                }
             }
-            stage('Build') {
-                sh 'rustup target add thumbv7em-none-eabihf'
-                sh './cargo_emb build'
+        }
+        stage('Check Build') {
+            steps {
+                container('rust') {
+                    sh 'rustup target add thumbv7em-none-eabihf'
+                    sh './cargo_emb check'
+                }
             }
-            stage('Documentation') {
-                sh './cargo_emb doc'
+        }
+        stage('Linting') {
+            steps {
+                container('rust') {
+                    sh './cargo_emb clippy'
+                }
             }
-            stage('Linting') {
-                sh './cargo_emb clippy'
+        }
+        stage('Documentation') {
+            steps {
+                container('rust') {
+                    sh './cargo_emb doc'
+                }
+            }
+        }
+        stage('Build binary') {
+            when { branch "master" }
+            steps {
+                container('rust') {
+                    echo 'Building binary only on master branch...'
+                    sh 'cargo install cargo-binutils'
+                    sh 'rustup component add llvm-tools-preview'
+                    sh 'cargo objcopy --bin secure_bootloader --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary bootloader.bin'
+
+                    echo 'Archiving Artifacts'
+                    archiveArtifacts artifacts: 'bootloader.bin'
+                    sh 'rm -f target/thumbv7em-none-eabihf/doc/.lock'
+                    archiveArtifacts artifacts: 'target/thumbv7em-none-eabihf/doc/**'
+                    publishHTML (target: [
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: false,
+                        keepAll: true,
+                        reportDir: 'target/thumbv7em-none-eabihf/doc/',
+                        reportFiles: 'secure_bootloader/index.html',
+                        reportName: "Loadstone Documentation"
+                    ])
+                }
             }
         }
     }
