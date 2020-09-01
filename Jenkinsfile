@@ -1,3 +1,16 @@
+#!groovy
+
+properties([[
+    $class: 'BuildDiscarderProperty',
+    strategy: [
+        $class: 'LogRotator',
+        artifactDaysToKeepStr: '',
+        artifactNumToKeepStr: '',
+        daysToKeepStr: '',
+        numToKeepStr: env.BRANCH_NAME ==~ /master/ ? '10' : '2']
+    ]]
+)
+
 pipeline {
     agent {
         kubernetes {
