@@ -5,9 +5,13 @@ name = "loadstone"
 version = "0.1.0"
 default-run = "loadstone"
 
+[workspace]
+members = ["bluefruit_rust_hal"]
+
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
 # implies cortex M...
+
 
 [features]
 default = [
@@ -33,7 +37,7 @@ cortex_m_any = []
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
-panic-probe = { version = "0.1.0", features = ["print-defmt"] }
+bluefruit_rust_hal = { path = "bluefruit_rust_hal" }
 panic-abort = "*"
 nb = "*"
 paste = "*"
