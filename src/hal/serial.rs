@@ -6,7 +6,6 @@
 //! crate documentation for details.
 #![macro_use]
 
-use core::fmt::Debug;
 use nb::{self, block};
 
 pub trait ReadWrite: Read + Write {}
@@ -16,7 +15,7 @@ pub use ufmt::uWrite as Write;
 
 /// UART read half
 pub trait Read {
-    type Error: Copy + Clone + Debug;
+    type Error: Copy + Clone;
 
     /// Reads a single byte
     fn read(&mut self) -> nb::Result<u8, Self::Error>;
