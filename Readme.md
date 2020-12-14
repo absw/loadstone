@@ -71,11 +71,13 @@ debug on-target with visual access to peripheral registers.
 
 # Running
 
-There are three scripts at the top project level to facilitate building, testing and running code on target. They expand to simple **cargo** invocations so feel free to call them separately and experiment with options (such as the --release flag for a stripped, optimized binary).
-
-* `./build` cross-compiles an unoptimized binary with debug symbols.
-* `./run` does the above, then loads the image via STLink (requires having run `openocd` on a separate terminal in the same folder).
-* `./test` runs all unit, integration and documentation tests.
+* `cargo b` cross-compiles an optimized binary.
+* `cargo rb` does the above, then loads the image via STLink using probe-run
+  (will then display defmt traces).
+* `cargo test` runs all unit, integration and documentation tests.
+* `cargo d` documents the project and opens documentation in your local browser.
+* `./debug.sh`, after having ran `openocd` on a separate terminal, starts a gdb
+session for live debugging.
 
 There is a VSCode project available at the root of the project, with tasks equivalent to the scripts above.
 

@@ -5,13 +5,9 @@ name = "loadstone"
 version = "0.1.0"
 default-run = "loadstone"
 
-[workspace]
-members = ["bluefruit_rust_hal"]
-
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
 # implies cortex M...
-
 
 [features]
 default = [
