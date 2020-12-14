@@ -10,7 +10,16 @@ default-run = "loadstone"
 # implies cortex M...
 
 [features]
-default = ["stm32f412_discovery"]
+default = [
+   "stm32f412_discovery",
+   "defmt-default",
+]
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []
 stm32f412_discovery = ["stm32f412"]
 stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
 stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
@@ -24,10 +33,13 @@ cortex_m_any = []
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
+panic-probe = { version = "0.1.0", features = ["print-defmt"] }
 panic-abort = "*"
 nb = "*"
 paste = "*"
 static_assertions = "*"
+defmt = "0.1.0"
+defmt-rtt = "0.1.0"
 
 [dependencies.ufmt]
 version = "*"

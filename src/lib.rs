@@ -18,8 +18,10 @@ pub use stm32f4::stm32f429 as stm32pac;
 pub use stm32f4::stm32f469 as stm32pac;
 
 #[cfg(target_arch = "arm")]
-extern crate panic_abort;
-extern crate static_assertions;
+use panic_abort as _;
+
+#[cfg(target_arch = "arm")]
+use defmt_rtt as _; // global logger
 
 #[macro_use]
 pub mod utilities {
