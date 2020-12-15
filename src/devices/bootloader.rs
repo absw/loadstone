@@ -94,7 +94,9 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
-    pub fn reset(&mut self, _bank_index: u8) -> Result<!, Error> {
+    pub fn reset(&mut self, bank_index: u8) -> Result<!, Error> {
+        self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+
         loop { }
     }
 
