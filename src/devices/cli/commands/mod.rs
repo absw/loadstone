@@ -131,7 +131,7 @@ commands!( cli, bootloader, names, helpstrings [
         )
     {
         uprintln!(cli.serial, "Attempting to boot from bank {}", bank);
-        bootloader.boot(bank)?;
+        bootloader.reset(bank)?;
     },
 
 ]);
