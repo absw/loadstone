@@ -94,12 +94,7 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
-    pub fn reset(&mut self, bank_index: u8) -> Result<!, Error> {
-        let bank =
-            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
-
-        if !bank.bootable { return Err(Error::BankInvalid); }
-
+    pub fn reset(&mut self) -> Result<!, Error> {
         SCB::sys_reset();
     }
 
