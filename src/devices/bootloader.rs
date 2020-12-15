@@ -94,6 +94,10 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
+    pub fn reset(&mut self) -> ! {
+        loop { }
+    }
+
     pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
         let bank =
             self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
