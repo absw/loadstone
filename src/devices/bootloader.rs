@@ -94,7 +94,7 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
-    pub fn reset(&mut self) -> ! {
+    pub fn reset(&mut self) -> Result<!, Error> {
         loop { }
     }
 
