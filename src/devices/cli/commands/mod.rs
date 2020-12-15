@@ -130,7 +130,7 @@ commands!( cli, bootloader, names, helpstrings [
            bank: u8 ["Bootable MCU bank index."],
         )
     {
-        uprintln!(cli.serial, "Attempting to boot from bank {}", bank);
+        uprintln!(cli.serial, "Initiating system reset request.");
         bootloader.reset();
     },
 
