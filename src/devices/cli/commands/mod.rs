@@ -126,9 +126,9 @@ commands!( cli, bootloader, names, helpstrings [
         uprintln!(cli.serial, "Copy success!");
     },
 
-    boot ["Initiates a system reset request."] ( )
+    boot ["Restart, attempting to boot into a valid image if available."] ( )
     {
-        uprintln!(cli.serial, "Initiating system reset request.");
+        uprintln!(cli.serial, "Restarting...");
         bootloader.reset();
     },
 
