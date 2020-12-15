@@ -98,11 +98,9 @@ where
         let bank =
             self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
-        if !bank.bootable {
-            Err(Error::BankInvalid)
-        } else {
-            loop { }
-        }
+        if !bank.bootable { return Err(Error::BankInvalid); }
+
+        SCB::sys_reset();
     }
 
     pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
