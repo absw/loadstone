@@ -101,10 +101,13 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
 
         match boot_error {
+            Some(Error::BankInvalid) =>
+                uwriteln!(&mut serial, "Attempted to boot from invalid bank.").unwrap(),
+            Some(Error::BankEmpty) =>
+                uwriteln!(&mut serial, "Attempted to boot from empty bank.").unwrap(),
+            Some(_) =>
+                uwriteln!(&mut serial, "Unexpected boot error.").unwrap(),
             None => (),
-            Some(Error::BankInvalid) => uwriteln!(&mut serial, "Attempted to boot from invalid bank.").unwrap(),
-            Some(Error::BankEmpty) => uwriteln!(&mut serial, "Attempted to boot from empty bank.").unwrap(),
-            _ => uwriteln!(&mut serial, "Unexpected boot error.").unwrap(),
         };
 
         let cli = Cli::new(serial).unwrap();
