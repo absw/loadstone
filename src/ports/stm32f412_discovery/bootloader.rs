@@ -94,7 +94,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
-        let interactive_mode = gpioa.pa0.is_high();
+        let interactive_mode = gpioa.pa0.is_high() || gpioa.pa1.is_high();
 
         Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, interactive_mode }
     }
