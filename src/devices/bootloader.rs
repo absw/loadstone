@@ -44,21 +44,8 @@ where
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub fn run(mut self) -> ! {
-        // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
-        let indices =
-            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
-        assert!((1..).zip(indices).all(|(a, b)| a == b));
-
-        // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
-        if !self.interactive_mode {
-            Self::boot(&mut self.mcu_flash, self.mcu_banks, 1).unwrap_err();
-            uprintln!(cli.serial(), "Failed to boot from default bank.");
-        }
-
-        loop {
-            cli.run(&mut self)
-        }
+        loop { cli.run(&mut self) }
     }
 
     pub fn store_image<I, E>(
