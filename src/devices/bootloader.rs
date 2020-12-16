@@ -52,7 +52,7 @@ where
         // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
         if !self.interactive_mode {
-            self.boot(1).unwrap_err();
+            Self::boot(&mut self.mcu_flash, self.mcu_banks, 1).unwrap_err();
             uprintln!(cli.serial(), "Failed to boot from default bank.");
         }
 
@@ -94,15 +94,17 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
-    pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
+    pub fn boot(
+        mcu_flash: &mut MCUF, mcu_banks: &'static [image::Bank<<MCUF>::Address>], bank_index: u8
+    ) -> Result<!, Error> {
         let bank =
-            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+            mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);
         }
 
-        let header = image::ImageHeader::retrieve(&mut self.mcu_flash, &bank)?;
+        let header = image::ImageHeader::retrieve(mcu_flash, &bank)?;
         if header.size == 0 {
             return Err(Error::BankEmpty);
         }
