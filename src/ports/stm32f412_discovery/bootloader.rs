@@ -77,9 +77,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
-        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
-        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
 
         let mut mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
@@ -89,6 +86,10 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
             const DEFAULT_BANK : u8 = 1;
             boot_error = Some(Self::boot(&mut mcu_flash, &MCU_BANKS, DEFAULT_BANK).unwrap_err());
         }
+
+        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
 
         let clocks = Clocks::hardcoded(peripherals.RCC);
 
