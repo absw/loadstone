@@ -8,12 +8,18 @@ use nom::{
     IResult,
 };
 
-const PAYLOAD_SIZE: usize = 128;
+use crate::hal::time::Seconds;
 
-const SOH: u8 = 0x01;
-const EOT: u8 = 0x04;
-const ETB: u8 = 0x17;
-const CAN: u8 = 0x18;
+pub const PAYLOAD_SIZE: usize = 128;
+pub const MAX_PACKET_SIZE: usize = 132;
+pub const DEFAULT_TIMEOUT: Seconds = Seconds(3);
+
+pub const ACK: u8 = 0x06;
+pub const NAK: u8 = 0x15;
+pub const SOH: u8 = 0x01;
+pub const EOT: u8 = 0x04;
+pub const ETB: u8 = 0x17;
+pub const CAN: u8 = 0x18;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Chunk {

@@ -1,7 +1,7 @@
 use crate::{
     devices::{
         bootloader::Bootloader,
-        cli::{ArgumentIterator, Cli, Error, Name, RetrieveArgument},
+        cli::{ArgumentIterator, Cli, Error, Name, RetrieveArgument, file_transfer::FileTransfer},
     },
     error::Error as BootloaderError,
     hal::{flash, serial},
@@ -50,8 +50,8 @@ commands!( cli, bootloader, names, helpstrings [
             if size > bank.size {
                 return Err(Error::ArgumentOutOfRange);
             }
-            uprintln!(cli.serial, "Starting raw transfer mode! {} bytes will be read directly from now on.", size);
-            bootloader.store_image(cli.serial.bytes().take(size as usize), size, bank)?;
+            uprintln!(cli.serial, "Starting XModem mode! Send file with your XModem client.");
+            bootloader.store_image(cli.serial.blocks(), size, bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
             uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");

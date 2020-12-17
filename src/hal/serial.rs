@@ -24,6 +24,9 @@ pub trait Read {
     fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self, errored: false } }
 }
 
+/// UART read half, with timeouts. Rather than returning a `nb::Result` for flow control,
+/// it returns a standard `Result` with the option of a `Timeout` error if the specified
+/// time was not achieved.
 pub trait TimeoutRead {
     type Error: Copy + Clone;
 

@@ -360,6 +360,17 @@ macro_rules! hal_usart_impl {
                 }
             }
 
+            impl<PINS> serial::TimeoutRead for Serial<$USARTX, PINS> {
+                type Error = Error;
+
+                fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
+                    let mut rx: Rx<$USARTX> = Rx {
+                        _usart: PhantomData,
+                    };
+                    rx.read(timeout)
+                }
+            }
+
             impl serial::Read for Rx<$USARTX> {
                 type Error = Error;
 
