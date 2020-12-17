@@ -1,3 +1,9 @@
+//! Generic command line interface.
+//!
+//! This module contains functionality for the CLI, except
+//! for construction which is implementation-specific so is
+//! handled in the `port` module.
+
 #![macro_use]
 use crate::{
     devices::bootloader::Bootloader,
