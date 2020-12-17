@@ -80,6 +80,10 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
+    pub fn reset(&mut self) -> ! {
+        SCB::sys_reset();
+    }
+
     pub fn boot(
         mcu_flash: &mut MCUF, mcu_banks: &'static [image::Bank<<MCUF>::Address>], bank_index: u8
     ) -> Result<!, Error> {
@@ -114,6 +118,12 @@ where
     }
 
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.mcu_flash)?;
+        for bank in self.mcu_banks {
+            image::ImageHeader::format_default(&mut self.mcu_flash, bank)?;
+        }
         block!(self.mcu_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.mcu_flash)?;
         for bank in self.mcu_banks {
@@ -123,6 +133,12 @@ where
     }
 
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.external_flash)?;
+        for bank in self.external_banks {
+            image::ImageHeader::format_default(&mut self.external_flash, bank)?;
+        }
         block!(self.external_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.external_flash)?;
         for bank in self.external_banks {
