@@ -13,7 +13,7 @@ impl<T: Read + Write> ReadWrite for T {}
 
 pub use ufmt::uWrite as Write;
 
-use super::time::{Milliseconds, Now};
+use super::time::Milliseconds;
 
 /// UART read half
 pub trait Read {
@@ -26,7 +26,6 @@ pub trait Read {
 
 pub trait TimeoutRead {
     type Error: Copy + Clone;
-    type Clock: Now;
 
     /// Reads a single byte
     fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error>;

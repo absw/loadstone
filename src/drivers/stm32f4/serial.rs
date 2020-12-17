@@ -396,11 +396,10 @@ macro_rules! hal_usart_impl {
 
             impl serial::TimeoutRead for Rx<$USARTX> {
                 type Error = Error;
-                type Clock = systick::SysTick;
 
                 fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
-                    let start = Self::Clock::now();
-                    while ((Self::Clock::now() - start) > timeout.into()) {
+                    let start = systick::SysTick::now();
+                    while ((systick::SysTick::now() - start) > timeout.into()) {
                         // NOTE(Safety) Atomic read on stateless register
                         let sr = unsafe { (*$USARTX::ptr()).sr.read() };
 
