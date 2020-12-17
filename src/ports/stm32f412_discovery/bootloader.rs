@@ -117,7 +117,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
 
-        Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, interactive_mode }
+        Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS }
     }
 }
 

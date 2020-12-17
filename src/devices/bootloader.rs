@@ -31,7 +31,6 @@ where
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    pub(crate) interactive_mode: bool,
 }
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
