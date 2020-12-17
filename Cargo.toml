@@ -41,6 +41,10 @@ static_assertions = "*"
 defmt = "0.1.0"
 defmt-rtt = "0.1.0"
 
+[dependencies.nom]
+version = "*"
+default-features = false
+
 [dependencies.ufmt]
 version = "*"
 default-features = false
