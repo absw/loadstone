@@ -9,6 +9,7 @@ use crate::{
     stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
 use core::{marker::PhantomData, ptr};
+use defmt::Format;
 
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.
@@ -81,7 +82,7 @@ seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
 seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
 
 /// Serial error
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Format)]
 #[non_exhaustive]
 pub enum Error {
     /// Framing error
@@ -410,7 +411,7 @@ macro_rules! hal_usart_impl {
 
                 fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
                     let start = systick::SysTick::now();
-                    while ((systick::SysTick::now() - start) > timeout.into()) {
+                    while ((systick::SysTick::now() - start) < timeout.into()) {
                         // NOTE(Safety) Atomic read on stateless register
                         let sr = unsafe { (*$USARTX::ptr()).sr.read() };
 
