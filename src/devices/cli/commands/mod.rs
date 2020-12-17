@@ -126,12 +126,10 @@ commands!( cli, bootloader, names, helpstrings [
         uprintln!(cli.serial, "Copy success!");
     },
 
-    boot ["Boot from a bootable MCU bank."] (
-           bank: u8 ["Bootable MCU bank index."],
-        )
+    boot ["Restart, attempting to boot into a valid image if available."] ( )
     {
-        uprintln!(cli.serial, "Attempting to boot from bank {}", bank);
-        bootloader.boot(bank)?;
+        uprintln!(cli.serial, "Restarting...");
+        bootloader.reset();
     },
 
 ]);
