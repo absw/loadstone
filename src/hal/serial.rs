@@ -13,6 +13,8 @@ impl<T: Read + Write> ReadWrite for T {}
 
 pub use ufmt::uWrite as Write;
 
+use super::time::{Now, Milliseconds};
+
 /// UART read half
 pub trait Read {
     type Error: Copy + Clone;
@@ -22,7 +24,21 @@ pub trait Read {
     fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self, errored: false } }
 }
 
+pub trait TimeoutRead {
+    type Error: Copy + Clone;
+    type Clock: Now;
+
+    /// Reads a single byte
+    fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error>;
+    fn bytes(&mut self) -> TimeoutReadIterator<Self> { TimeoutReadIterator { reader: self, errored: false } }
+}
+
 pub struct ReadIterator<'a, R: Read + ?Sized> {
+    reader: &'a mut R,
+    errored: bool,
+}
+
+pub struct TimeoutReadIterator<'a, R: TimeoutRead + ?Sized> {
     reader: &'a mut R,
     errored: bool,
 }

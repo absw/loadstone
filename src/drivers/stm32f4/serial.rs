@@ -1,7 +1,7 @@
 //! USART implementation.
 use crate::{
-    drivers::stm32f4::{gpio::*, rcc},
-    hal::serial,
+    drivers::stm32f4::{gpio::*, rcc, systick},
+    hal::{serial, time::{Now, Milliseconds}},
     ports::pin_configuration::*,
     stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
@@ -89,6 +89,8 @@ pub enum Error {
     Overrun,
     /// Parity check error
     Parity,
+    /// Timeout error
+    Timeout,
 }
 
 /// Interrupt event
@@ -386,6 +388,43 @@ macro_rules! hal_usart_impl {
                     } else {
                         nb::Error::WouldBlock
                     })
+                }
+            }
+
+            impl serial::TimeoutRead for Rx<$USARTX> {
+                type Error = Error;
+                type Clock = systick::SysTick;
+
+                fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
+                    let start = Self::Clock::now();
+                    while ((Self::Clock::now() - start) > timeout.into()) {
+                        // NOTE(Safety) Atomic read on stateless register
+                        let sr = unsafe { (*$USARTX::ptr()).sr.read() };
+
+                        // Any error requires the dr to be read to clear
+                        if sr.pe().bit_is_set()
+                            || sr.fe().bit_is_set()
+                            || sr.nf().bit_is_set()
+                            || sr.ore().bit_is_set()
+                        {
+                            // NOTE(Safety) Atomic read on stateless register
+                            unsafe { (*$USARTX::ptr()).dr.read() };
+                        }
+
+                        if sr.pe().bit_is_set() {
+                            return Err(Error::Parity);
+                        } else if sr.fe().bit_is_set() {
+                            return Err(Error::Framing);
+                        } else if sr.nf().bit_is_set() {
+                            return Err(Error::Noise);
+                        } else if sr.ore().bit_is_set() {
+                            return Err(Error::Overrun);
+                        } else if sr.rxne().bit_is_set() {
+                            // NOTE(read_volatile) see `write_volatile` below
+                            return Ok(unsafe { ptr::read_volatile(&(*$USARTX::ptr()).dr as *const _ as *const u8) });
+                        }
+                    }
+                    Err(Error::Timeout)
                 }
             }
 

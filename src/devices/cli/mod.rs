@@ -9,6 +9,8 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
+pub mod file_transfer;
+
 const GREETING: &str = "--=Loadstone CLI=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;

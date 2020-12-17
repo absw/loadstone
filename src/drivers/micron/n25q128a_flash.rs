@@ -7,6 +7,7 @@ use crate::{
     },
 };
 use core::ops::{Add, Sub};
+use core::marker::PhantomData;
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
@@ -130,7 +131,8 @@ where
     NOW: time::Now,
 {
     qspi: QSPI,
-    timeout: Option<(time::Milliseconds, NOW)>,
+    timeout: Option<time::Milliseconds>,
+    _marker: PhantomData<NOW>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -238,10 +240,10 @@ where
     NOW: time::Now,
 {
     fn wait_until_write_complete(&mut self) -> nb::Result<(), Error> {
-        if let Some((timeout, systick)) = &self.timeout {
-            let start = systick.now();
+        if let Some(timeout) = &self.timeout {
+            let start = NOW::now();
             while Self::status(&mut self.qspi)?.write_in_progress {
-                if systick.now() - start > *timeout {
+                if NOW::now() - start > *timeout {
                     return Err(nb::Error::Other(Error::TimeOut));
                 }
             }
@@ -301,7 +303,7 @@ where
 
     /// Blocks until flash ID read checks out, or until timeout
     pub fn new(qspi: QSPI) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: None };
+        let mut flash = Self { qspi, timeout: None, _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }
@@ -309,9 +311,8 @@ where
     pub fn with_timeout(
         qspi: QSPI,
         timeout: time::Milliseconds,
-        systick: NOW,
     ) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: Some((timeout, systick)) };
+        let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default()};
         block!(flash.verify_id())?;
         Ok(flash)
     }

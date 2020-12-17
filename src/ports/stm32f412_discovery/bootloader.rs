@@ -80,8 +80,8 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(&peripherals.FLASH, peripherals.RCC);
 
-        let systick = SysTick::new(cortex_peripherals.SYST, clocks);
-        systick.wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
+        SysTick::init(cortex_peripherals.SYST, clocks);
+        SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
         let serial_config = serial::config::Config::default().baudrate(time::Bps(9600));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
@@ -91,7 +91,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
+        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
 
         let interactive_mode = gpioa.pa0.is_high();

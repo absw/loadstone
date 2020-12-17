@@ -1,5 +1,4 @@
 //! Xmodem parser.
-//!
 
 use core::convert::TryInto;
 use nom::{
