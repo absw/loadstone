@@ -1,7 +1,7 @@
 use crate::{
     devices::{
         bootloader::Bootloader,
-        cli::{ArgumentIterator, Cli, Error, Name, RetrieveArgument, file_transfer::FileTransfer},
+        cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
     },
     error::Error as BootloaderError,
     hal::{flash, serial},

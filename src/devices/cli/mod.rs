@@ -1,5 +1,13 @@
 #![macro_use]
-use crate::{devices::bootloader::Bootloader, error::Error as BootloaderError, hal::{flash, serial::{self, Read}}, utilities::{buffer::TryCollectSlice, iterator::Unique}};
+use crate::{
+    devices::bootloader::Bootloader,
+    error::Error as BootloaderError,
+    hal::{
+        flash,
+        serial::{self, Read},
+    },
+    utilities::{buffer::TryCollectSlice, iterator::Unique},
+};
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};

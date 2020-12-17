@@ -65,7 +65,9 @@ impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
     }
 }
 
-impl<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> Iterator for TimeoutReadIterator<'a, R, T> {
+impl<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> Iterator
+    for TimeoutReadIterator<'a, R, T>
+{
     type Item = Result<u8, <R as TimeoutRead>::Error>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.errored {

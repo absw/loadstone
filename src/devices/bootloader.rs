@@ -4,14 +4,17 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{cli::{self, file_transfer::FileBlock}, image};
+use super::{
+    cli::{self, file_transfer::FileBlock},
+    image,
+};
 use crate::{
     devices::cli::Cli,
     error::Error,
     hal::{flash, serial},
 };
-use core::{cmp::min, mem::size_of};
 use cli::file_transfer;
+use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
@@ -68,7 +71,7 @@ where
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = FileBlock>
+        I: Iterator<Item = FileBlock>,
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);
@@ -93,7 +96,6 @@ where
         } else {
             Err(Error::NotEnoughData)
         }
-
     }
 
     pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {

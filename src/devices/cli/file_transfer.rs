@@ -1,4 +1,7 @@
-use crate::{hal::serial::{TimeoutRead, Write}, utilities::xmodem};
+use crate::{
+    hal::serial::{TimeoutRead, Write},
+    utilities::xmodem,
+};
 
 pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
 pub type FileBlock = [u8; BLOCK_SIZE];
@@ -6,7 +9,9 @@ pub type FileBlock = [u8; BLOCK_SIZE];
 const MAX_RETRIES: u32 = 10;
 
 pub trait FileTransfer: TimeoutRead + Write {
-    fn blocks(&mut self) -> BlockIterator<Self> { BlockIterator { serial: self, received_block: false, finished: false, block_number: 0} }
+    fn blocks(&mut self) -> BlockIterator<Self> {
+        BlockIterator { serial: self, received_block: false, finished: false, block_number: 0 }
+    }
 }
 
 impl<T: TimeoutRead + Write> FileTransfer for T {}
@@ -45,7 +50,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
                     Err(_) => {
                         retries += 1;
                         continue 'block_loop;
-                    },
+                    }
                 };
 
                 if buffer_index == 0 || buffer_index == (xmodem::MAX_PACKET_SIZE - 1) {
@@ -73,12 +78,11 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
 
 impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
     fn process_message(&mut self, buffer: &[u8]) -> Option<FileBlock> {
-
         match xmodem::parse_message(&buffer) {
             Ok((_, xmodem::Message::EndOfTransmission)) => {
                 self.end_transmission();
                 None
-            },
+            }
             Ok((_, xmodem::Message::Chunk(chunk))) => {
                 if let Some(block) = self.process_chunk(chunk) {
                     self.block_number = self.block_number.wrapping_add(1);
@@ -86,7 +90,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
                 } else {
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
