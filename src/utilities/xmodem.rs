@@ -61,7 +61,7 @@ mod test {
     use nom::Err::Incomplete;
     const MAX_PACKET_SIZE: usize = 132;
 
-    fn write_test_packet(index: u8, payload_value: u8, buffer: &mut [u8]){
+    fn write_test_packet(index: u8, payload_value: u8, buffer: &mut [u8]) {
         let checksum = (0..128).fold(0, |sum: u8, _| sum.wrapping_add(payload_value));
         buffer.iter_mut().enumerate().for_each(|(i, b)| {
             *b = match i {
@@ -111,7 +111,7 @@ mod test {
 
     #[test]
     fn parsing_incomplete_input_chunk() {
-        let mut input = [0u8; MAX_PACKET_SIZE/2];
+        let mut input = [0u8; MAX_PACKET_SIZE / 2];
         write_test_packet(7, 42, &mut input);
         assert!(parse_message(&input).unwrap_err().is_incomplete());
     }

@@ -6,8 +6,10 @@ use crate::{
         memory::{self, IterableByOverlaps, Region},
     },
 };
-use core::ops::{Add, Sub};
-use core::marker::PhantomData;
+use core::{
+    marker::PhantomData,
+    ops::{Add, Sub},
+};
 use nb::block;
 
 /// From [datasheet table 19](../../../../../../../documentation/hardware/micron_flash.pdf#page=37)
@@ -308,11 +310,8 @@ where
         Ok(flash)
     }
 
-    pub fn with_timeout(
-        qspi: QSPI,
-        timeout: time::Milliseconds,
-    ) -> Result<Self, Error> {
-        let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default()};
+    pub fn with_timeout(qspi: QSPI, timeout: time::Milliseconds) -> Result<Self, Error> {
+        let mut flash = Self { qspi, timeout: Some(timeout), _marker: Default::default() };
         block!(flash.verify_id())?;
         Ok(flash)
     }

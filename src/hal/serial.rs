@@ -13,7 +13,7 @@ impl<T: Read + Write> ReadWrite for T {}
 
 pub use ufmt::uWrite as Write;
 
-use super::time::{Now, Milliseconds};
+use super::time::{Milliseconds, Now};
 
 /// UART read half
 pub trait Read {
@@ -30,7 +30,9 @@ pub trait TimeoutRead {
 
     /// Reads a single byte
     fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error>;
-    fn bytes(&mut self) -> TimeoutReadIterator<Self> { TimeoutReadIterator { reader: self, errored: false } }
+    fn bytes<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> TimeoutReadIterator<Self, T> {
+        TimeoutReadIterator { reader: self, errored: false, timeout }
+    }
 }
 
 pub struct ReadIterator<'a, R: Read + ?Sized> {
@@ -38,9 +40,10 @@ pub struct ReadIterator<'a, R: Read + ?Sized> {
     errored: bool,
 }
 
-pub struct TimeoutReadIterator<'a, R: TimeoutRead + ?Sized> {
+pub struct TimeoutReadIterator<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> {
     reader: &'a mut R,
     errored: bool,
+    timeout: T,
 }
 
 impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
@@ -50,6 +53,23 @@ impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
             None
         } else {
             match block!(self.reader.read()) {
+                Ok(byte) => Some(Ok(byte)),
+                Err(e) => {
+                    self.errored = true;
+                    Some(Err(e))
+                }
+            }
+        }
+    }
+}
+
+impl<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> Iterator for TimeoutReadIterator<'a, R, T> {
+    type Item = Result<u8, <R as TimeoutRead>::Error>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.errored {
+            None
+        } else {
+            match self.reader.read(self.timeout) {
                 Ok(byte) => Some(Ok(byte)),
                 Err(e) => {
                     self.errored = true;

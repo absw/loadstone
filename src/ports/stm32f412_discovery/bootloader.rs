@@ -128,6 +128,7 @@ impl From<serial::Error> for Error {
             serial::Error::Noise => Error::DriverError("[Serial] Noise Error"),
             serial::Error::Overrun => Error::DriverError("[Serial] Overrun Error"),
             serial::Error::Parity => Error::DriverError("[Serial] Parity Error"),
+            serial::Error::Timeout => Error::DriverError("[Serial] Timeout Error"),
         }
     }
 }

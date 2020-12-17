@@ -1,7 +1,10 @@
 //! USART implementation.
 use crate::{
     drivers::stm32f4::{gpio::*, rcc, systick},
-    hal::{serial, time::{Now, Milliseconds}},
+    hal::{
+        serial,
+        time::{Milliseconds, Now},
+    },
     ports::pin_configuration::*,
     stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
