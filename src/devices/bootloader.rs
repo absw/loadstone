@@ -51,11 +51,16 @@ where
     pub fn store_image<I>(
         &mut self,
         blocks: I,
+        size: usize,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
         I: Iterator<Item = FileBlock>,
     {
+        if size > bank.size {
+            return Err(Error::ImageTooBig);
+        }
+
         // Header must be re-formatted before any writing takes place, to ensure
         // a valid header and an invalid image never coexist.
         image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
@@ -63,22 +68,23 @@ where
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let address = bank.location;
         let mut bytes_written = 0;
+
         let mut bytes = blocks.flat_map(|b| IntoIter::new(b));
 
         loop {
+            let distance_to_end = size - bytes_written;
             let received = bytes.collect_slice(&mut buffer);
-            if received == 0 {
-                break;
-            } else if bytes_written + received > bank.size {
-                return Err(Error::ImageTooBig);
-            }
-            block!(self.external_flash.write(address + bytes_written, &buffer[0..received]))?;
-            defmt::info!("Writing {:?} bytes: {:?}", received, &buffer[0..received]);
-            bytes_written += received;
+            if received == 0 { break; }
+            let bytes_to_write = min(distance_to_end, received);
+            block!(self.external_flash.write(address + bytes_written, &buffer[0..bytes_to_write]))?;
+            bytes_written += bytes_to_write;
         }
-            defmt::info!("Total bytes written: {:?}", bytes_written);
 
-        image::ImageHeader::write(&mut self.external_flash, &bank, bytes_written)
+        if bytes_written == size {
+            image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        } else {
+            Err(Error::NotEnoughData)
+        }
     }
 
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }

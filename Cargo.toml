@@ -38,8 +38,8 @@ panic-abort = "*"
 nb = "*"
 paste = "*"
 static_assertions = "*"
-defmt = "0.1.0"
-defmt-rtt = "0.1.0"
+defmt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
+defmt-rtt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
 
 [dependencies.nom]
 version = "*"
