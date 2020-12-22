@@ -163,6 +163,7 @@ const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
+
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, SRL>)
     where
         EXTF: flash::ReadWrite,

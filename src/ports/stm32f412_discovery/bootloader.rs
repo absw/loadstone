@@ -103,8 +103,10 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
                 uwriteln!(&mut serial, "Attempted to boot from invalid bank.").unwrap(),
             Some(Error::BankEmpty) =>
                 uwriteln!(&mut serial, "Attempted to boot from empty bank.").unwrap(),
-            Some(_) =>
-                uwriteln!(&mut serial, "Unexpected boot error.").unwrap(),
+            Some(e) => {
+                uwriteln!(&mut serial, "Unexpected boot error:").unwrap();
+                e.report(&mut serial);
+            }
             None => (),
         };
 
