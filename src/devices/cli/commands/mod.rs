@@ -42,16 +42,12 @@ commands!( cli, bootloader, names, helpstrings [
     },
 
     flash ["Stores a FW image in an external Bank."] (
-        size: usize ["Image size in bytes"],
         bank: u8 ["External Bank Index"],
         )
     {
         if let Some(bank) = bootloader.external_banks().find(|b| b.index == bank) {
-            if size > bank.size {
-                return Err(Error::ArgumentOutOfRange);
-            }
             uprintln!(cli.serial, "Starting XModem mode! Send file with your XModem client.");
-            bootloader.store_image(cli.serial.blocks(), size, bank)?;
+            bootloader.store_image(cli.serial.blocks(), bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
             uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");

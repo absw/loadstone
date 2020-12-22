@@ -8,13 +8,10 @@ use super::{
     cli::{self, file_transfer::FileBlock},
     image,
 };
-use crate::{
-    devices::cli::Cli,
-    error::Error,
-    hal::{flash, serial},
-};
+use crate::{devices::cli::Cli, error::Error, hal::{flash, serial}, utilities::buffer::CollectSlice};
 use cli::file_transfer;
 use core::{cmp::min, mem::size_of};
+use core::array::IntoIter;
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
@@ -46,52 +43,52 @@ where
 {
     pub fn run(mut self) -> ! {
         let mut cli = self.cli.take().unwrap();
-        loop { cli.run(&mut self) }
+        loop {
+            cli.run(&mut self)
+        }
     }
 
     pub fn store_image<I>(
         &mut self,
         blocks: I,
-        size: usize,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
         I: Iterator<Item = FileBlock>,
     {
-        if size > bank.size {
-            return Err(Error::ImageTooBig);
-        }
-
         // Header must be re-formatted before any writing takes place, to ensure
         // a valid header and an invalid image never coexist.
         image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
 
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let address = bank.location;
         let mut bytes_written = 0;
+        let mut bytes = blocks.flat_map(|b| IntoIter::new(b));
 
-        for block in blocks {
-            let distance_to_end = size - bytes_written;
-            let bytes_to_write = min(distance_to_end, block.len());
-            block!(self.external_flash.write(address + bytes_written, &block[0..bytes_to_write]))?;
-            bytes_written += bytes_to_write;
+        loop {
+            let received = bytes.collect_slice(&mut buffer);
+            if received == 0 {
+                break;
+            } else if bytes_written + received > bank.size {
+                return Err(Error::ImageTooBig);
+            }
+            block!(self.external_flash.write(address + bytes_written, &buffer[0..received]))?;
+            defmt::info!("Writing {:?} bytes: {:?}", received, &buffer[0..received]);
+            bytes_written += received;
         }
+            defmt::info!("Total bytes written: {:?}", bytes_written);
 
-        if bytes_written == size {
-            image::ImageHeader::write(&mut self.external_flash, &bank, size)
-        } else {
-            Err(Error::NotEnoughData)
-        }
+        image::ImageHeader::write(&mut self.external_flash, &bank, bytes_written)
     }
 
-    pub fn reset(&mut self) -> ! {
-        SCB::sys_reset();
-    }
+    pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
     pub fn boot(
-        mcu_flash: &mut MCUF, mcu_banks: &'static [image::Bank<<MCUF>::Address>], bank_index: u8
+        mcu_flash: &mut MCUF,
+        mcu_banks: &'static [image::Bank<<MCUF>::Address>],
+        bank_index: u8,
     ) -> Result<!, Error> {
-        let bank =
-            mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+        let bank = mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);

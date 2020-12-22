@@ -112,3 +112,10 @@ impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
         }
     }
 }
+
+impl<'a, S: TimeoutRead + Write + ?Sized> Drop for BlockIterator<'a, S> {
+
+    // Must fully consume the iterator on drop
+    // to close the xmodem communication cleanly
+    fn drop(&mut self) { self.for_each(drop); }
+}
