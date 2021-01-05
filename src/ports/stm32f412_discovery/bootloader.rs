@@ -1,22 +1,12 @@
 //! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
-use crate::ports::pin_configuration::*;
-use crate::hal::{time, gpio::InputPin};
-use crate::{drivers::{
-    stm32f4::gpio::GpioExt,
-    stm32f4::gpio::*,
-    stm32f4::qspi::{self, mode, QuadSpi},
-    stm32f4::rcc::Clocks,
-    stm32f4::serial::{self, UsartExt},
-    stm32f4::systick::SysTick,
-    stm32f4::flash,
-    micron::n25q128a_flash::{self, MicronN25q128a},
-}, stm32pac::{self, USART6}};
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::devices::cli::Cli;
 use crate::error::Error;
 use core::mem::size_of;
 use ufmt::uwriteln;
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, gpio::*, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use blue_hal::drivers::stm32f4::gpio::GpioExt;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);

@@ -1,6 +1,6 @@
 //! Error types and methods for the Secure Bootloader project.
 
-use crate::hal::serial::Write;
+use blue_hal::{hal::serial::Write, uprint};
 use ufmt::{uwrite, uwriteln};
 
 /// Top level error type for the bootloader. Unlike the specific

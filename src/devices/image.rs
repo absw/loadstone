@@ -1,9 +1,6 @@
-use crate::{
-    error::Error,
-    hal::flash::{self, UnportableDeserialize, UnportableSerialize},
-    utilities::memory::Address,
-};
+use crate::error::Error;
 use core::{cmp::min, mem::size_of};
+use blue_hal::{hal::flash::{self, UnportableSerialize, UnportableDeserialize}, utilities::memory::Address};
 use crc::{crc32, Hasher32};
 use nb::{self, block};
 
@@ -207,7 +204,7 @@ impl<A: Address> Bank<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hal::{
+    use blue_hal::hal::{
         doubles::flash::{Address, FakeFlash},
         flash::ReadWrite,
     };

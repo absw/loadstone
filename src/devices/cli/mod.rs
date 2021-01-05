@@ -2,15 +2,11 @@
 use crate::{
     devices::bootloader::Bootloader,
     error::Error as BootloaderError,
-    hal::{
-        flash,
-        serial::{self, Read},
-    },
-    utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
+use blue_hal::{hal::{flash, serial::{self, Read}}, uprint, uprintln, utilities::buffer::TryCollectSlice, utilities::iterator::Unique};
 use nb::block;
-use ufmt::{uwrite, uwriteln};
+use ufmt::{uwriteln, uwrite};
 
 use self::file_transfer::FileTransfer;
 
@@ -373,7 +369,7 @@ mod commands;
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hal::doubles::serial::*;
+    use blue_hal::hal::doubles::serial::*;
 
     #[test]
     fn basic_command_parsing() {

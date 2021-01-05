@@ -12,6 +12,7 @@ default-run = "loadstone"
 [features]
 default = [
    "stm32f412_discovery",
+   "cortex_m_any",
    "defmt-default",
 ]
 defmt-default = []
@@ -20,30 +21,23 @@ defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
-stm32f412_discovery = ["stm32f412"]
-stm32f429 = ["stm32f4/stm32f429", "stm32f4_any"]
-stm32f469 = ["stm32f4/stm32f469", "stm32f4_any"]
-stm32f407 = ["stm32f4/stm32f407", "stm32f4_any"]
-stm32f412 = ["stm32f4/stm32f412", "stm32f4_any"]
-stm32f4_any = ["stm32_any"]
-stm32_any = ["cortex_m_any"]
 cortex_m_any = []
+stm32f412_discovery = []
 
 [dependencies]
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
-bluefruit_rust_hal = { path = "bluefruit_rust_hal" }
-panic-abort = "*"
 nb = "*"
-paste = "*"
+panic-abort = "*"
 static_assertions = "*"
 defmt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
 defmt-rtt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
 
-[dependencies.nom]
-version = "*"
-default-features = false
+[dependencies.blue_hal]
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "main"
+features = ["stm32f412_discovery"]
 
 [dependencies.ufmt]
 version = "*"
@@ -52,10 +46,6 @@ default-features = false
 [dependencies.crc]
 version = "*"
 default-features = false
-
-[dependencies.stm32f4]
-version = "*"
-features = ["rt"]
 
 [lib]
 name = "loadstone_lib"

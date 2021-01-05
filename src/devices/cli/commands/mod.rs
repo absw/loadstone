@@ -4,8 +4,8 @@ use crate::{
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
     },
     error::Error as BootloaderError,
-    hal::{flash, serial},
 };
+use blue_hal::{hal::{flash, serial}, uprintln};
 use ufmt::uwriteln;
 
 commands!( cli, bootloader, names, helpstrings [

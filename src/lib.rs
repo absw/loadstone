@@ -24,19 +24,6 @@ use panic_abort as _;
 #[cfg(target_arch = "arm")]
 use defmt_rtt as _; // global logger
 
-#[macro_use]
-pub mod utilities {
-    pub mod bitwise;
-    pub mod iterator;
-    pub mod memory;
-    pub mod guard;
-    pub mod buffer;
-    pub mod xmodem;
-    mod macros;
-}
-
-pub mod hal;
-pub mod drivers;
 pub mod devices;
 pub mod error;
 pub mod ports;
