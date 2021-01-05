@@ -43,6 +43,8 @@ where
     SRL: serial::ReadWrite,
     Error: From<<SRL as serial::Read>::Error>,
 {
+    /// Runs the boot loader, entering CLI if the boot fails. If interactive mode is enabled for
+    /// the bootloader, the CLI is entered without attemping a boot.
     pub fn run(mut self) -> ! {
         // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
         let indices =
@@ -61,6 +63,7 @@ where
         }
     }
 
+    /// Writes a firmware image to an external flash bank.
     pub fn store_image<I, E>(
         &mut self,
         mut bytes: I,
@@ -94,6 +97,7 @@ where
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
     }
 
+    /// Boots into a given memory bank.
     pub fn boot(
         mcu_flash: &mut MCUF, mcu_banks: &'static [image::Bank<<MCUF>::Address>], bank_index: u8
     ) -> Result<!, Error> {
@@ -127,6 +131,7 @@ where
         }
     }
 
+    /// Formats all MCU flash banks.
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
         block!(self.mcu_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.mcu_flash)?;
@@ -136,6 +141,7 @@ where
         Ok(())
     }
 
+    /// Formats all external flash banks.
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
         block!(self.external_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.external_flash)?;
@@ -145,14 +151,17 @@ where
         Ok(())
     }
 
+    /// Runs a self test on MCU flash.
     pub fn test_mcu_flash(&mut self) -> Result<(), Error> {
         Self::test_flash_read_write_cycle(&mut self.mcu_flash)
     }
 
+    /// Runs a self test on external flash.
     pub fn test_external_flash(&mut self) -> Result<(), Error> {
         Self::test_flash_read_write_cycle(&mut self.external_flash)
     }
 
+    /// Finds and returns the image header of a given bank index.
     pub fn image_at_bank(&mut self, index: u8) -> Option<image::ImageHeader> {
         let mcu_bank = self.mcu_banks().find(|b| b.index == index);
         let external_bank = self.external_banks().find(|b| b.index == index);
@@ -171,10 +180,12 @@ where
         }
     }
 
+    /// Returns an iterator of all MCU flash banks.
     pub fn mcu_banks(&self) -> impl Iterator<Item = image::Bank<MCUF::Address>> {
         self.mcu_banks.iter().cloned()
     }
 
+    /// Returns an iterator of all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
     }
