@@ -228,7 +228,7 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
         self.needs_prompt = true;
     }
 
-    /// Returns the serial the CLI is using.
+    /// Returns the serial driver the CLI is using.
     pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
 
     /// Attempts to parse a given string into a command name and arguments.

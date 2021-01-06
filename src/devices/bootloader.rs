@@ -43,8 +43,7 @@ where
     SRL: serial::ReadWrite,
     Error: From<<SRL as serial::Read>::Error>,
 {
-    /// Runs the boot loader, entering CLI if the boot fails. If interactive mode is enabled for
-    /// the bootloader, the CLI is entered without attemping a boot.
+    /// Runs the CLI.
     pub fn run(mut self) -> ! {
         // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
         let indices =
