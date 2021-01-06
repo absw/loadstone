@@ -25,13 +25,18 @@ impl Clocks {
 
     /// Harcoded values for the f412
     #[cfg(feature = "stm32f412")]
-    pub fn hardcoded(flash: &FLASH, rcc: RCC) -> Self {
+    pub fn hardcoded(rcc: RCC) -> Self {
         // NOTE(Safety): All unsafe blocks in this function refer to using the "bits()"
         // method for easy writing.
-        flash.acr.write(|w| {
-            unsafe { w.latency().bits(1) }; // 50Mhz -> 1 wait state at 3.3v
-            w.prften().set_bit()
-        });
+
+        // NOTE(Safety): Access to flash is fine because this only occurs in construction and is
+        // unrelated to other uses of flash.
+        unsafe {
+            (*FLASH::ptr()).acr.write(|w| {
+                w.latency().bits(1); // 50Mhz -> 1 wait state at 3.3v
+                w.prften().set_bit()
+            });
+        }
 
         rcc.cr.modify(|_, w| w.hseon().set_bit());
         while rcc.cr.read().hserdy().bit_is_clear() {}

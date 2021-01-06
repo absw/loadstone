@@ -31,7 +31,6 @@ where
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    pub(crate) interactive_mode: bool,
 }
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
@@ -45,21 +44,8 @@ where
 {
     /// Runs the CLI.
     pub fn run(mut self) -> ! {
-        // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
-        let indices =
-            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
-        assert!((1..).zip(indices).all(|(a, b)| a == b));
-
-        // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
-        if !self.interactive_mode {
-            Self::boot(&mut self.mcu_flash, self.mcu_banks, 1).unwrap_err();
-            uprintln!(cli.serial(), "Failed to boot from default bank.");
-        }
-
-        loop {
-            cli.run(&mut self)
-        }
+        loop { cli.run(&mut self) }
     }
 
     /// Writes a firmware image to an external flash bank.
@@ -94,6 +80,10 @@ where
         }
 
         image::ImageHeader::write(&mut self.external_flash, &bank, size)
+    }
+
+    pub fn reset(&mut self) -> ! {
+        SCB::sys_reset();
     }
 
     /// Boots into a given memory bank.
@@ -132,6 +122,12 @@ where
 
     /// Formats all MCU flash banks.
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.mcu_flash)?;
+        for bank in self.mcu_banks {
+            image::ImageHeader::format_default(&mut self.mcu_flash, bank)?;
+        }
         block!(self.mcu_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.mcu_flash)?;
         for bank in self.mcu_banks {
@@ -142,6 +138,12 @@ where
 
     /// Formats all external flash banks.
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.external_flash)?;
+        for bank in self.external_banks {
+            image::ImageHeader::format_default(&mut self.external_flash, bank)?;
+        }
         block!(self.external_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.external_flash)?;
         for bank in self.external_banks {
