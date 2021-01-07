@@ -252,7 +252,7 @@ where
         let mut final_buffer = [0x00; 4];
         block!(flash.read(start, &mut final_buffer))?;
         if expected_final_buffer != final_buffer {
-            Err(Error::DriverError("Flash Read Write cycle failed"))
+            Err(Error::DriverError("Flash read-write cycle failed"))
         } else {
             Ok(())
         }
