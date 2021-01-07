@@ -18,7 +18,7 @@ where
 
 pub trait Now {
     type I: Instant;
-    fn now(&self) -> Self::I;
+    fn now() -> Self::I;
 }
 
 #[derive(Clone, Copy, Debug, PartialOrd, PartialEq, Eq)]

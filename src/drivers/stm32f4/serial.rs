@@ -1,11 +1,15 @@
 //! USART implementation.
 use crate::{
-    drivers::stm32f4::{gpio::*, rcc},
-    hal::serial,
+    drivers::stm32f4::{gpio::*, rcc, systick},
+    hal::{
+        serial,
+        time::{Milliseconds, Now},
+    },
     ports::pin_configuration::*,
     stm32pac::{RCC, USART1, USART2, USART3, USART6},
 };
 use core::{marker::PhantomData, ptr};
+use defmt::Format;
 
 /// Extension trait to wrap a USART peripheral into a more useful
 /// high level abstraction.
@@ -78,7 +82,7 @@ seal_pins!(TxPin<USART6>: [Pc6<AF8>, Pa11<AF8>, Pg14<AF8>,]);
 seal_pins!(RxPin<USART6>: [Pc7<AF8>, Pa12<AF8>, Pg9<AF8>,]);
 
 /// Serial error
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Format)]
 #[non_exhaustive]
 pub enum Error {
     /// Framing error
@@ -89,6 +93,8 @@ pub enum Error {
     Overrun,
     /// Parity check error
     Parity,
+    /// Timeout error
+    Timeout,
 }
 
 /// Interrupt event
@@ -355,6 +361,17 @@ macro_rules! hal_usart_impl {
                 }
             }
 
+            impl<PINS> serial::TimeoutRead for Serial<$USARTX, PINS> {
+                type Error = Error;
+
+                fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
+                    let mut rx: Rx<$USARTX> = Rx {
+                        _usart: PhantomData,
+                    };
+                    rx.read(timeout)
+                }
+            }
+
             impl serial::Read for Rx<$USARTX> {
                 type Error = Error;
 
@@ -386,6 +403,42 @@ macro_rules! hal_usart_impl {
                     } else {
                         nb::Error::WouldBlock
                     })
+                }
+            }
+
+            impl serial::TimeoutRead for Rx<$USARTX> {
+                type Error = Error;
+
+                fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error> {
+                    let start = systick::SysTick::now();
+                    while ((systick::SysTick::now() - start) < timeout.into()) {
+                        // NOTE(Safety) Atomic read on stateless register
+                        let sr = unsafe { (*$USARTX::ptr()).sr.read() };
+
+                        // Any error requires the dr to be read to clear
+                        if sr.pe().bit_is_set()
+                            || sr.fe().bit_is_set()
+                            || sr.nf().bit_is_set()
+                            || sr.ore().bit_is_set()
+                        {
+                            // NOTE(Safety) Atomic read on stateless register
+                            unsafe { (*$USARTX::ptr()).dr.read() };
+                        }
+
+                        if sr.pe().bit_is_set() {
+                            return Err(Error::Parity);
+                        } else if sr.fe().bit_is_set() {
+                            return Err(Error::Framing);
+                        } else if sr.nf().bit_is_set() {
+                            return Err(Error::Noise);
+                        } else if sr.ore().bit_is_set() {
+                            return Err(Error::Overrun);
+                        } else if sr.rxne().bit_is_set() {
+                            // NOTE(read_volatile) see `write_volatile` below
+                            return Ok(unsafe { ptr::read_volatile(&(*$USARTX::ptr()).dr as *const _ as *const u8) });
+                        }
+                    }
+                    Err(Error::Timeout)
                 }
             }
 

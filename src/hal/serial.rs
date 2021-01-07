@@ -13,6 +13,8 @@ impl<T: Read + Write> ReadWrite for T {}
 
 pub use ufmt::uWrite as Write;
 
+use super::time::Milliseconds;
+
 /// UART read half
 pub trait Read {
     type Error: Copy + Clone;
@@ -22,9 +24,28 @@ pub trait Read {
     fn bytes(&mut self) -> ReadIterator<Self> { ReadIterator { reader: self, errored: false } }
 }
 
+/// UART read half, with timeouts. Rather than returning a `nb::Result` for flow control,
+/// it returns a standard `Result` with the option of a `Timeout` error if the specified
+/// time was not achieved.
+pub trait TimeoutRead {
+    type Error: Copy + Clone;
+
+    /// Reads a single byte
+    fn read<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> Result<u8, Self::Error>;
+    fn bytes<T: Copy + Into<Milliseconds>>(&mut self, timeout: T) -> TimeoutReadIterator<Self, T> {
+        TimeoutReadIterator { reader: self, errored: false, timeout }
+    }
+}
+
 pub struct ReadIterator<'a, R: Read + ?Sized> {
     reader: &'a mut R,
     errored: bool,
+}
+
+pub struct TimeoutReadIterator<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> {
+    reader: &'a mut R,
+    errored: bool,
+    timeout: T,
 }
 
 impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
@@ -34,6 +55,25 @@ impl<'a, R: Read + ?Sized> Iterator for ReadIterator<'a, R> {
             None
         } else {
             match block!(self.reader.read()) {
+                Ok(byte) => Some(Ok(byte)),
+                Err(e) => {
+                    self.errored = true;
+                    Some(Err(e))
+                }
+            }
+        }
+    }
+}
+
+impl<'a, R: TimeoutRead + ?Sized, T: Copy + Into<Milliseconds>> Iterator
+    for TimeoutReadIterator<'a, R, T>
+{
+    type Item = Result<u8, <R as TimeoutRead>::Error>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.errored {
+            None
+        } else {
+            match self.reader.read(self.timeout) {
                 Ok(byte) => Some(Ok(byte)),
                 Err(e) => {
                     self.errored = true;

@@ -46,7 +46,7 @@ impl Indirect for MockQspi {
         self.command_records.push(CommandRecord {
             instruction,
             address,
-            data: Some(data.unwrap_or_default().iter().cloned().collect()),
+            data: Some(data.unwrap_or_default().to_vec()),
             length_requested: 0,
             dummy_cycles,
         });
@@ -63,7 +63,7 @@ impl Indirect for MockQspi {
         self.command_records.push(CommandRecord {
             instruction,
             address,
-            data: Some(data.iter().cloned().collect()),
+            data: Some(data.to_vec()),
             length_requested: data.len(),
             dummy_cycles,
         });

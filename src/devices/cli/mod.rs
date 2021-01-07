@@ -8,12 +8,19 @@
 use crate::{
     devices::bootloader::Bootloader,
     error::Error as BootloaderError,
-    hal::{flash, serial},
+    hal::{
+        flash,
+        serial::{self, Read},
+    },
     utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
+
+use self::file_transfer::FileTransfer;
+
+pub mod file_transfer;
 
 const GREETING: &str = "--=Loadstone CLI=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
@@ -161,7 +168,7 @@ const ARGUMENT_SEPARATOR: char = '=';
 const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
-impl<SRL: serial::ReadWrite> Cli<SRL> {
+impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it. 
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, SRL>)
     where
@@ -169,7 +176,7 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
         BootloaderError: From<EXTF::Error>,
         MCUF: flash::ReadWrite,
         BootloaderError: From<MCUF::Error>,
-        SRL: serial::ReadWrite,
+        SRL: serial::ReadWrite + FileTransfer,
         BootloaderError: From<<SRL as serial::Read>::Error>,
     {
         if !self.greeted {
@@ -275,7 +282,7 @@ impl<SRL: serial::ReadWrite> Cli<SRL> {
     }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
-        let mut bytes = self.serial.bytes().take_while(|element| match element {
+        let mut bytes = Read::bytes(&mut self.serial).take_while(|element| match element {
             Err(_) => true,
             Ok(b) => *b as char != LINE_TERMINATOR,
         });
@@ -347,7 +354,7 @@ macro_rules! commands {
         where
             EXTF: flash::ReadWrite, BootloaderError: From<EXTF::Error>,
             MCUF: flash::ReadWrite, BootloaderError: From<MCUF::Error>,
-            SRL: serial::ReadWrite, BootloaderError: From<<SRL as serial::Read>::Error>,
+            SRL: serial::ReadWrite + FileTransfer, BootloaderError: From<<SRL as serial::Read>::Error>,
         {
             match name {
                 $(

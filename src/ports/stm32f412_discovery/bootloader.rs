@@ -77,8 +77,15 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
+        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
 
         let mut mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
+        let clocks = Clocks::hardcoded(peripherals.RCC);
+
+        SysTick::init(cortex_peripherals.SYST, clocks);
+        SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
         let interactive_mode = gpioa.pa0.is_high() || gpioa.pa1.is_high();
         let mut boot_error : Option<Error> = None;
@@ -87,16 +94,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
             boot_error = Some(Self::boot(&mut mcu_flash, &MCU_BANKS, DEFAULT_BANK).unwrap_err());
         }
 
-        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
-        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
-
-        let clocks = Clocks::hardcoded(peripherals.RCC);
-
-        let systick = SysTick::new(cortex_peripherals.SYST, clocks);
-        systick.wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
-
-        let serial_config = serial::config::Config::default().baudrate(time::Bps(9600));
+        let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
         let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
 
@@ -115,7 +113,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500), systick).unwrap();
+        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
 
         Bootloader { external_flash, mcu_flash, cli: Some(cli), external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS }
     }
@@ -149,6 +147,7 @@ impl From<serial::Error> for Error {
             serial::Error::Noise => Error::DriverError("[Serial] Noise Error"),
             serial::Error::Overrun => Error::DriverError("[Serial] Overrun Error"),
             serial::Error::Parity => Error::DriverError("[Serial] Parity Error"),
+            serial::Error::Timeout => Error::DriverError("[Serial] Timeout Error"),
         }
     }
 }

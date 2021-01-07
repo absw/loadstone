@@ -4,6 +4,7 @@
 //! secure bootloader project in library form.
 #![feature(never_type)]
 #![feature(bool_to_option)]
+#![feature(array_value_iter)]
 #![feature(associated_type_bounds)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
@@ -30,6 +31,7 @@ pub mod utilities {
     pub mod memory;
     pub mod guard;
     pub mod buffer;
+    pub mod xmodem;
     mod macros;
 }
 

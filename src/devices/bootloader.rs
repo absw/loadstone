@@ -4,18 +4,17 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image;
-use crate::{
-    devices::cli::Cli,
-    error::Error,
-    hal::{flash, serial},
-    utilities::buffer::TryCollectSlice,
+use super::{
+    cli::{self, file_transfer::FileBlock},
+    image,
 };
+use crate::{devices::cli::Cli, error::Error, hal::{flash, serial}, utilities::buffer::CollectSlice};
+use cli::file_transfer;
 use core::{cmp::min, mem::size_of};
+use core::array::IntoIter;
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
-use ufmt::uwriteln;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -23,7 +22,7 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
@@ -39,25 +38,26 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     /// Runs the CLI.
     pub fn run(mut self) -> ! {
         let mut cli = self.cli.take().unwrap();
-        loop { cli.run(&mut self) }
+        loop {
+            cli.run(&mut self)
+        }
     }
 
     /// Writes a firmware image to an external flash bank.
-    pub fn store_image<I, E>(
+    pub fn store_image<I>(
         &mut self,
-        mut bytes: I,
+        blocks: I,
         size: usize,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = Result<u8, E>>,
-        Error: From<E>,
+        I: Iterator<Item = FileBlock>,
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);
@@ -67,31 +67,37 @@ where
         // a valid header and an invalid image never coexist.
         image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
 
-        let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let address = bank.location;
+        let mut bytes_written = 0;
+
+        let mut bytes = blocks.flat_map(|b| IntoIter::new(b));
+
         loop {
-            match bytes.try_collect_slice(&mut buffer)? {
-                0 => break,
-                n => {
-                    block!(self.external_flash.write(address, &buffer[0..n]))?;
-                    address = address + n;
-                }
-            }
+            let distance_to_end = size - bytes_written;
+            let received = bytes.collect_slice(&mut buffer);
+            if received == 0 { break; }
+            let bytes_to_write = min(distance_to_end, received);
+            block!(self.external_flash.write(address + bytes_written, &buffer[0..bytes_to_write]))?;
+            bytes_written += bytes_to_write;
         }
 
-        image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        if bytes_written == size {
+            image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        } else {
+            Err(Error::NotEnoughData)
+        }
     }
 
-    pub fn reset(&mut self) -> ! {
-        SCB::sys_reset();
-    }
+    pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
     /// Boots into a given memory bank.
     pub fn boot(
-        mcu_flash: &mut MCUF, mcu_banks: &'static [image::Bank<<MCUF>::Address>], bank_index: u8
+        mcu_flash: &mut MCUF,
+        mcu_banks: &'static [image::Bank<<MCUF>::Address>],
+        bank_index: u8,
     ) -> Result<!, Error> {
-        let bank =
-            mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+        let bank = mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);
