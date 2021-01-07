@@ -4,18 +4,20 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image;
+use super::{
+    cli::{self, file_transfer::FileBlock},
+    image,
+};
 use crate::{
     devices::cli::Cli,
     error::Error,
     hal::{flash, serial},
-    utilities::buffer::TryCollectSlice,
 };
+use cli::file_transfer;
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
-use ufmt::uwriteln;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -23,7 +25,7 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
@@ -39,7 +41,7 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub fn run(mut self) -> ! {
@@ -47,15 +49,14 @@ where
         loop { cli.run(&mut self) }
     }
 
-    pub fn store_image<I, E>(
+    pub fn store_image<I>(
         &mut self,
-        mut bytes: I,
+        blocks: I,
         size: usize,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = Result<u8, E>>,
-        Error: From<E>,
+        I: Iterator<Item = FileBlock>,
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);
@@ -65,19 +66,21 @@ where
         // a valid header and an invalid image never coexist.
         image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
 
-        let mut address = bank.location;
-        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
-        loop {
-            match bytes.try_collect_slice(&mut buffer)? {
-                0 => break,
-                n => {
-                    block!(self.external_flash.write(address, &buffer[0..n]))?;
-                    address = address + n;
-                }
-            }
+        let address = bank.location;
+        let mut bytes_written = 0;
+
+        for block in blocks {
+            let distance_to_end = size - bytes_written;
+            let bytes_to_write = min(distance_to_end, block.len());
+            block!(self.external_flash.write(address + bytes_written, &block[0..bytes_to_write]))?;
+            bytes_written += bytes_to_write;
         }
 
-        image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        if bytes_written == size {
+            image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        } else {
+            Err(Error::NotEnoughData)
+        }
     }
 
     pub fn reset(&mut self) -> ! {

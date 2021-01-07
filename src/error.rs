@@ -15,6 +15,7 @@ pub enum Error {
     /// Error caused by a high level device driver
     DeviceError(&'static str),
     BankInvalid,
+    NotEnoughData,
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
@@ -79,6 +80,9 @@ impl Error {
                 uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated")
             }
             Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
+            Error::NotEnoughData => {
+                uwriteln!(serial, "[TransferError] -> Not enough image data received")
+            }
         }
         .ok()
         .unwrap();
