@@ -190,36 +190,36 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         };
         match execute_command() {
             Err(Error::BadCommandEncoding) => {
-                uwriteln!(self.serial, "[CLI Error] Bad Command Encoding")
+                uwriteln!(self.serial, "[CLI Error] Bad command encoding")
             }
             Err(Error::CharactersNotAllowed) => {
-                uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command")
+                uwriteln!(self.serial, "[CLI Error] Illegal characters In command")
             }
             Err(Error::MalformedArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments")
+                uwriteln!(self.serial, "[CLI Error] Malformed command arguments")
             }
             Err(Error::SerialBufferOverflow) => {
-                uwriteln!(self.serial, "[CLI Error] Command String Too Long")
+                uwriteln!(self.serial, "[CLI Error] Command string too long")
             }
             Err(Error::MissingArgument) => {
-                uwriteln!(self.serial, "[CLI Error] Command Missing An Argument")
+                uwriteln!(self.serial, "[CLI Error] Command missing an argument")
             }
             Err(Error::DuplicateArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
+                uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::BootloaderError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
+                uprintln!(self.serial, "[CLI Error] Internal bootloader error: ");
                 e.report(&mut self.serial);
                 Ok(())
             }
             Err(Error::UnexpectedArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
+                uwriteln!(self.serial, "[CLI Error] Command contains an unexpected argument")
             }
             Err(Error::ArgumentOutOfRange) => {
-                uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
+                uwriteln!(self.serial, "[CLI Error] Argument is out of valid range")
             }
-            Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial Read Failed"),
-            Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown Command"),
+            Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial read failed"),
+            Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown command"),
             Err(Error::CommandEmpty) => Ok(()),
             Ok(_) => Ok(()),
         }
