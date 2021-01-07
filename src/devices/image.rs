@@ -48,6 +48,7 @@ pub struct Bank<A: Address> {
 }
 
 impl GlobalHeader {
+    /// Attempts to retrieve a header from flash.
     pub fn retrieve<F, A>(flash: &mut F) -> Result<Self, Error>
     where
         A: Address,
@@ -68,7 +69,7 @@ impl GlobalHeader {
         }
     }
 
-    // Writes a default global header to flash at the right location.
+    /// Writes a default global header to flash at the right location.
     pub fn format_default<F, A>(flash: &mut F) -> Result<(), Error>
     where
         A: Address,
@@ -87,6 +88,7 @@ impl GlobalHeader {
 }
 
 impl ImageHeader {
+    /// Retrieves an image header from a given bank in flash memory.
     pub fn retrieve<F, A>(flash: &mut F, bank: &Bank<A>) -> Result<Self, Error>
     where
         A: Address,
@@ -106,7 +108,7 @@ impl ImageHeader {
         }
     }
 
-    // Writes a default image header to flash at a given location
+    /// Writes a default image header to flash at a given location
     pub fn format_default<A, F>(flash: &mut F, bank: &Bank<A>) -> Result<(), Error>
     where
         A: Address,
@@ -122,6 +124,7 @@ impl ImageHeader {
         Ok(block!(unsafe { flash.serialize(&default_header, address) })?)
     }
 
+    /// Attempts to write a header to a given bank of flash.
     pub fn write<A, F>(flash: &mut F, bank: &Bank<A>, size: usize) -> Result<(), Error>
     where
         A: Address,
@@ -147,6 +150,7 @@ impl ImageHeader {
         Ok(())
     }
 
+    /// Performs a CRC check on a given image.
     pub fn validate_image<A, F>(flash: &mut F, location: A, size: usize) -> Result<u32, Error>
     where
         A: Address,

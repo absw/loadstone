@@ -1,3 +1,9 @@
+//! Generic command line interface.
+//!
+//! This module contains functionality for the CLI, except
+//! for construction which is implementation-specific so is
+//! handled in the `port` module.
+
 #![macro_use]
 use crate::{
     devices::bootloader::Bootloader,
@@ -163,6 +169,7 @@ const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
+    /// Reads a line, parses it as a command and attempts to execute it. 
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, SRL>)
     where
         EXTF: flash::ReadWrite,
@@ -228,8 +235,10 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         self.needs_prompt = true;
     }
 
+    /// Returns the serial driver the CLI is using.
     pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
 
+    /// Attempts to parse a given string into a command name and arguments.
     fn parse(text: &str) -> Result<(Name, ArgumentIterator), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
         if text.is_empty() {
@@ -267,6 +276,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         Ok((name, arguments))
     }
 
+    /// Creates a new CLI using the given serial.
     pub fn new(serial: SRL) -> Result<Self, Error> {
         Ok(Cli { serial, greeted: false, needs_prompt: true })
     }

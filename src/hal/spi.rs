@@ -1,3 +1,6 @@
+//! Traits for Serial Peripheral Interface implementation.
+
+// Allows the transmission and reception of a word in full duplex.
 pub trait FullDuplex<WORD> {
     type Error;
 
