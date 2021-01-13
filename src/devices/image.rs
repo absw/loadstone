@@ -209,9 +209,15 @@ impl<A: Address> Bank<A> {
 mod tests {
     use super::*;
     use blue_hal::hal::{
-        doubles::flash::{Address, FakeFlash},
+        doubles::{error::FakeError, flash::{Address, FakeFlash }},
         flash::ReadWrite,
     };
+
+    impl From<FakeError> for Error {
+        fn from(_: FakeError) -> Self {
+            Error::DeviceError("Something fake happened")
+        }
+    }
 
     #[test]
     fn writing_header_with_correct_crc() {
