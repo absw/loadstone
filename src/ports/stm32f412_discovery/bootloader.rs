@@ -5,8 +5,8 @@ use crate::devices::cli::Cli;
 use crate::error::Error;
 use core::mem::size_of;
 use ufmt::uwriteln;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, gpio::*, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
-use blue_hal::drivers::stm32f4::gpio::GpioExt;
+use blue_hal::{hal::gpio::InputPin, drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use super::pin_configuration::*;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -140,6 +140,7 @@ impl From<serial::Error> for Error {
             serial::Error::Overrun => Error::DriverError("[Serial] Overrun Error"),
             serial::Error::Parity => Error::DriverError("[Serial] Parity Error"),
             serial::Error::Timeout => Error::DriverError("[Serial] Timeout Error"),
+            _ => Error::DriverError("[Serial] Unexpected Serial Error"),
         }
     }
 }

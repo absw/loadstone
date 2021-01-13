@@ -12,17 +12,22 @@ default-run = "loadstone"
 [features]
 default = [
    "stm32f412_discovery",
-   "cortex_m_any",
    "defmt-default",
 ]
+stm32f412_discovery = ["blue_hal/stm32f412_discovery", "stm32f412"]
+stm32f429 = ["stm32f4_any"]
+stm32f469 = ["stm32f4_any"]
+stm32f407 = ["stm32f4_any"]
+stm32f412 = ["stm32f4_any"]
+stm32f4_any = ["stm32_any"]
+stm32_any = ["cortex_m_any"]
+cortex_m_any = []
 defmt-default = []
 defmt-trace = []
 defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
-cortex_m_any = []
-stm32f412_discovery = []
 
 [dependencies]
 cortex-m = "0.6.0"
@@ -35,9 +40,11 @@ defmt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
 defmt-rtt = { git = "https://github.com/knurling-rs/defmt.git", branch = "main" }
 
 [dependencies.blue_hal]
+# Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
+#path = "blue_hal"
 git = "ssh://git@github.com/absw/blue_hal.git"
 branch = "main"
-features = ["stm32f412_discovery"]
+#features = ["stm32f412_discovery"]
 
 [dependencies.ufmt]
 version = "*"

@@ -1,7 +1,6 @@
-use blue_hal::{alternate_functions, gpio, gpio_inner, pin_rows};
+use blue_hal::{enable_gpio, gpio, gpio_inner, alternate_functions, enable_qspi, enable_spi, enable_serial, pin_rows};
 use blue_hal::paste;
-use blue_hal::drivers::stm32f4::gpio::{self, *};
-use blue_hal::hal::gpio::{*, InputPin};
+use blue_hal::drivers::stm32f4::gpio::*;
 use blue_hal::drivers::stm32f4::serial::{TxPin, RxPin};
 use blue_hal::stm32pac::USART6;
 use blue_hal::drivers::stm32f4::qspi::{
@@ -12,8 +11,7 @@ use blue_hal::drivers::stm32f4::qspi::{
     Bk1Io2Pin as QspiSecondaryOutput,
     Bk1Io3Pin as QspiSecondaryInput,
 };
-alternate_functions!(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,);
-pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
+enable_gpio!();
 
 gpio!(a, [
     (0, Input<Floating>), // Boot mode
