@@ -13,15 +13,12 @@ pub struct Tick {
 impl time::Instant for Tick {}
 
 /// Handle over the SysTick. Allows safe access to the current instant.
-///
-/// Existence of this type (or any copy) guarantees the systick peripheral
-/// has been configured.
 #[derive(Copy, Clone, Debug)]
 pub struct SysTick;
 
 impl SysTick {
     /// Consumes the systick peripheral.
-    pub fn new(mut systick: SYST, clocks: rcc::Clocks) -> Self {
+    pub fn init(mut systick: SYST, clocks: rcc::Clocks) -> Self {
         systick.set_clock_source(SystClkSource::Core);
         systick.set_reload(clocks.sysclk().0 / 1000); // Millisecond ticks
         systick.clear_current();
@@ -30,15 +27,15 @@ impl SysTick {
         Self
     }
 
-    pub fn wait<T: Copy + Into<time::Milliseconds>>(&self, t: T) {
-        let start = self.now();
-        while self.now() - start < t.into() {}
+    pub fn wait<T: Copy + Into<time::Milliseconds>>(t: T) {
+        let start = Self::now();
+        while Self::now() - start < t.into() {}
     }
 }
 
 impl Now for SysTick {
     type I = Tick;
-    fn now(&self) -> Tick { Tick { counter: TICK_COUNTER.load(Ordering::Relaxed) } }
+    fn now() -> Tick { Tick { counter: TICK_COUNTER.load(Ordering::Relaxed) } }
 }
 
 static TICK_COUNTER: AtomicU32 = AtomicU32::new(0);

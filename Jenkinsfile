@@ -48,21 +48,21 @@ spec:
             steps {
                 container('rust') {
                     sh 'rustup target add thumbv7em-none-eabihf'
-                    sh './cargo_emb check'
+                    sh 'cargo check'
                 }
             }
         }
         stage('Linting') {
             steps {
                 container('rust') {
-                    sh './cargo_emb clippy'
+                    sh 'cargo clippy'
                 }
             }
         }
         stage('Documentation') {
             steps {
                 container('rust') {
-                    sh './cargo_emb doc'
+                    sh 'cargo d'
                 }
             }
         }
@@ -73,7 +73,7 @@ spec:
                     echo 'Building binary only on master branch...'
                     sh 'cargo install cargo-binutils'
                     sh 'rustup component add llvm-tools-preview'
-                    sh './generate_bin'
+                    sh 'cargo gen_loadstone'
 
                     echo 'Archiving Artifacts'
                     archiveArtifacts artifacts: 'bootloader.bin'

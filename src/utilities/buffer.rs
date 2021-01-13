@@ -1,10 +1,13 @@
 pub trait CollectSlice: Iterator {
+    /// Collects an iterator into a given slice, returning the number of collected items.
     fn collect_slice(&mut self, slice: &mut [Self::Item]) -> usize;
 }
 
 pub trait TryCollectSlice: Iterator {
     type Element;
     type Error;
+
+    /// Attempts to collect an iterator into a given slice, returning the number of collected items.
     fn try_collect_slice(&mut self, slice: &mut [Self::Element]) -> Result<usize, Self::Error>;
 }
 

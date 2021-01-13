@@ -1,9 +1,10 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "arm-none-eabi-gdb -q -x openocd.gdb"
+runner = "probe-run --chip STM32F412ZGTx --defmt"
 
 rustflags = [
   # LLD (shipped with the Rust toolchain) is used as the default linker
   "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
 
   # if you run into problems with LLD switch to the GNU linker by commenting out
   # this line
@@ -16,3 +17,13 @@ rustflags = [
   # "-C", "link-arg=-Wl,-Tlink.x",
   # "-C", "link-arg=-nostartfiles",
 ]
+
+[alias]
+b = "build --release --bin loadstone --target thumbv7em-none-eabihf"
+rb = "run --release --bin loadstone --target thumbv7em-none-eabihf"
+sz = "size --release --bin loadstone --target thumbv7em-none-eabihf"
+gen_blinky = "objcopy --bin blinky --release --target thumbv7em-none-eabihf --features stm32f412 -- -O binary blinky.bin"
+gen_loadstone = "objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features stm32f412 -- -O binary loadstone.bin"
+st = "strip --bin loadstone --release --target thumbv7em-none-eabihf"
+d = "doc --release --target thumbv7em-none-eabihf"
+dop = "doc --release --target thumbv7em-none-eabihf --open"

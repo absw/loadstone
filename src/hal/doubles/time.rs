@@ -8,7 +8,7 @@ impl time::Instant for MockInstant {}
 
 impl time::Now for MockSysTick {
     type I = MockInstant;
-    fn now(&self) -> MockInstant { MockInstant {} }
+    fn now() -> MockInstant { MockInstant {} }
 }
 
 impl core::ops::Sub for MockInstant {

@@ -1,3 +1,0 @@
-#!/bin/bash
-
-cargo objcopy --bin blinky --release --target thumbv7em-none-eabihf --features "stm32f412" -- -O binary blinky.bin

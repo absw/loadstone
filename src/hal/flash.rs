@@ -1,13 +1,12 @@
 use crate::utilities::memory::Address;
 use core::{
-    fmt,
     mem::{size_of, MaybeUninit},
     slice,
 };
 
 /// Reads and writes a range of bytes, generic over an address
 pub trait ReadWrite {
-    type Error: Clone + Copy + fmt::Debug;
+    type Error: Clone + Copy;
     type Address: Address;
     fn read(&mut self, address: Self::Address, bytes: &mut [u8]) -> nb::Result<(), Self::Error>;
     fn write(&mut self, address: Self::Address, bytes: &[u8]) -> nb::Result<(), Self::Error>;

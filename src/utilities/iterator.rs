@@ -1,4 +1,7 @@
+//! Iterator utilities
+
 pub trait Unique {
+    /// Returns true if no element equals any other, false otherwise. 
     fn all_unique(self) -> bool;
 }
 

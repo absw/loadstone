@@ -4,18 +4,17 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image;
-use crate::{
-    devices::cli::Cli,
-    error::Error,
-    hal::{flash, serial},
-    utilities::buffer::TryCollectSlice,
+use super::{
+    cli::{self, file_transfer::FileBlock},
+    image,
 };
+use crate::{devices::cli::Cli, error::Error, hal::{flash, serial}, utilities::buffer::CollectSlice};
+use cli::file_transfer;
 use core::{cmp::min, mem::size_of};
+use core::array::IntoIter;
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
-use ufmt::uwriteln;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -23,7 +22,7 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
@@ -31,7 +30,6 @@ where
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    pub(crate) interactive_mode: bool,
 }
 
 impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
@@ -40,36 +38,26 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
+    /// Runs the CLI.
     pub fn run(mut self) -> ! {
-        // Basic runtime sanity checks: all bank indices must be sequential starting from MCU
-        let indices =
-            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
-        assert!((1..).zip(indices).all(|(a, b)| a == b));
-
-        // Decouple the CLI to facilitate passing mutable references to the bootloader to it.
         let mut cli = self.cli.take().unwrap();
-        if !self.interactive_mode {
-            self.boot(1).unwrap_err();
-            uprintln!(cli.serial(), "Failed to boot from default bank.");
-        }
-
         loop {
             cli.run(&mut self)
         }
     }
 
-    pub fn store_image<I, E>(
+    /// Writes a firmware image to an external flash bank.
+    pub fn store_image<I>(
         &mut self,
-        mut bytes: I,
+        blocks: I,
         size: usize,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = Result<u8, E>>,
-        Error: From<E>,
+        I: Iterator<Item = FileBlock>,
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);
@@ -79,30 +67,43 @@ where
         // a valid header and an invalid image never coexist.
         image::ImageHeader::format_default(&mut self.external_flash, &bank)?;
 
-        let mut address = bank.location;
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let address = bank.location;
+        let mut bytes_written = 0;
+
+        let mut bytes = blocks.flat_map(|b| IntoIter::new(b));
+
         loop {
-            match bytes.try_collect_slice(&mut buffer)? {
-                0 => break,
-                n => {
-                    block!(self.external_flash.write(address, &buffer[0..n]))?;
-                    address = address + n;
-                }
-            }
+            let distance_to_end = size - bytes_written;
+            let received = bytes.collect_slice(&mut buffer);
+            if received == 0 { break; }
+            let bytes_to_write = min(distance_to_end, received);
+            block!(self.external_flash.write(address + bytes_written, &buffer[0..bytes_to_write]))?;
+            bytes_written += bytes_to_write;
         }
 
-        image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        if bytes_written == size {
+            image::ImageHeader::write(&mut self.external_flash, &bank, size)
+        } else {
+            Err(Error::NotEnoughData)
+        }
     }
 
-    pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
-        let bank =
-            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+    pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
+
+    /// Boots into a given memory bank.
+    pub fn boot(
+        mcu_flash: &mut MCUF,
+        mcu_banks: &'static [image::Bank<<MCUF>::Address>],
+        bank_index: u8,
+    ) -> Result<!, Error> {
+        let bank = mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);
         }
 
-        let header = image::ImageHeader::retrieve(&mut self.mcu_flash, &bank)?;
+        let header = image::ImageHeader::retrieve(mcu_flash, &bank)?;
         if header.size == 0 {
             return Err(Error::BankEmpty);
         }
@@ -125,7 +126,14 @@ where
         }
     }
 
+    /// Formats all MCU flash banks.
     pub fn format_mcu_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.mcu_flash)?;
+        for bank in self.mcu_banks {
+            image::ImageHeader::format_default(&mut self.mcu_flash, bank)?;
+        }
         block!(self.mcu_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.mcu_flash)?;
         for bank in self.mcu_banks {
@@ -134,7 +142,14 @@ where
         Ok(())
     }
 
+    /// Formats all external flash banks.
     pub fn format_external_flash(&mut self) -> Result<(), Error> {
+        // Headers must be formatted first before the full flash
+        // erase, to ensure no half-formatted state in case of restart
+        image::GlobalHeader::format_default(&mut self.external_flash)?;
+        for bank in self.external_banks {
+            image::ImageHeader::format_default(&mut self.external_flash, bank)?;
+        }
         block!(self.external_flash.erase())?;
         image::GlobalHeader::format_default(&mut self.external_flash)?;
         for bank in self.external_banks {
@@ -143,14 +158,17 @@ where
         Ok(())
     }
 
+    /// Runs a self test on MCU flash.
     pub fn test_mcu_flash(&mut self) -> Result<(), Error> {
         Self::test_flash_read_write_cycle(&mut self.mcu_flash)
     }
 
+    /// Runs a self test on external flash.
     pub fn test_external_flash(&mut self) -> Result<(), Error> {
         Self::test_flash_read_write_cycle(&mut self.external_flash)
     }
 
+    /// Finds and returns the image header of a given bank index.
     pub fn image_at_bank(&mut self, index: u8) -> Option<image::ImageHeader> {
         let mcu_bank = self.mcu_banks().find(|b| b.index == index);
         let external_bank = self.external_banks().find(|b| b.index == index);
@@ -169,10 +187,12 @@ where
         }
     }
 
+    /// Returns an iterator of all MCU flash banks.
     pub fn mcu_banks(&self) -> impl Iterator<Item = image::Bank<MCUF::Address>> {
         self.mcu_banks.iter().cloned()
     }
 
+    /// Returns an iterator of all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
     }
@@ -232,7 +252,7 @@ where
         let mut final_buffer = [0x00; 4];
         block!(flash.read(start, &mut final_buffer))?;
         if expected_final_buffer != final_buffer {
-            Err(Error::DriverError("Flash Read Write cycle failed"))
+            Err(Error::DriverError("Flash read-write cycle failed"))
         } else {
             Ok(())
         }

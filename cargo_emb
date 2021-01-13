@@ -1,9 +1,0 @@
-#!/bin/bash
-
-# Description of why we need to specify the target manually every time:
-# https://github.com/rust-lang/cargo/issues/6784
-#
-# TODO: This should be solvable using custom test frameworks, but there
-# isn't much documentation for how to use them.
-
-cargo $@ --release --target thumbv7em-none-eabihf
