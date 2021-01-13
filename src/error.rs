@@ -63,25 +63,25 @@ impl Error {
     /// Reports error via abstract serial device
     pub fn report<S: Write>(&self, serial: &mut S) {
         match self {
-            Error::DriverError(text) => uwriteln!(serial, "[DriverError] -> {}", text),
+            Error::DriverError(text) => uwriteln!(serial, "[Driver Error] -> {}", text),
             Error::ConfigurationError(text) => {
-                uwriteln!(serial, "[ConfigurationError] -> {}", text)
+                uwriteln!(serial, "[Configuration Error] -> {}", text)
             }
-            Error::DeviceError(text) => uwriteln!(serial, "[DeviceError] -> {}", text),
-            Error::ImageTooBig => uwriteln!(serial, "[LogicError] -> Firmware Image too big"),
+            Error::DeviceError(text) => uwriteln!(serial, "[Device Error] -> {}", text),
+            Error::ImageTooBig => uwriteln!(serial, "[Logic Error] -> Firmware image too big"),
             Error::BankInvalid => uwriteln!(
                 serial,
-                "[LogicError] -> Bank doesn't exist or is invalid in this context"
+                "[Logic Error] -> Bank doesn't exist or is invalid in this context"
             ),
             Error::BankEmpty => {
-                uwriteln!(serial, "[LogicError] -> Bank is empty (contains no firmware image)")
+                uwriteln!(serial, "[Logic Error] -> Bank is empty (contains no firmware image)")
             }
             Error::FlashCorrupted => {
-                uwriteln!(serial, "[LogicError] -> Flash memory is corrupted or outdated")
+                uwriteln!(serial, "[Logic Error] -> Flash memory is corrupted or outdated")
             }
             Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
             Error::NotEnoughData => {
-                uwriteln!(serial, "[TransferError] -> Not enough image data received")
+                uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
             }
         }
         .ok()
