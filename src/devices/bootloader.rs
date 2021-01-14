@@ -4,49 +4,40 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{
-    cli::{self, file_transfer::FileBlock},
-    image,
-};
-use crate::{devices::cli::Cli, error::Error};
-use blue_hal::{hal::{serial, flash}, utilities::buffer::CollectSlice};
-use cli::file_transfer;
+use super::image;
+use crate::error::Error;
+use blue_hal::{hal::{serial, flash}, utilities::{buffer::CollectSlice, xmodem}};
 use core::{cmp::min, mem::size_of};
 use core::array::IntoIter;
 use cortex_m::peripheral::SCB;
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
 
-pub struct Bootloader<EXTF, MCUF, SRL>
+pub struct Bootloader<EXTF, MCUF>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite + file_transfer::FileTransfer,
-    Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
-    pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
 }
 
-impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
+impl<EXTF, MCUF> Bootloader<EXTF, MCUF>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite + file_transfer::FileTransfer,
-    Error: From<<SRL as serial::Read>::Error>,
 {
     /// Runs the CLI.
     pub fn run(mut self) -> ! {
-        let mut cli = self.cli.take().unwrap();
+        //let mut cli = self.cli.take().unwrap();
         loop {
-            cli.run(&mut self)
+        //    cli.run(&mut self)
         }
     }
 
@@ -58,7 +49,7 @@ where
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = FileBlock>,
+        I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);

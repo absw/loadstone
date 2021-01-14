@@ -1,7 +1,6 @@
 use blue_hal::{hal::serial::{Write, TimeoutRead}, utilities::xmodem};
 
 pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
-pub type FileBlock = [u8; BLOCK_SIZE];
 
 const MAX_RETRIES: u32 = 10;
 

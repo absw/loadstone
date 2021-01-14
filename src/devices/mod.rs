@@ -5,4 +5,4 @@
 
 pub mod bootloader;
 pub mod image;
-pub mod cli;
+//pub mod cli;
