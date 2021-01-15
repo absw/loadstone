@@ -13,20 +13,6 @@ use std::{
     io::{Read, Write},
 };
 
-fn open_file(path: &str, append: bool) -> Option<File> {
-    let file = OpenOptions::new()
-        .read(true)
-        .append(append)
-        .open(path);
-    match file {
-        Ok(f) => Some(f),
-        Err(e) => {
-            eprintln!("Failed to open '{}': {}.", path, e);
-            None
-        },
-    }
-}
-
 fn read_key(mut file: File) -> Option<Vec<u8>> {
     let mut string = String::new();
     file.read_to_string(&mut string)
@@ -39,6 +25,46 @@ fn read_key(mut file: File) -> Option<Vec<u8>> {
         });
     base64::decode(encoded)
         .ok()
+}
+
+fn run_with_files(mut image: File, key: File) -> Result<String, String> {
+    let hash = get_file_hash(&mut image)
+        .ok_or(String::from("Failed to calculate image hash"))?;
+    let key = read_key(key)
+        .ok_or(String::from("Failed to read private key"))?;
+    let signature = sign(&hash, &key)?;
+    let bytes_written = image.write(&signature)
+        .map_err(|e| {
+            format!("Failed to append signature to image: {}", e)
+        })?;
+    if bytes_written == signature.len() {
+        Ok(String::from("Successfully appended signature to image."))
+    } else {
+        Err(String::from("Error: signature only partially written."))
+    }
+}
+
+fn run_with_file_names(image: String, key: String) -> Result<String, String> {
+    let image_file = OpenOptions::new()
+        .read(true)
+        .append(true)
+        .open(image);
+    let key_file = File::open(key);
+
+    match (image_file, key_file) {
+        (Ok(i), Ok(k)) => {
+            run_with_files(i, k)
+        },
+        (Err(i), Ok(_)) => {
+            Err(format!("Failed to open image file: {}", i))
+        },
+        (Ok(_), Err(k)) => {
+            Err(format!("Failed to open key file: {}", k))
+        },
+        (Err(i), Err(k)) => {
+            Err(format!("Failed to open files for key ({}) and image ({}).\n", i, k))
+        },
+    }
 }
 
 fn main() {
@@ -56,49 +82,19 @@ fn main() {
             .help("The private key used to sign the image."))
         .get_matches();
 
-    let image_path = matches.value_of("image").unwrap();
-    let key_path = matches.value_of("private_key").unwrap();
-    let image = open_file(image_path, true);
-    let key = open_file(key_path, false);
+    let image = matches.value_of("image")
+        .unwrap()
+        .to_owned();
+    let private_key = matches.value_of("private_key")
+        .unwrap()
+        .to_owned();
 
-    if image.is_none() || key.is_none() {
-        process::exit(1);
-    }
-    let mut image = image.unwrap();
-    let key = key.unwrap();
-
-    println!("{:?}, {:?}", image, key);
-
-    let hash = get_file_hash(&mut image);
-    println!("{:?}", hash);
-
-    let raw_key = match read_key(key) {
-        Some(k) => k,
-        None => {
-            eprintln!("Failed to decode private key.");
-            process::exit(1);
-        },
-    };
-
-    let signature = match sign(&hash[..], &raw_key[..]) {
-        Ok(s) => s,
-        Err(_) => { process::exit(1); },
-    };
-
-    println!("{:?}", signature);
-
-    match image.write(&signature[..]) {
+    match run_with_file_names(image, private_key) {
         Ok(s) => {
-            if s == signature.len() {
-                println!("Successfully appended RSA256 signature to image.");
-            } else {
-                eprintln!("A partial write to the image occured. \
-                    You may need to re-generate the image.");
-                process::exit(1);
-            }
+            println!("{}", s);
         },
-        Err(_) => {
-            eprintln!("Failed to append the signature to the file.");
+        Err(s) => {
+            eprintln!("{}", s);
             process::exit(1);
         }
     }
