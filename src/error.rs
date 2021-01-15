@@ -1,12 +1,13 @@
 //! Error types and methods for the Secure Bootloader project.
 
 use blue_hal::{hal::serial::Write, uprint};
+use defmt::Format;
 use ufmt::{uwrite, uwriteln};
 
 /// Top level error type for the bootloader. Unlike the specific
 /// module errors, this error contains textual descriptions of the
 /// problem as it is meant to be directly reported through USART.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Format)]
 pub enum Error {
     /// Error caused by a low level peripheral driver
     DriverError(&'static str),

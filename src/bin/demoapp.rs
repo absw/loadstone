@@ -7,7 +7,7 @@ use cortex_m_rt::{entry, exception};
 
 #[cfg(target_arch = "arm")]
 #[entry]
-fn main() -> ! { loop{} }
+fn main() -> ! { loop {} }
 
 #[cfg(not(target_arch = "arm"))]
 fn main() {}

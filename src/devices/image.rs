@@ -1,6 +1,9 @@
 use crate::error::Error;
+use blue_hal::{
+    hal::flash::{self, UnportableDeserialize, UnportableSerialize},
+    utilities::memory::Address,
+};
 use core::{cmp::min, mem::size_of};
-use blue_hal::{hal::flash::{self, UnportableSerialize, UnportableDeserialize}, utilities::memory::Address};
 use crc::{crc32, Hasher32};
 use nb::{self, block};
 
@@ -209,14 +212,15 @@ impl<A: Address> Bank<A> {
 mod tests {
     use super::*;
     use blue_hal::hal::{
-        doubles::{error::FakeError, flash::{Address, FakeFlash }},
+        doubles::{
+            error::FakeError,
+            flash::{Address, FakeFlash},
+        },
         flash::ReadWrite,
     };
 
     impl From<FakeError> for Error {
-        fn from(_: FakeError) -> Self {
-            Error::DeviceError("Something fake happened")
-        }
+        fn from(_: FakeError) -> Self { Error::DeviceError("Something fake happened") }
     }
 
     #[test]

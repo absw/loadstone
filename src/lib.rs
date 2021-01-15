@@ -9,7 +9,7 @@
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
 
-pub use blue_hal::stm32pac as stm32pac;
+pub use blue_hal::stm32pac;
 
 #[cfg(target_arch = "arm")]
 use panic_abort as _;

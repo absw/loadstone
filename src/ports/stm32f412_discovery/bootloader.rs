@@ -3,7 +3,7 @@ use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::error::Error;
 use core::mem::size_of;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time, stm32pac};
 use super::pin_configuration::*;
 
 // Flash pins and typedefs
@@ -12,9 +12,6 @@ type Qspi = QuadSpi<QspiPins, mode::Single>;
 type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
 
 // Serial pins and typedefs
-type UsartPins = (Pg14<AF8>, Pg9<AF8>);
-type Serial = serial::Serial<USART6, UsartPins>;
-
 const EXTERNAL_NUMBER_OF_BANKS: usize = 2;
 const EXTERNAL_BANK_MAX_IMAGE_SIZE: usize = {
     let (start, end) = (n25q128a_flash::MemoryMap::location(), n25q128a_flash::MemoryMap::end());
@@ -64,38 +61,19 @@ impl Bootloader<ExternalFlash, flash::McuFlash> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
-        let gpioa = peripherals.GPIOA.split(&mut peripherals.RCC);
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
 
-        let mut mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
+        let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
         let clocks = Clocks::hardcoded(peripherals.RCC);
 
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
-        //let interactive_mode = gpioa.pa0.is_high() || gpioa.pa1.is_high();
-        //let mut boot_error : Option<Error> = None;
-        //if !interactive_mode {
-        //    const DEFAULT_BANK : u8 = 1;
-        //    boot_error = Some(Self::boot(&mut mcu_flash, &MCU_BANKS, DEFAULT_BANK).unwrap_err());
-        //}
-
         //let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
         //let serial_pins = (gpiog.pg14, gpiog.pg9);
         //let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
-
-        //match boot_error {
-        //    Some(Error::BankInvalid) =>
-        //        uwriteln!(&mut serial, "[INFO] Attempted to boot from invalid bank. Continuing to interactive mode instead.").unwrap(),
-        //    Some(Error::BankEmpty) =>
-        //        uwriteln!(&mut serial, "[INFO] Attempted to boot from empty bank. Continuing to interactive mode instead.").unwrap(),
-        //    Some(_) =>
-        //        uwriteln!(&mut serial, "Unexpected boot error. Continuing to interactive mode.").unwrap(),
-        //    None => (),
-        //};
-
         //let cli = Cli::new(serial).unwrap();
 
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);

@@ -6,10 +6,13 @@
 //! specific information.
 use super::image;
 use crate::error::Error;
-use blue_hal::{hal::{serial, flash}, utilities::{buffer::CollectSlice, xmodem}};
-use core::{cmp::min, mem::size_of};
-use core::array::IntoIter;
+use blue_hal::{
+    hal::flash,
+    utilities::{buffer::CollectSlice, xmodem},
+};
+use core::{array::IntoIter, cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
+use defmt::{error, info};
 use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
 
@@ -33,11 +36,28 @@ where
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
 {
-    /// Runs the CLI.
+    /// Main bootloader routine. Attempts to boot from MCU image, and
+    /// in case of failure proceeds to:
+    ///
+    /// * Verify selected (main) external bank. If valid, copy to bootable MCU flash bank.
+    /// * If main external bank not available or invalid, verify golden image. If valid,
+    /// copy to bootable MCU flash bank.
+    /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        //let mut cli = self.cli.take().unwrap();
-        loop {
-        //    cli.run(&mut self)
+        let default_bank = 1;
+        match self.boot(default_bank).unwrap_err() {
+            Error::BankInvalid => info!("Attempted to boot from invalid bank. Restoring image..."),
+            Error::BankEmpty => info!("Attempted to boot from empty bank. Restoring image..."),
+            _ => info!("Unexpected boot error. Restoring image..."),
+        };
+
+        match self.restore() {
+            Ok(()) => self.boot(default_bank).expect("FATAL: Failed to boot from verified image!"),
+            Err(e) => {
+                error!("Failed to restore with error: {}", e);
+                info!("Proceeding to recovery mode...");
+                unimplemented!("Recovery Mode");
+            }
         }
     }
 
@@ -49,7 +69,7 @@ where
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
     where
-        I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>
+        I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
         if size > bank.size {
             return Err(Error::ImageTooBig);
@@ -68,7 +88,9 @@ where
         loop {
             let distance_to_end = size - bytes_written;
             let received = bytes.collect_slice(&mut buffer);
-            if received == 0 { break; }
+            if received == 0 {
+                break;
+            }
             let bytes_to_write = min(distance_to_end, received);
             block!(self.external_flash.write(address + bytes_written, &buffer[0..bytes_to_write]))?;
             bytes_written += bytes_to_write;
@@ -83,19 +105,22 @@ where
 
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
+    /// Restores an image from the preferred external bank. If it fails,
+    /// attempts to restore from the golden image.
+    fn restore(&mut self) -> Result<(), Error> {
+        unimplemented!("Image Restoration");
+    }
+
     /// Boots into a given memory bank.
-    pub fn boot(
-        mcu_flash: &mut MCUF,
-        mcu_banks: &'static [image::Bank<<MCUF>::Address>],
-        bank_index: u8,
-    ) -> Result<!, Error> {
-        let bank = mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
+    pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
+        let bank =
+            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
 
         if !bank.bootable {
             return Err(Error::BankInvalid);
         }
 
-        let header = image::ImageHeader::retrieve(mcu_flash, &bank)?;
+        let header = image::ImageHeader::retrieve(&mut self.mcu_flash, &bank)?;
         if header.size == 0 {
             return Err(Error::BankEmpty);
         }
