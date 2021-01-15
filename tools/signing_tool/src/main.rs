@@ -50,23 +50,15 @@ fn run_with_file_names(image: String, key: String) -> Result<String, String> {
     let image_file = OpenOptions::new()
         .read(true)
         .append(true)
-        .open(image);
-    let key_file = File::open(key);
-
-    match (image_file, key_file) {
-        (Ok(i), Ok(k)) => {
-            run_with_files(i, k)
-        },
-        (Err(i), Ok(_)) => {
-            Err(format!("Failed to open image file: {}", i))
-        },
-        (Ok(_), Err(k)) => {
-            Err(format!("Failed to open key file: {}", k))
-        },
-        (Err(i), Err(k)) => {
-            Err(format!("Failed to open files for key ({}) and image ({}).\n", i, k))
-        },
-    }
+        .open(image)
+        .map_err(|e| {
+            format!("Failed to open image file: {}", e)
+        })?;
+    let key_file = File::open(key)
+        .map_err(|e| {
+            format!("Failed to open key file: {}", e)
+        })?;
+    run_with_files(image_file, key_file)
 }
 
 fn main() {
