@@ -62,7 +62,8 @@ fn run_with_file_names(image: String, key: String) -> Result<String, String> {
 }
 
 fn main() {
-    let matches = clap_app!(myapp =>
+    let matches = clap_app!(app =>
+        (name: env!("CARGO_PKG_NAME"))
         (version: env!("CARGO_PKG_VERSION"))
         (author: env!("CARGO_PKG_AUTHORS"))
         (about: env!("CARGO_PKG_DESCRIPTION"))
