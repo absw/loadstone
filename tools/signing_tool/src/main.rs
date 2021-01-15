@@ -1,11 +1,16 @@
 mod hashing;
 use crate::hashing::*;
 
+mod signing;
+use crate::signing::*;
+
 extern crate clap;
+extern crate base64;
 
 use std::{
     fs::{File, OpenOptions},
     process,
+    io::Read,
 };
 
 fn open_file(path: &str, append: bool) -> Option<File> {
@@ -20,6 +25,20 @@ fn open_file(path: &str, append: bool) -> Option<File> {
             None
         },
     }
+}
+
+fn read_key(mut file: File) -> Option<Vec<u8>> {
+    let mut string = String::new();
+    file.read_to_string(&mut string)
+        .ok()?;
+    let encoded = string.lines()
+        .filter(|l| !l.starts_with("-"))
+        .fold(Vec::<u8>::new(), |mut data, line| {
+            data.extend_from_slice(line.as_bytes());
+            data
+        });
+    base64::decode(encoded)
+        .ok()
 }
 
 fn main() {
@@ -46,9 +65,25 @@ fn main() {
         process::exit(1);
     }
     let mut image = image.unwrap();
+    let key = key.unwrap();
 
     println!("{:?}, {:?}", image, key);
 
     let hash = get_file_hash(&mut image);
     println!("{:?}", hash);
+
+    let raw_key = match read_key(key) {
+        Some(k) => k,
+        None => {
+            eprintln!("Failed to decode private key.");
+            process::exit(1);
+        },
+    };
+
+    let signature = match sign(&hash[..], &raw_key[..]) {
+        Ok(s) => s,
+        Err(_) => { process::exit(1); },
+    };
+
+    println!("{:?}", signature);
 }
