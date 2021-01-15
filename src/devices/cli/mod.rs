@@ -5,16 +5,22 @@
 //! handled in the `port` module.
 
 #![macro_use]
-use crate::{
-    devices::bootloader::Bootloader,
-    error::Error as BootloaderError,
+use crate::error::Error as ApplicationError;
+use blue_hal::{
+    hal::{
+        flash,
+        serial::{self, Read},
+    },
+    uprint, uprintln,
+    utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
-use blue_hal::{hal::{flash, serial::{self, Read}}, uprint, uprintln, utilities::buffer::TryCollectSlice, utilities::iterator::Unique};
 use nb::block;
-use ufmt::{uwriteln, uwrite};
+use ufmt::{uwrite, uwriteln};
 
 use self::file_transfer::FileTransfer;
+
+use super::boot_manager::BootManager;
 
 pub mod file_transfer;
 
@@ -35,11 +41,11 @@ pub enum Error {
     DuplicateArguments,
     SerialBufferOverflow,
     SerialReadError,
-    BootloaderError(BootloaderError),
+    ApplicationError(ApplicationError),
 }
 
-impl From<BootloaderError> for Error {
-    fn from(e: BootloaderError) -> Self { Error::BootloaderError(e) }
+impl From<ApplicationError> for Error {
+    fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
 }
 
 pub struct Cli<S: serial::ReadWrite> {
@@ -166,14 +172,11 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF>)
+    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>)
     where
         EXTF: flash::ReadWrite,
-        BootloaderError: From<EXTF::Error>,
-        MCUF: flash::ReadWrite,
-        BootloaderError: From<MCUF::Error>,
-        SRL: serial::ReadWrite + FileTransfer,
-        BootloaderError: From<<SRL as serial::Read>::Error>,
+        ApplicationError: From<EXTF::Error>,
+        ApplicationError: From<<SRL as serial::Read>::Error>,
     {
         if !self.greeted {
             uprintln!(self.serial, "{}", GREETING);
@@ -188,7 +191,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
             block!(self.read_line(&mut buffer))?;
             let text = from_utf8(&buffer).map_err(|_| Error::BadCommandEncoding)?;
             let (name, arguments) = Self::parse(text)?;
-            commands::run(self, bootloader, name, arguments)?;
+            commands::run(self, boot_manager, name, arguments)?;
             Ok(())
         };
         match execute_command() {
@@ -210,8 +213,8 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
             Err(Error::DuplicateArguments) => {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
-            Err(Error::BootloaderError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal bootloader error: ");
+            Err(Error::ApplicationError(e)) => {
+                uprintln!(self.serial, "[CLI Error] Internal boot_manager error: ");
                 e.report(&mut self.serial);
                 Ok(())
             }
@@ -321,7 +324,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
 
 macro_rules! commands {
     (
-        $cli:ident, $bootloader:ident, $names:ident, $helpstrings:ident [
+        $cli:ident, $boot_manager:ident, $names:ident, $helpstrings:ident [
             $(
                 $c:ident[$h:expr]($($a:ident: $t:ty [$r:expr],)*) $command:block,
             )+
@@ -343,14 +346,13 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<EXTF, MCUF, SRL>(
+        pub(super) fn run<EXTF, SRL>(
             $cli: &mut Cli<SRL>,
-            $bootloader: &mut Bootloader<EXTF, MCUF, SRL>,
+            $boot_manager: &mut BootManager<EXTF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
-            EXTF: flash::ReadWrite, BootloaderError: From<EXTF::Error>,
-            MCUF: flash::ReadWrite, BootloaderError: From<MCUF::Error>,
-            SRL: serial::ReadWrite + FileTransfer, BootloaderError: From<<SRL as serial::Read>::Error>,
+            EXTF: flash::ReadWrite, ApplicationError: From<EXTF::Error>,
+            SRL: serial::ReadWrite + FileTransfer, ApplicationError: From<<SRL as serial::Read>::Error>,
         {
             match name {
                 $(
