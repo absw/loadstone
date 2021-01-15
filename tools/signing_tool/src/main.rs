@@ -10,7 +10,7 @@ extern crate base64;
 use std::{
     fs::{File, OpenOptions},
     process,
-    io::Read,
+    io::{Read, Write},
 };
 
 fn open_file(path: &str, append: bool) -> Option<File> {
@@ -86,4 +86,20 @@ fn main() {
     };
 
     println!("{:?}", signature);
+
+    match image.write(&signature[..]) {
+        Ok(s) => {
+            if s == signature.len() {
+                println!("Successfully appended RSA256 signature to image.");
+            } else {
+                eprintln!("A partial write to the image occured. \
+                    You may need to re-generate the image.");
+                process::exit(1);
+            }
+        },
+        Err(_) => {
+            eprintln!("Failed to append the signature to the file.");
+            process::exit(1);
+        }
+    }
 }
