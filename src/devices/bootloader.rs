@@ -8,7 +8,8 @@ use super::{
     cli::{self, file_transfer::FileBlock},
     image,
 };
-use crate::{devices::cli::Cli, error::Error, hal::{flash, serial}, utilities::buffer::CollectSlice};
+use crate::{devices::cli::Cli, error::Error};
+use blue_hal::{hal::{serial, flash}, utilities::buffer::CollectSlice};
 use cli::file_transfer;
 use core::{cmp::min, mem::size_of};
 use core::array::IntoIter;

@@ -27,3 +27,4 @@ gen_loadstone = "objcopy --bin loadstone --release --target thumbv7em-none-eabih
 st = "strip --bin loadstone --release --target thumbv7em-none-eabihf"
 d = "doc --release --target thumbv7em-none-eabihf"
 dop = "doc --release --target thumbv7em-none-eabihf --open"
+bl = "bloat --release --bin loadstone --target thumbv7em-none-eabihf"
