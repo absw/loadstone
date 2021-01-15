@@ -9,8 +9,8 @@ use loadstone_lib::devices::boot_manager;
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
-    let app = boot_manager::BootManager {};
-    loop {}
+    let mut app = boot_manager::BootManager::new();
+    app.run();
 }
 
 #[cfg(not(target_arch = "arm"))]

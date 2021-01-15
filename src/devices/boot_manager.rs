@@ -1,16 +1,17 @@
 //! Fully CLI interactive boot manager for the demo application.
-//!
 
-use core::{array::IntoIter, cmp::min};
-
-use blue_hal::{hal::{flash, serial}, stm32pac::SCB};
-
-use blue_hal::utilities::{buffer::CollectSlice, xmodem};
-use nb::block;
-
+use super::{
+    cli::{file_transfer, Cli},
+    image::{self, TRANSFER_BUFFER_SIZE},
+};
 use crate::error::Error;
-
-use super::{cli::file_transfer, image::{self, TRANSFER_BUFFER_SIZE}};
+use blue_hal::{
+    hal::{flash, serial},
+    stm32pac::SCB,
+    utilities::{buffer::CollectSlice, xmodem},
+};
+use core::{array::IntoIter, cmp::min};
+use nb::block;
 
 pub struct BootManager<EXTF, SRL>
 where
@@ -21,7 +22,7 @@ where
 {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
-    pub(crate) serial: SRL,
+    pub(crate) cli: Option<Cli<SRL>>,
 }
 
 impl<EXTF, SRL> BootManager<EXTF, SRL>
@@ -31,7 +32,6 @@ where
     SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
-
     /// Returns an iterator of all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
@@ -80,4 +80,11 @@ where
     }
 
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
+
+    pub fn run(mut self) -> ! {
+        let mut cli = self.cli.take().unwrap();
+        loop {
+            cli.run(&mut self)
+        }
+    }
 }

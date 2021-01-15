@@ -6,10 +6,8 @@
 //! specific information.
 use super::image;
 use crate::error::Error;
-use blue_hal::{
-    hal::flash,
-};
-use core::{array::IntoIter, cmp::min, mem::size_of};
+use blue_hal::hal::flash;
+use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{error, info};
 use image::TRANSFER_BUFFER_SIZE;

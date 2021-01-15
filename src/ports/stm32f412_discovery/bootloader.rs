@@ -48,7 +48,7 @@ static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
     image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE, },
 ];
 
-static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
+pub static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
     image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, },
     image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
 ];
