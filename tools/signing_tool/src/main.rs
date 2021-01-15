@@ -1,3 +1,6 @@
+mod hashing;
+use crate::hashing::*;
+
 extern crate clap;
 
 use std::{
@@ -42,6 +45,10 @@ fn main() {
     if image.is_none() || key.is_none() {
         process::exit(1);
     }
+    let mut image = image.unwrap();
 
     println!("{:?}, {:?}", image, key);
+
+    let hash = get_file_hash(&mut image);
+    println!("{:?}", hash);
 }

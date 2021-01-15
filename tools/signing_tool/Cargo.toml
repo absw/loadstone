@@ -9,3 +9,4 @@ description = "Tool to calculate and append signatures to images."
 
 [dependencies]
 clap = "2.*"
+sha2 = "0.9.*"
