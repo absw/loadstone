@@ -71,11 +71,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash> {
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
-        //let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-        //let serial_pins = (gpiog.pg14, gpiog.pg9);
-        //let mut serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
-        //let cli = Cli::new(serial).unwrap();
-
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
