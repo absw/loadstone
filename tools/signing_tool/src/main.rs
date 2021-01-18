@@ -1,29 +1,29 @@
 mod signing;
+mod error;
 
-use crate::signing::*;
+use crate::{
+    signing::sign_file,
+    error::{self as e, Error},
+};
 use clap::{clap_app};
 use std::{
     fs::{File, OpenOptions},
     process,
 };
 
-fn run_with_files(image: File, key: File) -> Result<String, String> {
+fn run_with_files(image: File, key: File) -> Result<String, Error> {
     sign_file(image, key)
         .map(|()| String::from("Successfully appended signature to image."))
 }
 
-fn run_with_file_names(image: String, key: String) -> Result<String, String> {
+fn run_with_file_names(image: String, key: String) -> Result<String, Error> {
     let image_file = OpenOptions::new()
         .read(true)
         .append(true)
         .open(image)
-        .map_err(|e| {
-            format!("Failed to open image file: {}", e)
-        })?;
+        .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
     let key_file = File::open(key)
-        .map_err(|e| {
-            format!("Failed to open key file: {}", e)
-        })?;
+        .map_err(|_| Error::FileOpenFailed(e::File::Key))?;
     run_with_files(image_file, key_file)
 }
 
