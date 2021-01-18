@@ -1,0 +1,12 @@
+target remote localhost:3333
+monitor reset halt
+define reflash
+monitor flash erase_address unlock 0x08000000 524288
+monitor flash write_image unlock ./combined.bin 0x08000000 bin
+end
+reflash
+define verify
+monitor verify_image ./combined.bin 0x08000000 bin
+end
+verify
+monitor reset halt

@@ -10,6 +10,7 @@ use blue_hal::{
     stm32pac::SCB,
     utilities::{buffer::CollectSlice, xmodem},
 };
+use defmt::info;
 use core::{array::IntoIter, cmp::min};
 use nb::block;
 
@@ -84,6 +85,7 @@ where
     pub fn run(mut self) -> ! {
         let mut cli = self.cli.take().unwrap();
         loop {
+            info!("Starting CLI");
             cli.run(&mut self)
         }
     }
