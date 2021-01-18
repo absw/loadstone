@@ -6,10 +6,7 @@ use crate::{
     signing::sign_file,
 };
 use clap::clap_app;
-use std::{
-    fs::{File, OpenOptions},
-    process,
-};
+use std::fs::{File, OpenOptions};
 
 fn run(image: String, key: String) -> Result<(), Error> {
     let image_file = OpenOptions::new()
@@ -21,7 +18,7 @@ fn run(image: String, key: String) -> Result<(), Error> {
     sign_file(image_file, key_file)
 }
 
-fn main() {
+fn main() -> Result<(), String> {
     let matches = clap_app!(app =>
         (name: env!("CARGO_PKG_NAME"))
         (version: env!("CARGO_PKG_VERSION"))
@@ -38,10 +35,8 @@ fn main() {
     match run(image, private_key) {
         Ok(()) => {
             println!("Successfully appended signature to image.");
+            Ok(())
         }
-        Err(s) => {
-            eprintln!("{}", s);
-            process::exit(1);
-        }
+        Err(e) => Err(e.to_string()),
     }
 }
