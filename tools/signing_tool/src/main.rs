@@ -32,7 +32,7 @@ fn main() {
         (author: env!("CARGO_PKG_AUTHORS"))
         (about: env!("CARGO_PKG_DESCRIPTION"))
         (@arg image: +required "The firmware image to be signed.")
-        (@arg private_key: +required "The private key used to sign the image.")
+        (@arg private_key: +required "The PKCS8 private key used to sign the image.")
     )
     .get_matches();
 
