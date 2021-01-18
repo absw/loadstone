@@ -31,14 +31,6 @@ fn read_key(mut file: File) -> Result<Vec<u8>, Error> {
     base64::decode(encoded).map_err(|_| Error::KeyParseFailed)
 }
 
-fn create_zeroed_u8_vec(size: usize) -> Vec<u8> {
-    let mut vector = Vec::<u8>::with_capacity(size);
-    for _ in 0..size {
-        vector.push(0);
-    }
-    vector
-}
-
 /// Reads the contents of `file` and signs it using RSA/SHA256 with the key in `key_file`.
 /// NOTE: This assumes that `file` is in read/append mode and the key is PKCS8.
 pub fn sign_file(mut file: File, key_file: File) -> Result<(), Error> {
@@ -48,7 +40,7 @@ pub fn sign_file(mut file: File, key_file: File) -> Result<(), Error> {
         RsaKeyPair::from_pkcs8(&raw_key).map_err(|_| Error::KeyParseFailed)?;
 
     let rng = SystemRandom::new();
-    let mut signature = create_zeroed_u8_vec(key.public_modulus_len());
+    let mut signature = vec![0u8; key.public_modulus_len()];
 
     key.sign(&RSA_PKCS1_SHA256, &rng, &plaintext, &mut signature)
         .map_err(|_| Error::SignatureGenerationFailed)?;
