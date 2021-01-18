@@ -11,18 +11,14 @@ use std::{
     process,
 };
 
-fn run_with_files(image: File, key: File) -> Result<String, Error> {
-    sign_file(image, key).map(|()| String::from("Successfully appended signature to image."))
-}
-
-fn run_with_file_names(image: String, key: String) -> Result<String, Error> {
+fn run(image: String, key: String) -> Result<(), Error> {
     let image_file = OpenOptions::new()
         .read(true)
         .append(true)
         .open(image)
         .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
     let key_file = File::open(key).map_err(|_| Error::FileOpenFailed(e::File::Key))?;
-    run_with_files(image_file, key_file)
+    sign_file(image_file, key_file)
 }
 
 fn main() {
@@ -39,9 +35,9 @@ fn main() {
     let image = matches.value_of("image").unwrap().to_owned();
     let private_key = matches.value_of("private_key").unwrap().to_owned();
 
-    match run_with_file_names(image, private_key) {
-        Ok(s) => {
-            println!("{}", s);
+    match run(image, private_key) {
+        Ok(()) => {
+            println!("Successfully appended signature to image.");
         }
         Err(s) => {
             eprintln!("{}", s);
