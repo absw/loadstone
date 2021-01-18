@@ -9,6 +9,8 @@ description = "Tool to calculate and append signatures to images."
 
 [dependencies]
 clap = "2"
-sha2 = "0.9"
-rsa = "0.3"
 base64 = "0.13"
+
+[dependencies.ring]
+version = "0.16"
+features = ["alloc", "std"]

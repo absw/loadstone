@@ -1,49 +1,15 @@
-mod hashing;
-use crate::hashing::*;
-
 mod signing;
+
 use crate::signing::*;
-
-extern crate clap;
 use clap::{clap_app};
-
-extern crate base64;
-
 use std::{
     fs::{File, OpenOptions},
     process,
-    io::{Read, Write},
 };
 
-fn read_key(mut file: File) -> Option<Vec<u8>> {
-    let mut string = String::new();
-    file.read_to_string(&mut string)
-        .ok()?;
-    let encoded = string.lines()
-        .filter(|l| !l.starts_with("-"))
-        .fold(Vec::<u8>::new(), |mut data, line| {
-            data.extend_from_slice(line.as_bytes());
-            data
-        });
-    base64::decode(encoded)
-        .ok()
-}
-
-fn run_with_files(mut image: File, key: File) -> Result<String, String> {
-    let hash = get_file_hash(&mut image)
-        .ok_or(String::from("Failed to calculate image hash"))?;
-    let key = read_key(key)
-        .ok_or(String::from("Failed to read private key"))?;
-    let signature = sign(&hash, &key)?;
-    let bytes_written = image.write(&signature)
-        .map_err(|e| {
-            format!("Failed to append signature to image: {}", e)
-        })?;
-    if bytes_written == signature.len() {
-        Ok(String::from("Successfully appended signature to image."))
-    } else {
-        Err(String::from("Error: signature only partially written."))
-    }
+fn run_with_files(image: File, key: File) -> Result<String, String> {
+    sign_file(image, key)
+        .map(|()| String::from("Successfully appended signature to image."))
 }
 
 fn run_with_file_names(image: String, key: String) -> Result<String, String> {
