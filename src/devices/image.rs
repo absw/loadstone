@@ -1,8 +1,5 @@
 use crate::error::Error;
-use blue_hal::{
-    hal::flash::{self, UnportableDeserialize, UnportableSerialize},
-    utilities::memory::Address,
-};
+use blue_hal::{hal::flash::{self, UnportableDeserialize, UnportableSerialize}, utilities::{buffer::find_subsequence, iterator::UntilSequence, memory::Address}};
 use core::{cmp::min, mem::size_of};
 use crc::{crc32, Hasher32};
 use nb::{self, block};
@@ -29,39 +26,33 @@ pub struct Image<A: Address> {
 }
 
 pub fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        unimplemented!();
-        //if size <= size_of::<u32>() {
-        //    return Err(Error::BankEmpty);
-        //}
+where
+    A: Address,
+    F: flash::ReadWrite<Address = A>,
+    Error: From<F::Error>,
+{
+    let bytes = flash.bytes(bank.location).until_sequence(MAGIC_STRING.as_bytes());
+    let (size, digest) = bytes.fold((0, crc32::Digest::new(crc32::IEEE)), |(mut size, mut digest), byte| {
+        size += 1;
+        digest.write(&[byte]);
+        (size, digest)
+    });
+    let calculated_crc = digest.sum32();
 
-        //let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
-        //let mut byte_index = 0usize;
-        //let mut digest = crc32::Digest::new(crc32::IEEE);
-        //let size_before_crc = size.saturating_sub(size_of::<u32>());
-
-        //while byte_index < size_before_crc {
-        //    let remaining_size = size_before_crc.saturating_sub(byte_index);
-        //    let bytes_to_read = min(TRANSFER_BUFFER_SIZE, remaining_size);
-        //    let slice = &mut buffer[0..bytes_to_read];
-        //    block!(flash.read(location + byte_index, slice))?;
-        //    digest.write(slice);
-        //    byte_index += bytes_to_read;
-        //}
-
-        //let mut crc_bytes = [0u8; 4];
-        //block!(flash.read(location + byte_index, &mut crc_bytes))?;
-        //let crc = u32::from_le_bytes(crc_bytes);
-        //let calculated_crc = digest.sum32();
-        //if crc == calculated_crc {
-        //    Ok(crc)
-        //} else {
-        //    Err(Error::CrcInvalid)
-        //}
+    let crc_size_bytes = 4usize;
+    let crc_offset = size - crc_size_bytes;
+    let mut crc_bytes = [0u8; 4];
+    block!(flash.read(bank.location + crc_offset, &mut crc_bytes))?;
+    let crc = u32::from_le_bytes(crc_bytes);
+    if crc == calculated_crc {
+        Ok(Image {
+            size,
+            location: bank.location,
+            bootable: bank.bootable
+        })
+    } else {
+        Err(Error::CrcInvalid)
+    }
 }
 
 #[cfg(test)]
@@ -80,6 +71,5 @@ mod tests {
     }
 
     #[test]
-    fn retrieving_image_from_flash() {
-    }
+    fn retrieving_image_from_flash() {}
 }

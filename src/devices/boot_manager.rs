@@ -10,8 +10,8 @@ use blue_hal::{
     stm32pac::SCB,
     utilities::{buffer::CollectSlice, xmodem},
 };
-use defmt::info;
 use core::{array::IntoIter, cmp::min};
+use defmt::info;
 use nb::block;
 
 pub struct BootManager<EXTF, SRL>

@@ -51,7 +51,7 @@ where
         match self.restore() {
             Ok(()) => self.boot(default_bank).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
-                error!("Failed to restore with error: {}", e);
+                error!("Failed to restore with error: {:?}", e);
                 info!("Proceeding to recovery mode...");
                 unimplemented!("Recovery Mode");
             }
