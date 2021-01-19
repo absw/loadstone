@@ -1,11 +1,13 @@
 use blue_hal::{hal::flash, utilities::{iterator::UntilSequence, memory::Address}};
 use crc::{crc32, Hasher32};
+use defmt::info;
 use nb::{self, block};
 
 use crate::error::Error;
 
 /// This string must terminate any valid images, followed by CRC
-const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+pub const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+pub const CRC_SIZE_BYTES: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Bank<A: Address> {
@@ -23,6 +25,10 @@ pub struct Image<A: Address> {
     bootable: bool,
 }
 
+impl<A: Address> Image<A> {
+    pub fn size(&self) -> usize { self.size }
+}
+
 pub fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, Error>
 where
     A: Address,
@@ -30,19 +36,19 @@ where
     Error: From<F::Error>,
 {
     let bytes = flash.bytes(bank.location).take(bank.size).until_sequence(MAGIC_STRING.as_bytes());
-    let (size, digest) = bytes.inspect(|b| {println!("{:x}", b);}).fold((0, crc32::Digest::new(crc32::IEEE)), |(mut size, mut digest), byte| {
+    info!("Verifying image...");
+    let (size, digest) = bytes.fold((0, crc32::Digest::new(crc32::IEEE)), |(mut size, mut digest), byte| {
         size += 1;
         digest.write(&[byte]);
         (size, digest)
     });
+    info!("Done verifying image.");
     let calculated_crc = digest.sum32();
-    println!("Calculated: {:x}", calculated_crc);
 
     let crc_offset = size + MAGIC_STRING.len();
-    let mut crc_bytes = [0u8; 4];
+    let mut crc_bytes = [0u8; CRC_SIZE_BYTES];
     block!(flash.read(bank.location + crc_offset, &mut crc_bytes))?;
     let crc = u32::from_le_bytes(crc_bytes);
-    println!("Retrieved: {:x}", crc);
     if crc == calculated_crc {
         Ok(Image {
             size,

@@ -8,11 +8,11 @@ use crate::error::Error;
 use blue_hal::{
     hal::{flash, serial},
     stm32pac::SCB,
-    utilities::{buffer::CollectSlice, xmodem},
+    utilities::xmodem,
 };
-use core::{array::IntoIter, cmp::min};
+
 use defmt::info;
-use nb::block;
+
 
 pub struct BootManager<EXTF, SRL>
 where

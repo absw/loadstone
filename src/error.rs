@@ -20,6 +20,7 @@ pub enum Error {
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
+    NoImageToRestoreFrom,
     CrcInvalid,
 }
 
@@ -83,6 +84,9 @@ impl Error {
             Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
             Error::NotEnoughData => {
                 uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
+            },
+            Error::NoImageToRestoreFrom => {
+                uwriteln!(serial, "[Logic Error] -> No image to restore from")
             }
         }
         .ok()

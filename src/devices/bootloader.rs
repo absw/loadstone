@@ -4,7 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image;
+use super::image::{self, CRC_SIZE_BYTES, MAGIC_STRING};
 use crate::error::Error;
 use blue_hal::hal::flash;
 use core::{cmp::min, mem::size_of};
@@ -25,6 +25,8 @@ where
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
 }
 
+const DEFAULT_BOOT_BANK: u8 = 1;
+
 impl<EXTF, MCUF> Bootloader<EXTF, MCUF>
 where
     EXTF: flash::ReadWrite,
@@ -40,15 +42,15 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        let default_bank = 1;
-        match self.boot(default_bank).unwrap_err() {
+        info!("Attempting to boot from default bank");
+        match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
             Error::BankInvalid => info!("Attempted to boot from invalid bank. Restoring image..."),
             Error::BankEmpty => info!("Attempted to boot from empty bank. Restoring image..."),
             _ => info!("Unexpected boot error. Restoring image..."),
         };
 
         match self.restore() {
-            Ok(()) => self.boot(default_bank).expect("FATAL: Failed to boot from verified image!"),
+            Ok(()) => self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 error!("Failed to restore with error: {:?}", e);
                 info!("Proceeding to recovery mode...");
@@ -60,7 +62,12 @@ where
     /// Restores an image from the preferred external bank. If it fails,
     /// attempts to restore from the golden image.
     fn restore(&mut self) -> Result<(), Error> {
-        unimplemented!("Image Restoration");
+        for bank in 0..self.external_banks.len() {
+            if self.copy_image(DEFAULT_BOOT_BANK, bank as u8).is_ok() {
+                return Ok(())
+            };
+        }
+        Err(Error::NoImageToRestoreFrom)
     }
 
     /// Boots into a given memory bank.
@@ -72,29 +79,23 @@ where
             return Err(Error::BankInvalid);
         }
 
-        unimplemented!();
+        image::image_at(&mut self.mcu_flash, *bank)?;
+        let image_location_raw: usize = bank.location.into();
 
-        //let header = image::ImageHeader::retrieve(&mut self.mcu_flash, &bank)?;
-        //if header.size == 0 {
-        //    return Err(Error::BankEmpty);
-        //}
-
-        //let image_location_raw: usize = bank.location.into();
-
-        //// NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
-        //// entirely different firmware image! We have to assume everything is at the right place,
-        //// or literally anything could happen here. After the interrupts are disabled, there is
-        //// no turning back.
-        //unsafe {
-        //    let initial_stack_pointer = *(image_location_raw as *const u32);
-        //    let reset_handler_pointer =
-        //        *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
-        //    let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
-        //    cortex_m::interrupt::disable();
-        //    (*SCB::ptr()).vtor.write(image_location_raw as u32);
-        //    cortex_m::register::msp::write(initial_stack_pointer);
-        //    reset_handler()
-        //}
+        // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
+        // entirely different firmware image! We have to assume everything is at the right place,
+        // or literally anything could happen here. After the interrupts are disabled, there is
+        // no turning back.
+        unsafe {
+            let initial_stack_pointer = *(image_location_raw as *const u32);
+            let reset_handler_pointer =
+                *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
+            let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
+            cortex_m::interrupt::disable();
+            (*SCB::ptr()).vtor.write(image_location_raw as u32);
+            cortex_m::register::msp::write(initial_stack_pointer);
+            reset_handler()
+        }
     }
 
     /// Runs a self test on MCU flash.
@@ -119,44 +120,30 @@ where
 
     /// Copy from external bank to MCU bank
     pub fn copy_image(&mut self, input_bank_index: u8, output_bank_index: u8) -> Result<(), Error> {
-        unimplemented!();
-        //let (input_bank, output_bank) = (
-        //    self.external_banks()
-        //        .find(|b| b.index == input_bank_index)
-        //        .ok_or(Error::BankInvalid)?,
-        //    self.mcu_banks().find(|b| b.index == output_bank_index).ok_or(Error::BankInvalid)?,
-        //);
-        //let input_header = image::ImageHeader::retrieve(&mut self.external_flash, &input_bank)?;
-        //if input_header.size > output_bank.size {
-        //    return Err(Error::ImageTooBig);
-        //} else if input_header.size == 0 {
-        //    return Err(Error::BankEmpty);
-        //}
+        let input_bank = self.external_banks[input_bank_index as usize];
+        let output_bank = self.mcu_banks[output_bank_index as usize];
+        let input_image = image::image_at(&mut self.external_flash, self.external_banks[input_bank_index as usize])?;
 
-        //input_bank.sanity_check(&mut self.external_flash)?;
-        //// Output header must be re-formatted before any writing takes place, to ensure
-        //// a valid header and an invalid image never coexist.
-        //image::ImageHeader::format_default(&mut self.mcu_flash, &output_bank)?;
+        let input_image_start_address = input_bank.location;
+        let output_image_start_address = output_bank.location;
 
-        //let input_image_start_address = input_bank.location;
-        //let output_image_start_address = output_bank.location;
+        const TRANSFER_BUFFER_SIZE: usize = 2048;
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let mut byte_index = 0usize;
 
-        //let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
-        //let mut byte_index = 0usize;
-
-        //while byte_index < input_header.size {
-        //    let bytes_to_read =
-        //        min(TRANSFER_BUFFER_SIZE, input_header.size.saturating_sub(byte_index));
-        //    block!(self
-        //        .external_flash
-        //        .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
-        //    block!(self
-        //        .mcu_flash
-        //        .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
-        //    byte_index += bytes_to_read;
-        //}
-
-        //image::ImageHeader::write(&mut self.mcu_flash, &output_bank, input_header.size)
+        let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
+        while byte_index < total_size {
+            let bytes_to_read =
+                min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
+            block!(self
+                .external_flash
+                .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
+            block!(self
+                .mcu_flash
+                .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
+            byte_index += bytes_to_read;
+        }
+        Ok(())
     }
 
     fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
