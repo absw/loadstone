@@ -26,3 +26,10 @@ jobs:
 
       - name: Tests
         run: ~/.cargo/bin/cargo test --release
+
+      - name: Building
+        run: ~/.cargo/bin/cargo b
+        uses: actions/upload-artifact@v2
+        with:
+          name: loadstone
+          path: target/thumbv7em-none-eabihf/release/
