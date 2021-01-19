@@ -1,22 +1,12 @@
 //! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
-use crate::ports::pin_configuration::*;
-use crate::hal::{time, gpio::InputPin};
-use crate::{drivers::{
-    stm32f4::gpio::GpioExt,
-    stm32f4::gpio::*,
-    stm32f4::qspi::{self, mode, QuadSpi},
-    stm32f4::rcc::Clocks,
-    stm32f4::serial::{self, UsartExt},
-    stm32f4::systick::SysTick,
-    stm32f4::flash,
-    micron::n25q128a_flash::{self, MicronN25q128a},
-}, stm32pac::{self, USART6}};
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::devices::cli::Cli;
 use crate::error::Error;
 use core::mem::size_of;
 use ufmt::uwriteln;
+use blue_hal::{hal::gpio::InputPin, drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use super::pin_configuration::*;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -100,11 +90,11 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
 
         match boot_error {
             Some(Error::BankInvalid) =>
-                uwriteln!(&mut serial, "Attempted to boot from invalid bank.").unwrap(),
+                uwriteln!(&mut serial, "[INFO] Attempted to boot from invalid bank. Continuing to interactive mode instead.").unwrap(),
             Some(Error::BankEmpty) =>
-                uwriteln!(&mut serial, "Attempted to boot from empty bank.").unwrap(),
+                uwriteln!(&mut serial, "[INFO] Attempted to boot from empty bank. Continuing to interactive mode instead.").unwrap(),
             Some(_) =>
-                uwriteln!(&mut serial, "Unexpected boot error.").unwrap(),
+                uwriteln!(&mut serial, "Unexpected boot error. Continuing to interactive mode.").unwrap(),
             None => (),
         };
 
@@ -132,7 +122,7 @@ impl From<n25q128a_flash::Error> for Error {
     fn from(error: n25q128a_flash::Error) -> Self {
         match error {
             n25q128a_flash::Error::TimeOut => Error::DriverError("[External Flash] Operation timed out"),
-            n25q128a_flash::Error::QspiError => Error::DriverError("[External Flash] Qspi Error"),
+            n25q128a_flash::Error::QspiError => Error::DriverError("[External Flash] Qspi error"),
             n25q128a_flash::Error::WrongManufacturerId => Error::DriverError("[External Flash] Wrong manufacturer ID"),
             n25q128a_flash::Error::MisalignedAccess => Error::DriverError("[External Flash] Misaligned memory access"),
             n25q128a_flash::Error::AddressOutOfRange => Error::DriverError("[External Flash] Address out of range"),
@@ -143,11 +133,12 @@ impl From<n25q128a_flash::Error> for Error {
 impl From<serial::Error> for Error {
     fn from(error: serial::Error) -> Self {
         match error {
-            serial::Error::Framing => Error::DriverError("[Serial] Framing Error"),
-            serial::Error::Noise => Error::DriverError("[Serial] Noise Error"),
-            serial::Error::Overrun => Error::DriverError("[Serial] Overrun Error"),
-            serial::Error::Parity => Error::DriverError("[Serial] Parity Error"),
-            serial::Error::Timeout => Error::DriverError("[Serial] Timeout Error"),
+            serial::Error::Framing => Error::DriverError("[Serial] Framing error"),
+            serial::Error::Noise => Error::DriverError("[Serial] Noise error"),
+            serial::Error::Overrun => Error::DriverError("[Serial] Overrun error"),
+            serial::Error::Parity => Error::DriverError("[Serial] Parity error"),
+            serial::Error::Timeout => Error::DriverError("[Serial] Timeout error"),
+            _ => Error::DriverError("[Serial] Unexpected serial error"),
         }
     }
 }

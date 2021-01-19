@@ -1,7 +1,4 @@
-use crate::{
-    hal::serial::{TimeoutRead, Write},
-    utilities::xmodem,
-};
+use blue_hal::{hal::serial::{Write, TimeoutRead}, utilities::xmodem};
 
 pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
 pub type FileBlock = [u8; BLOCK_SIZE];
@@ -114,7 +111,6 @@ impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
 }
 
 impl<'a, S: TimeoutRead + Write + ?Sized> Drop for BlockIterator<'a, S> {
-
     // Must fully consume the iterator on drop
     // to close the xmodem communication cleanly
     fn drop(&mut self) { self.for_each(drop); }

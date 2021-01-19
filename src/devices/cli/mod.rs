@@ -1,16 +1,18 @@
+//! Generic command line interface.
+//!
+//! This module contains functionality for the CLI, except
+//! for construction which is implementation-specific so is
+//! handled in the `port` module.
+
 #![macro_use]
 use crate::{
     devices::bootloader::Bootloader,
     error::Error as BootloaderError,
-    hal::{
-        flash,
-        serial::{self, Read},
-    },
-    utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
 use core::str::{from_utf8, SplitWhitespace};
+use blue_hal::{hal::{flash, serial::{self, Read}}, uprint, uprintln, utilities::buffer::TryCollectSlice, utilities::iterator::Unique};
 use nb::block;
-use ufmt::{uwrite, uwriteln};
+use ufmt::{uwriteln, uwrite};
 
 use self::file_transfer::FileTransfer;
 
@@ -163,6 +165,7 @@ const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
+    /// Reads a line, parses it as a command and attempts to execute it.
     pub fn run<EXTF, MCUF>(&mut self, bootloader: &mut Bootloader<EXTF, MCUF, SRL>)
     where
         EXTF: flash::ReadWrite,
@@ -190,36 +193,36 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         };
         match execute_command() {
             Err(Error::BadCommandEncoding) => {
-                uwriteln!(self.serial, "[CLI Error] Bad Command Encoding")
+                uwriteln!(self.serial, "[CLI Error] Bad command encoding")
             }
             Err(Error::CharactersNotAllowed) => {
-                uwriteln!(self.serial, "[CLI Error] Illegal Characters In Command")
+                uwriteln!(self.serial, "[CLI Error] Illegal characters In command")
             }
             Err(Error::MalformedArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Malformed Command Arguments")
+                uwriteln!(self.serial, "[CLI Error] Malformed command arguments")
             }
             Err(Error::SerialBufferOverflow) => {
-                uwriteln!(self.serial, "[CLI Error] Command String Too Long")
+                uwriteln!(self.serial, "[CLI Error] Command string too long")
             }
             Err(Error::MissingArgument) => {
-                uwriteln!(self.serial, "[CLI Error] Command Missing An Argument")
+                uwriteln!(self.serial, "[CLI Error] Command missing an argument")
             }
             Err(Error::DuplicateArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command Contains Duplicate Arguments")
+                uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::BootloaderError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal Bootloader Error: ");
+                uprintln!(self.serial, "[CLI Error] Internal bootloader error: ");
                 e.report(&mut self.serial);
                 Ok(())
             }
             Err(Error::UnexpectedArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command Contains An Unexpected Argument")
+                uwriteln!(self.serial, "[CLI Error] Command contains an unexpected argument")
             }
             Err(Error::ArgumentOutOfRange) => {
-                uwriteln!(self.serial, "[CLI Error] Argument Is Out Of Valid Range")
+                uwriteln!(self.serial, "[CLI Error] Argument is out of valid range")
             }
-            Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial Read Failed"),
-            Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown Command"),
+            Err(Error::SerialReadError) => uwriteln!(self.serial, "[CLI Error] Serial read failed"),
+            Err(Error::CommandUnknown) => uwriteln!(self.serial, "Unknown command"),
             Err(Error::CommandEmpty) => Ok(()),
             Ok(_) => Ok(()),
         }
@@ -228,8 +231,10 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         self.needs_prompt = true;
     }
 
+    /// Returns the serial driver the CLI is using.
     pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
 
+    /// Attempts to parse a given string into a command name and arguments.
     fn parse(text: &str) -> Result<(Name, ArgumentIterator), Error> {
         let text = text.trim_end_matches(|c: char| c.is_ascii_control() || c.is_ascii_whitespace());
         if text.is_empty() {
@@ -267,6 +272,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
         Ok((name, arguments))
     }
 
+    /// Creates a new CLI using the given serial.
     pub fn new(serial: SRL) -> Result<Self, Error> {
         Ok(Cli { serial, greeted: false, needs_prompt: true })
     }
@@ -372,7 +378,7 @@ mod commands;
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::hal::doubles::serial::*;
+    use blue_hal::hal::doubles::serial::*;
 
     #[test]
     fn basic_command_parsing() {
