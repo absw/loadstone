@@ -29,6 +29,8 @@ jobs:
 
       - name: Building
         run: ~/.cargo/bin/cargo b
+
+      - name: Upload loadstone
         uses: actions/upload-artifact@v2
         with:
           name: loadstone
