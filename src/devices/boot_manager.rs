@@ -2,7 +2,7 @@
 
 use super::{
     cli::{file_transfer, Cli},
-    image::{self, TRANSFER_BUFFER_SIZE},
+    image::self,
 };
 use crate::error::Error;
 use blue_hal::{

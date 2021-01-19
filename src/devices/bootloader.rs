@@ -10,7 +10,6 @@ use blue_hal::hal::flash;
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{error, info};
-use image::TRANSFER_BUFFER_SIZE;
 use nb::block;
 
 pub struct Bootloader<EXTF, MCUF>
