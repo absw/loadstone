@@ -6,6 +6,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+ 
+      - name: Authentication
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: |
+            ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
 
       - name: Cargo initialisation
         run: |
