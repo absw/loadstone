@@ -5,11 +5,18 @@
 //! handled by the `port` module as it depends on board
 //! specific information.
 use super::image::{self, CRC_SIZE_BYTES, MAGIC_STRING};
-use crate::error::Error;
-use blue_hal::{duprintln, hal::{flash, serial}, uprintln};
-use core::{cmp::min, mem::size_of};
+use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
+use blue_hal::{
+    duprintln,
+    hal::{
+        flash,
+        serial::{self, Read},
+    },
+    uprintln,
+};
+use core::{array::IntoIter, cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
-use defmt::{error, info};
+use defmt::{error, info, warn};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
@@ -37,7 +44,7 @@ where
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
+    SRL: serial::ReadWrite + serial::TimeoutRead,
     Error: From<<SRL as serial::Read>::Error>,
 {
     /// Main bootloader routine. Attempts to boot from MCU image, and
@@ -48,21 +55,30 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        duprintln!(self.serial, "Attempting to boot from default bank");
+        duprintln!(self.serial, "--Loadstone Initialised--");
+        duprintln!(self.serial, "Attempting to boot from default bank. This may take some time...");
         match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
-            Error::BankInvalid => duprintln!(self.serial, "Attempted to boot from invalid bank. Restoring image..."),
-            Error::BankEmpty => duprintln!(self.serial, "Attempted to boot from empty bank. Restoring image..."),
-            Error::CrcInvalid => duprintln!(self.serial, "Crc invalid for stored image. Restoring image..."),
+            Error::BankInvalid => {
+                duprintln!(self.serial, "Attempted to boot from invalid bank. Restoring image...")
+            }
+            Error::BankEmpty => {
+                duprintln!(self.serial, "Attempted to boot from empty bank. Restoring image...")
+            }
+            Error::CrcInvalid => {
+                duprintln!(self.serial, "Crc invalid for stored image. Restoring image...")
+            }
             _ => duprintln!(self.serial, "Unexpected boot error. Restoring image..."),
         };
 
         match self.restore() {
-            Ok(()) => self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!"),
+            Ok(()) => {
+                self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!")
+            }
             Err(e) => {
                 duprintln!(self.serial, "Failed to restore.");
                 info!("Error: {:?}", e);
                 duprintln!(self.serial, "Proceeding to recovery mode...");
-                unimplemented!("Recovery Mode");
+                self.recover();
             }
         }
     }
@@ -72,10 +88,27 @@ where
     fn restore(&mut self) -> Result<(), Error> {
         for bank in 0..self.external_banks.len() {
             if self.copy_image(DEFAULT_BOOT_BANK, bank as u8).is_ok() {
-                return Ok(())
+                return Ok(());
             };
         }
         Err(Error::NoImageToRestoreFrom)
+    }
+
+    fn recover(&mut self) -> ! {
+        duprintln!(self.serial, "-- Loadstone Recovery Mode --");
+        duprintln!(self.serial, "Please send firmware image via XMODEM.");
+        const BUFFER_SIZE: usize = 2048;
+
+        let bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
+
+        for (i, block) in self.serial.blocks(Some(10)).enumerate() {
+            nb::block!(self.mcu_flash.write(bank.location + block.len() * i, &block))
+                .map_err(|_| Error::DriverError("Failed to flash image during recovery mode."))
+                .unwrap();
+        }
+        duprintln!(self.serial, "Finished flashing image.");
+        duprintln!(self.serial, "Rebooting...");
+        SCB::sys_reset();
     }
 
     /// Boots into a given memory bank.
@@ -87,7 +120,9 @@ where
             return Err(Error::BankInvalid);
         }
 
-        image::image_at(&mut self.mcu_flash, *bank)?;
+        let size = image::image_at(&mut self.mcu_flash, *bank)?.size();
+        duprintln!(self.serial, "Image verified with size {:?}. Booting.", size);
+        warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = bank.location.into();
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
@@ -128,9 +163,20 @@ where
 
     /// Copy from external bank to MCU bank
     pub fn copy_image(&mut self, input_bank_index: u8, output_bank_index: u8) -> Result<(), Error> {
-        let input_bank = self.external_banks[input_bank_index as usize];
-        let output_bank = self.mcu_banks[output_bank_index as usize];
-        let input_image = image::image_at(&mut self.external_flash, self.external_banks[input_bank_index as usize])?;
+        let input_bank = self
+            .external_banks
+            .iter()
+            .find(|b| b.index == input_bank_index)
+            .ok_or(Error::BankInvalid)?;
+        let output_bank = self
+            .mcu_banks
+            .iter()
+            .find(|b| b.index == output_bank_index)
+            .ok_or(Error::BankInvalid)?;
+        let input_image = image::image_at(
+            &mut self.external_flash,
+            self.external_banks[input_bank_index as usize],
+        )?;
 
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
@@ -141,8 +187,7 @@ where
 
         let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
         while byte_index < total_size {
-            let bytes_to_read =
-                min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
+            let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
             block!(self
                 .external_flash
                 .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;

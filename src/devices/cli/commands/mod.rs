@@ -27,7 +27,7 @@ commands!( cli, boot_manager, names, helpstrings [
                 return Err(Error::ArgumentOutOfRange);
             }
             uprintln!(cli.serial, "Starting XModem mode! Send file with your XModem client.");
-            boot_manager.store_image(cli.serial.blocks(), size, bank)?;
+            boot_manager.store_image(cli.serial.blocks(Some(10)), size, bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
             uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");

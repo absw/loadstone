@@ -1,6 +1,9 @@
-use blue_hal::{hal::flash, utilities::{iterator::UntilSequence, memory::Address}};
+use blue_hal::{
+    hal::flash,
+    utilities::{iterator::UntilSequence, memory::Address},
+};
 use crc::{crc32, Hasher32};
-use defmt::info;
+use defmt::{info, warn};
 use nb::{self, block};
 
 use crate::error::Error;
@@ -35,26 +38,34 @@ where
     F: flash::ReadWrite<Address = A>,
     Error: From<F::Error>,
 {
-    let bytes = flash.bytes(bank.location).take(bank.size).until_sequence(MAGIC_STRING.as_bytes());
-    info!("Verifying image...");
-    let (size, digest) = bytes.fold((0, crc32::Digest::new(crc32::IEEE)), |(mut size, mut digest), byte| {
-        size += 1;
-        digest.write(&[byte]);
-        (size, digest)
-    });
-    let calculated_crc = digest.sum32();
-    info!("Done verifying image. Crc: {:?}, size: {:?}", calculated_crc, size);
+    // Development build shorcut: We're checking that the image does *not* start with 0xFF. This
+    // will not be part of the final Loadstone release build, but it helps speed up the
+    // verification for invalid images during development.
+    if flash.bytes(bank.location).next().ok_or(Error::BankInvalid)? == 0xFF {
+        return Err(Error::BankEmpty);
+    }
 
-    let crc_offset = size + MAGIC_STRING.len();
+    // TODO optimise this away so we don't have to scan the image twice. (e.g. with a "window"
+    // buffer for the CRC);
+    let image_size_with_crc = flash.bytes(bank.location).take(bank.size).until_sequence(MAGIC_STRING.as_bytes()).count();
+    let image_size = image_size_with_crc.saturating_sub(CRC_SIZE_BYTES);
+    let image_bytes = flash.bytes(bank.location).take(image_size);
+    let digest =
+        image_bytes.fold(crc32::Digest::new(crc32::IEEE), |mut digest, byte| {
+            digest.write(&[byte]);
+            digest
+        });
+    let calculated_crc = digest.sum32();
+    info!("Done verifying image. Crc: {:?}, size: {:?}", calculated_crc, image_size);
+
+    let crc_offset = image_size;
     let mut crc_bytes = [0u8; CRC_SIZE_BYTES];
     block!(flash.read(bank.location + crc_offset, &mut crc_bytes))?;
     let crc = u32::from_le_bytes(crc_bytes);
+
+    info!("Retrieved crc: {:?}", crc);
     if crc == calculated_crc {
-        Ok(Image {
-            size,
-            location: bank.location,
-            bootable: bank.bootable
-        })
+        Ok(Image { size: image_size, location: bank.location, bootable: bank.bootable })
     } else {
         Err(Error::CrcInvalid)
     }
@@ -79,7 +90,7 @@ mod tests {
         let mut array = [0u8; 38];
         array[..2].copy_from_slice(&[0xAAu8, 0xBB]); // Image
         array[2..34].copy_from_slice(MAGIC_STRING.as_bytes());
-        array[34..].copy_from_slice(&[0x98, 0x2c, 0x82, 0x49,]); // CRC
+        array[34..].copy_from_slice(&[0x98, 0x2c, 0x82, 0x49]); // CRC
         array
     }
 
@@ -89,11 +100,10 @@ mod tests {
         let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
         let image_with_crc = test_image_with_crc();
         flash.write(Address(0), &image_with_crc).unwrap();
-        assert_eq!(Ok(Image {
-            size: 2,
-            location: bank.location,
-            bootable: bank.bootable
-        }), image_at(&mut flash, bank));
+        assert_eq!(
+            Ok(Image { size: 2, location: bank.location, bootable: bank.bootable }),
+            image_at(&mut flash, bank)
+        );
     }
 
     #[test]

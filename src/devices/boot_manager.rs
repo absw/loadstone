@@ -2,7 +2,7 @@
 
 use super::{
     cli::{file_transfer, Cli},
-    image::self,
+    image,
 };
 use crate::error::Error;
 use blue_hal::{
@@ -12,7 +12,6 @@ use blue_hal::{
 };
 
 use defmt::info;
-
 
 pub struct BootManager<EXTF, SRL>
 where
