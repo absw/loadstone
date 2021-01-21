@@ -10,15 +10,14 @@ use blue_hal::{
     duprintln,
     hal::{
         flash,
-        serial::{self, Read},
+        serial,
     },
-    uprintln,
 };
-use core::{array::IntoIter, cmp::min, mem::size_of};
+use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
-use defmt::{error, info, warn};
+use defmt::{info, warn};
 use nb::block;
-use ufmt::{uwrite, uwriteln};
+use ufmt::uwriteln;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -86,8 +85,9 @@ where
     /// Restores an image from the preferred external bank. If it fails,
     /// attempts to restore from the golden image.
     fn restore(&mut self) -> Result<(), Error> {
-        for bank in 0..self.external_banks.len() {
-            if self.copy_image(DEFAULT_BOOT_BANK, bank as u8).is_ok() {
+        for input in self.external_banks.iter() {
+            let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
+            if self.copy_image(*input, *output).is_ok() {
                 return Ok(());
             };
         }
@@ -97,8 +97,6 @@ where
     fn recover(&mut self) -> ! {
         duprintln!(self.serial, "-- Loadstone Recovery Mode --");
         duprintln!(self.serial, "Please send firmware image via XMODEM.");
-        const BUFFER_SIZE: usize = 2048;
-
         let bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
 
         for (i, block) in self.serial.blocks(Some(10)).enumerate() {
@@ -121,9 +119,9 @@ where
         }
 
         let size = image::image_at(&mut self.mcu_flash, *bank)?.size();
-        duprintln!(self.serial, "Image verified with size {:?}. Booting.", size);
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = bank.location.into();
+        duprintln!(self.serial, "Image verified with size {:?} at {:?}. Booting.", size, image_location_raw);
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
@@ -162,22 +160,8 @@ where
     }
 
     /// Copy from external bank to MCU bank
-    pub fn copy_image(&mut self, input_bank_index: u8, output_bank_index: u8) -> Result<(), Error> {
-        let input_bank = self
-            .external_banks
-            .iter()
-            .find(|b| b.index == input_bank_index)
-            .ok_or(Error::BankInvalid)?;
-        let output_bank = self
-            .mcu_banks
-            .iter()
-            .find(|b| b.index == output_bank_index)
-            .ok_or(Error::BankInvalid)?;
-        let input_image = image::image_at(
-            &mut self.external_flash,
-            self.external_banks[input_bank_index as usize],
-        )?;
-
+    pub fn copy_image(&mut self, input_bank: image::Bank<EXTF::Address>, output_bank: image::Bank<MCUF::Address>) -> Result<(), Error> {
+        let input_image = image::image_at(&mut self.external_flash,input_bank)?;
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 

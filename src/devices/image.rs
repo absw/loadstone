@@ -3,7 +3,7 @@ use blue_hal::{
     utilities::{iterator::UntilSequence, memory::Address},
 };
 use crc::{crc32, Hasher32};
-use defmt::{info, warn};
+use defmt::info;
 use nb::{self, block};
 
 use crate::error::Error;

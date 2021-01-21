@@ -4,11 +4,11 @@
 
 #[allow(unused_imports)]
 use cortex_m_rt::{entry, exception};
-use loadstone_lib::devices::boot_manager;
 
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
+    use loadstone_lib::devices::boot_manager;
     let app = boot_manager::BootManager::new();
     app.run();
 }
