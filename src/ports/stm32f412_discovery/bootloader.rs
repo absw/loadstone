@@ -2,14 +2,15 @@
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::error::Error;
-use core::mem::size_of;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time, stm32pac};
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::pin_configuration::*;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
 type Qspi = QuadSpi<QspiPins, mode::Single>;
 type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
+type UsartPins = (Pg14<AF8>, Pg9<AF8>);
+type Serial = serial::Serial<USART6, UsartPins>;
 
 // Serial pins and typedefs
 const EXTERNAL_NUMBER_OF_BANKS: usize = 2;
@@ -48,11 +49,11 @@ pub static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBE
     image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
 ];
 
-impl Default for Bootloader<ExternalFlash, flash::McuFlash> {
+impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     fn default() -> Self { Self::new() }
 }
 
-impl Bootloader<ExternalFlash, flash::McuFlash> {
+impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
@@ -71,7 +72,11 @@ impl Bootloader<ExternalFlash, flash::McuFlash> {
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
 
-        Bootloader { external_flash, mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS }
+        let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
+        let serial_pins = (gpiog.pg14, gpiog.pg9);
+        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+
+        Bootloader { external_flash, mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, serial }
     }
 }
 

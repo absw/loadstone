@@ -6,33 +6,39 @@
 //! specific information.
 use super::image::{self, CRC_SIZE_BYTES, MAGIC_STRING};
 use crate::error::Error;
-use blue_hal::hal::flash;
+use blue_hal::{duprintln, hal::{flash, serial}, uprintln};
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{error, info};
 use nb::block;
+use ufmt::{uwrite, uwriteln};
 
-pub struct Bootloader<EXTF, MCUF>
+pub struct Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
+    SRL: serial::ReadWrite,
+    Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
+    pub(crate) serial: SRL,
 }
 
 const DEFAULT_BOOT_BANK: u8 = 1;
 
-impl<EXTF, MCUF> Bootloader<EXTF, MCUF>
+impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
     MCUF: flash::ReadWrite,
     Error: From<MCUF::Error>,
+    SRL: serial::ReadWrite,
+    Error: From<<SRL as serial::Read>::Error>,
 {
     /// Main bootloader routine. Attempts to boot from MCU image, and
     /// in case of failure proceeds to:
@@ -42,18 +48,20 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        info!("Attempting to boot from default bank");
+        duprintln!(self.serial, "Attempting to boot from default bank");
         match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
-            Error::BankInvalid => info!("Attempted to boot from invalid bank. Restoring image..."),
-            Error::BankEmpty => info!("Attempted to boot from empty bank. Restoring image..."),
-            _ => info!("Unexpected boot error. Restoring image..."),
+            Error::BankInvalid => duprintln!(self.serial, "Attempted to boot from invalid bank. Restoring image..."),
+            Error::BankEmpty => duprintln!(self.serial, "Attempted to boot from empty bank. Restoring image..."),
+            Error::CrcInvalid => duprintln!(self.serial, "Crc invalid for stored image. Restoring image..."),
+            _ => duprintln!(self.serial, "Unexpected boot error. Restoring image..."),
         };
 
         match self.restore() {
             Ok(()) => self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
-                error!("Failed to restore with error: {:?}", e);
-                info!("Proceeding to recovery mode...");
+                duprintln!(self.serial, "Failed to restore.");
+                info!("Error: {:?}", e);
+                duprintln!(self.serial, "Proceeding to recovery mode...");
                 unimplemented!("Recovery Mode");
             }
         }

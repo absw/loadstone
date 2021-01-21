@@ -4,6 +4,8 @@ use crc::crc32::{self, Hasher32};
 use std::{io::BufReader, io::BufRead, fs::File, io::prelude::*};
 use byteorder::{LittleEndian, WriteBytesExt};
 
+const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+
 #[derive(Clap)]
 #[clap(about = "Tool to calculate and append CRC to firmware images", version = "1.0", author = "Pablo Mansanet <pablo.mansanet@bluefruit.co.uk>")]
 struct Opts {
@@ -30,9 +32,12 @@ fn main() -> std::io::Result<()> {
     let mut final_crc = [0u8; 4];
     (&mut final_crc[..]).write_u32::<LittleEndian>(digest.sum32())?;
 
-    println!("Appending to the end of {}", &opts.filename);
     let mut firmware = File::with_options().append(true).open(&opts.filename)?;
+    println!("Appending to the end of {}", &opts.filename);
     firmware.write(&final_crc)?;
+    println!("Appending magic string");
+    firmware.write(MAGIC_STRING.as_bytes())?;
+
     println!("Done!");
     Ok(())
 }

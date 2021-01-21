@@ -42,8 +42,8 @@ where
         digest.write(&[byte]);
         (size, digest)
     });
-    info!("Done verifying image.");
     let calculated_crc = digest.sum32();
+    info!("Done verifying image. Crc: {:?}, size: {:?}", calculated_crc, size);
 
     let crc_offset = size + MAGIC_STRING.len();
     let mut crc_bytes = [0u8; CRC_SIZE_BYTES];
