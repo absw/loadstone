@@ -22,9 +22,6 @@ impl BootManager<ExternalFlash, Serial> {
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);
-        // TEST: Light up orange led at the start
-        let mut led = led::MonochromeLed::new(gpioe.pe1, led::LogicLevel::Inverted);
-        led.on();
 
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup

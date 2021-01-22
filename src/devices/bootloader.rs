@@ -28,11 +28,11 @@ where
     SRL: serial::ReadWrite,
     Error: From<<SRL as serial::Read>::Error>,
 {
-    pub(crate) external_flash: EXTF,
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    pub(crate) serial: SRL,
+    // Closure to initialise drivers for restore/recovery mode.
+    pub(crate) init_stage_two: fn() -> (EXTF, SRL),
 }
 
 const DEFAULT_BOOT_BANK: u8 = 1;
@@ -54,58 +54,58 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        duprintln!(self.serial, "--Loadstone Initialised--");
-        duprintln!(self.serial, "Attempting to boot from default bank. This may take some time...");
+        info!("--Loadstone Initialised--");
+        info!("Attempting to boot from default bank. This may take some time...");
         match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
             Error::BankInvalid => {
-                duprintln!(self.serial, "Attempted to boot from invalid bank. Restoring image...")
+                info!("Attempted to boot from invalid bank. Restoring image...")
             }
             Error::BankEmpty => {
-                duprintln!(self.serial, "Attempted to boot from empty bank. Restoring image...")
+                info!("Attempted to boot from empty bank. Restoring image...")
             }
             Error::CrcInvalid => {
-                duprintln!(self.serial, "Crc invalid for stored image. Restoring image...")
+                info!("Crc invalid for stored image. Restoring image...")
             }
-            _ => duprintln!(self.serial, "Unexpected boot error. Restoring image..."),
+            _ => info!("Unexpected boot error. Restoring image..."),
         };
 
-        match self.restore() {
+        let (mut external_flash, serial) = (self.init_stage_two)();
+
+        match self.restore(&mut external_flash) {
             Ok(()) => {
                 self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!")
             }
             Err(e) => {
-                duprintln!(self.serial, "Failed to restore.");
-                info!("Error: {:?}", e);
-                duprintln!(self.serial, "Proceeding to recovery mode...");
-                self.recover();
+                info!("Failed to restore. Error: {:?}", e);
+                self.recover(serial);
             }
         }
     }
 
     /// Restores an image from the preferred external bank. If it fails,
     /// attempts to restore from the golden image.
-    fn restore(&mut self) -> Result<(), Error> {
+    fn restore(&mut self, external_flash: &mut EXTF) -> Result<(), Error> {
         for input in self.external_banks.iter() {
             let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
-            if self.copy_image(*input, *output).is_ok() {
+            if self.copy_image(external_flash, *input, *output).is_ok() {
                 return Ok(());
             };
         }
         Err(Error::NoImageToRestoreFrom)
     }
 
-    fn recover(&mut self) -> ! {
-        duprintln!(self.serial, "-- Loadstone Recovery Mode --");
-        duprintln!(self.serial, "Please send firmware image via XMODEM.");
+    fn recover(&mut self, mut serial: SRL) -> ! {
+        duprintln!(serial, "-- Loadstone Recovery Mode --");
+        duprintln!(serial, "Please send firmware image via XMODEM.");
         let bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
 
-        for (i, block) in self.serial.blocks(Some(10)).enumerate() {
+        for (i, block) in serial.blocks(Some(10)).enumerate() {
             nb::block!(self.mcu_flash.write(bank.location + block.len() * i, &block))
                 .map_err(|_| Error::DriverError("Failed to flash image during recovery mode."))
                 .unwrap();
         }
-        duprintln!(self.serial, "Finished flashing image.");
-        duprintln!(self.serial, "Rebooting...");
+        duprintln!(serial, "Finished flashing image.");
+        duprintln!(serial, "Rebooting...");
         SCB::sys_reset();
     }
 
@@ -118,10 +118,9 @@ where
             return Err(Error::BankInvalid);
         }
 
-        let size = image::image_at(&mut self.mcu_flash, *bank)?.size();
+        image::image_at(&mut self.mcu_flash, *bank)?.size();
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = bank.location.into();
-        duprintln!(self.serial, "Image verified with size {:?} at {:?}. Booting.", size, image_location_raw);
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
@@ -132,21 +131,10 @@ where
             let reset_handler_pointer =
                 *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
-            cortex_m::interrupt::disable();
             (*SCB::ptr()).vtor.write(image_location_raw as u32);
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }
-    }
-
-    /// Runs a self test on MCU flash.
-    pub fn test_mcu_flash(&mut self) -> Result<(), Error> {
-        Self::test_flash_read_write_cycle(&mut self.mcu_flash)
-    }
-
-    /// Runs a self test on external flash.
-    pub fn test_external_flash(&mut self) -> Result<(), Error> {
-        Self::test_flash_read_write_cycle(&mut self.external_flash)
     }
 
     /// Returns an iterator of all MCU flash banks.
@@ -160,8 +148,8 @@ where
     }
 
     /// Copy from external bank to MCU bank
-    pub fn copy_image(&mut self, input_bank: image::Bank<EXTF::Address>, output_bank: image::Bank<MCUF::Address>) -> Result<(), Error> {
-        let input_image = image::image_at(&mut self.external_flash,input_bank)?;
+    pub fn copy_image(&mut self, external_flash: &mut EXTF, input_bank: image::Bank<EXTF::Address>, output_bank: image::Bank<MCUF::Address>) -> Result<(), Error> {
+        let input_image = image::image_at(external_flash, input_bank)?;
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
@@ -172,8 +160,7 @@ where
         let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(self
-                .external_flash
+            block!(external_flash
                 .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
             block!(self
                 .mcu_flash

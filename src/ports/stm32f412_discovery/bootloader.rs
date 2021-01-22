@@ -55,11 +55,8 @@ impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
 
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
-        let mut peripherals = stm32pac::Peripherals::take().unwrap();
+        let peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
-        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
-        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
 
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
         let clocks = Clocks::hardcoded(peripherals.RCC);
@@ -67,16 +64,31 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
-        let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
-        let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
-        let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
+        let init_stage_two = || {
+            // Safety: We know (by inspecting this function) that the stage two
+            // closure does not touch any of the peripherals constructed above, so it's safe
+            // to defer accessing these peripherals to later in the bootloader's lifetime.
+            //
+            // The only exception is the RCC peripheral, which is used to re-construct the Clocks
+            // struct. This just amounts to reinitialising the clocks so it's completely safe.
+            let mut peripherals = unsafe { stm32pac::Peripherals::steal() };
+            let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+            let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+            let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
+            let clocks = Clocks::hardcoded(peripherals.RCC);
 
-        let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-        let serial_pins = (gpiog.pg14, gpiog.pg9);
-        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+            let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
+            let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
+            let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
+            let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
 
-        Bootloader { external_flash, mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, serial }
+            let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
+            let serial_pins = (gpiog.pg14, gpiog.pg9);
+            let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+            (external_flash, serial)
+        };
+
+        Bootloader { mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, init_stage_two }
     }
 }
 
