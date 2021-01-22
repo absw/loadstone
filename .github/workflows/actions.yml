@@ -1,0 +1,37 @@
+name: actions
+on: [push]
+jobs:
+  build-loadstone:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+ 
+      - name: Authentication
+        uses: webfactory/ssh-agent@v0.4.1
+        with:
+          ssh-private-key: |
+            ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
+
+      - name: Cargo initialisation
+        run: |
+          ~/.cargo/bin/rustup default nightly
+          ~/.cargo/bin/rustup update
+          ~/.cargo/bin/rustup component add llvm-tools-preview
+          ~/.cargo/bin/rustup target add thumbv7em-none-eabihf
+          ~/.cargo/bin/cargo install cargo-binutils
+
+      - name: Documentation
+        run: ~/.cargo/bin/cargo d
+
+      - name: Tests
+        run: ~/.cargo/bin/cargo test --release
+
+      - name: Building
+        run: ~/.cargo/bin/cargo gen_loadstone
+
+      - name: Upload loadstone
+        uses: actions/upload-artifact@v2
+        with:
+          name: loadstone
+          path: loadstone.bin
