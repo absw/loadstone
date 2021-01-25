@@ -50,6 +50,11 @@ where
         Ok(())
     }
 
+    pub fn format_external(&mut self) -> Result<(), Error> {
+        nb::block!(self.external_flash.erase())?;
+        Ok(())
+    }
+
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
     pub fn run(mut self) -> ! {

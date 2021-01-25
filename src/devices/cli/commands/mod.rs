@@ -31,6 +31,13 @@ commands!( cli, boot_manager, names, helpstrings [
 
     },
 
+    format ["Formats external flash."] ()
+    {
+        uprintln!(cli.serial, "Formatting external flash...");
+        boot_manager.format_external()?;
+        uprintln!(cli.serial, "Done formatting!");
+    },
+
     boot ["Restart, attempting to boot into a valid image if available."] ( )
     {
         uprintln!(cli.serial, "Restarting...");
