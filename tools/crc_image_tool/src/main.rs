@@ -5,12 +5,15 @@ use std::{io::BufReader, io::BufRead, fs::File, io::prelude::*};
 use byteorder::{LittleEndian, WriteBytesExt};
 
 const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+const GOLDEN_STRING: &str = "XPIcbOUrpG";
 
 #[derive(Clap)]
 #[clap(about = "Tool to calculate and append CRC to firmware images", version = "1.0", author = "Pablo Mansanet <pablo.mansanet@bluefruit.co.uk>")]
 struct Opts {
     #[clap(about = "Filename to append CRC to")]
     filename: String,
+    #[clap(about = "Label the image as golden (Loadstone firmware fallback)")]
+    golden: bool,
 }
 
 fn main() -> std::io::Result<()> {
@@ -27,15 +30,22 @@ fn main() -> std::io::Result<()> {
             buf_reader.consume(buf_reader.buffer().len())
         }
     }
+    digest.write(GOLDEN_STRING);
     println!("Final CRC is {} (0x{:8x})", digest.sum32(), digest.sum32());
 
     let mut final_crc = [0u8; 4];
     (&mut final_crc[..]).write_u32::<LittleEndian>(digest.sum32())?;
 
     let mut firmware = File::with_options().append(true).open(&opts.filename)?;
-    println!("Appending to the end of {}", &opts.filename);
+    println!("Appending metadata to the end of {}", &opts.filename);
+    if opts.is_golden {
+        println!("* Appending golden image string");
+        firmware.write(GOLDEN_STRING.as_bytes())?;
+    }
+
+    println!("* Appending CRC string");
     firmware.write(&final_crc)?;
-    println!("Appending magic string");
+    println!("* Appending magic string");
     firmware.write(MAGIC_STRING.as_bytes())?;
 
     println!("Done!");

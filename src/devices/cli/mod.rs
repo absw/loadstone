@@ -24,7 +24,8 @@ use super::boot_manager::BootManager;
 
 pub mod file_transfer;
 
-const GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+const GREETING: &str =
+    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 

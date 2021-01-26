@@ -7,7 +7,13 @@ pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
 
 pub trait FileTransfer: TimeoutRead + Write {
     fn blocks(&mut self, max_retries: Option<u32>) -> BlockIterator<Self> {
-        BlockIterator { serial: self, received_block: false, finished: false, block_number: 0, max_retries }
+        BlockIterator {
+            serial: self,
+            received_block: false,
+            finished: false,
+            block_number: 0,
+            max_retries,
+        }
     }
 }
 
