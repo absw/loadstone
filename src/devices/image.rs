@@ -18,6 +18,7 @@ pub struct Bank<A: Address> {
     pub size: usize,
     pub location: A,
     pub bootable: bool,
+    pub is_golden: bool,
 }
 
 /// Image descriptor
@@ -97,7 +98,7 @@ mod tests {
     #[test]
     fn retrieving_image_from_flash() {
         let mut flash = FakeFlash::new(Address(0));
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false, };
         let image_with_crc = test_image_with_crc();
         flash.write(Address(0), &image_with_crc).unwrap();
         assert_eq!(
@@ -109,19 +110,19 @@ mod tests {
     #[test]
     fn retrieving_broken_image_fails() {
         let mut flash = FakeFlash::new(Address(0));
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         let mut image_with_crc = test_image_with_crc();
         image_with_crc[0] = 0xFF; // This will corrupt the image, making the CRC obsolete
         flash.write(Address(0), &image_with_crc).unwrap();
         assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
 
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         let mut image_with_crc = test_image_with_crc();
         image_with_crc[4] = 0xFF; // This will break the CRC directly
         flash.write(Address(0), &image_with_crc).unwrap();
         assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
 
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         let mut image_with_crc = test_image_with_crc();
         image_with_crc[12] = 0xFF; // The magic string is not present to delineate the image
         flash.write(Address(0), &image_with_crc).unwrap();

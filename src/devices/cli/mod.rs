@@ -214,7 +214,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::ApplicationError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal boot_manager error: ");
+                uwriteln!(self.serial, "[CLI Error] Internal boot_manager error: ");
                 e.report(&mut self.serial);
                 Ok(())
             }
