@@ -63,24 +63,4 @@ where
             cli.run(&mut self)
         }
     }
-
-    fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
-    where
-        F: flash::ReadWrite,
-        Error: From<<F as flash::ReadWrite>::Error>,
-    {
-        let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let superset_byte_buffer = [0xFFu8];
-        let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let (start, _) = flash.range();
-        nb::block!(flash.write(start, &magic_word_buffer))?;
-        nb::block!(flash.write(start, &superset_byte_buffer))?;
-        let mut final_buffer = [0x00; 4];
-        nb::block!(flash.read(start, &mut final_buffer))?;
-        if expected_final_buffer != final_buffer {
-            Err(Error::DriverError("Flash read-write cycle failed"))
-        } else {
-            Ok(())
-        }
-    }
 }

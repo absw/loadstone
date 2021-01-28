@@ -18,7 +18,6 @@ impl BootManager<ExternalFlash, Serial> {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-        let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);

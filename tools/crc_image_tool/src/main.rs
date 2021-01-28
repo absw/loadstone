@@ -12,7 +12,7 @@ const GOLDEN_STRING: &str = "XPIcbOUrpG";
 struct Opts {
     #[clap(about = "Filename to append CRC to")]
     filename: String,
-    #[clap(about = "Label the image as golden (Loadstone firmware fallback)")]
+    #[clap(short, about = "Label the image as golden (Loadstone firmware fallback)")]
     golden: bool,
 }
 
@@ -30,7 +30,7 @@ fn main() -> std::io::Result<()> {
             buf_reader.consume(buf_reader.buffer().len())
         }
     }
-    digest.write(GOLDEN_STRING);
+    digest.write(GOLDEN_STRING.as_bytes());
     println!("Final CRC is {} (0x{:8x})", digest.sum32(), digest.sum32());
 
     let mut final_crc = [0u8; 4];
@@ -38,7 +38,7 @@ fn main() -> std::io::Result<()> {
 
     let mut firmware = File::with_options().append(true).open(&opts.filename)?;
     println!("Appending metadata to the end of {}", &opts.filename);
-    if opts.is_golden {
+    if opts.golden {
         println!("* Appending golden image string");
         firmware.write(GOLDEN_STRING.as_bytes())?;
     }
