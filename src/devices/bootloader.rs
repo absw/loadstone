@@ -227,6 +227,10 @@ where
             input_image.size()
         );
         if must_be_golden && !input_image.is_golden() {
+            duprintln!(
+                self.serial,
+                "Image is not golden.",
+            );
             return Err(Error::DeviceError("Image is not golden"));
         }
         let input_image_start_address = input_bank.location;
