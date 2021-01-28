@@ -54,10 +54,11 @@ where
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
 
-        self.replace_golden_image();
 
         info!("--Loadstone Initialised--");
-        info!("Attempting to boot from default bank. This may take some time...");
+        self.try_update_image();
+
+        info!("Attempting to boot from default bank.");
         match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
             Error::BankInvalid => {
                 info!("Attempted to boot from invalid bank. Restoring image...")
@@ -72,9 +73,7 @@ where
         };
 
         match self.restore() {
-            Ok(()) => {
-                self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!")
-            }
+            Ok(()) => self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
                 self.recover();
@@ -82,23 +81,26 @@ where
         }
     }
 
-    /// If the current bootable (MCU flash) image is the golden image,
-    /// attempts to replace it with the topmost non-golden image in an
-    /// external bank.
-    fn replace_golden_image(&mut self) {
+    /// If the current bootable (MCU flash) image is different from the top
+    /// non-golden external image, attempts to replace it.
+    fn try_update_image(&mut self) {
         let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
-        match image::image_at(&mut self.mcu_flash, *boot_bank) {
-            Ok(bootable_image) if bootable_image.is_golden() => {
-                for input in self.external_banks.iter().filter(|b| !b.is_golden) {
-                    duprintln!(self.serial, "Scanning external bank {:?} for valid images...", input.index);
-                    if self.copy_image(*input, *boot_bank, false).is_ok() {
-                        duprintln!(self.serial, "Replaced golden image with external bank {:?}", input.index);
-                        break;
-                    };
+        if let Ok(current_image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
+            for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+                duprintln!(self.serial, "Scanning external bank {:?} for a newer image...", external_bank.index);
+                match image::image_at(&mut self.external_flash, *external_bank) {
+                    // Using CRC for identification for the time being. Will become
+                    // the image's signed hash, which is a valid unique identifier.
+                    Ok(image) if image.crc() != current_image.crc() => {
+                        duprintln!(self.serial, "Replacing golden image with external bank {:?}...", external_bank.index);
+                        self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    },
+                    Ok(_image) => break,
+                    _ => (),
                 }
-            },
-            _ => (),
+            };
         }
+        duprintln!(self.serial, "No newer image found.");
     }
 
     /// Restores an image from the preferred external bank. If it fails,

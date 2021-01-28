@@ -1,10 +1,4 @@
-use crate::{
-    devices::{
-        boot_manager::BootManager,
-        cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
-    },
-    error::Error as ApplicationError,
-};
+use crate::{devices::{boot_manager::BootManager, cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument}, image}, error::Error as ApplicationError};
 use blue_hal::{
     hal::{flash, serial},
     uprintln,
@@ -15,6 +9,29 @@ commands!( cli, boot_manager, names, helpstrings [
 
     help ["Displays a list of commands."] (command: Option<&str> ["Optional command to inspect."],) {
         cli.print_help(names, helpstrings, command)
+    },
+
+    banks ["Displays external bank information"] (){
+        uprintln!(cli.serial, "External Banks:");
+        for bank in boot_manager.external_banks() {
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b{}",
+                bank.index,
+                if bank.bootable { "Bootable" } else { "Non-Bootable" },
+                bank.size,
+                if bank.is_golden { "- GOLDEN" } else { "" }).ok().unwrap();
+        }
+    },
+
+    images ["Displays external image information (WARNING: Slow)"] (){
+        uprintln!(cli.serial, "External images:");
+        for bank in boot_manager.external_banks() {
+            if let Ok(image) = image::image_at(&mut boot_manager.external_flash, bank) {
+                uwriteln!(cli.serial, "        - [IMAGE] - Size: {}b - CRC: {} ",
+                    image.size(),
+                    image.crc()).ok().unwrap();
+            }
+
+        }
     },
 
     flash ["Stores a FW image in an external bank."] (

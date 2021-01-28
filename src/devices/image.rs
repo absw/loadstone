@@ -30,11 +30,13 @@ pub struct Image<A: Address> {
     location: A,
     bootable: bool,
     golden: bool,
+    crc: u32,
 }
 
 impl<A: Address> Image<A> {
     pub fn size(&self) -> usize { self.size }
     pub fn is_golden(&self) -> bool { self.golden }
+    pub fn crc(&self) -> u32 { self.crc }
 }
 
 pub fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, Error>
@@ -76,7 +78,7 @@ where
     let golden = golden_bytes == GOLDEN_STRING.as_bytes();
 
     if crc == calculated_crc {
-        Ok(Image { size: image_size, location: bank.location, bootable: bank.bootable, golden })
+        Ok(Image { size: image_size, location: bank.location, bootable: bank.bootable, golden, crc })
     } else {
         Err(Error::CrcInvalid)
     }
