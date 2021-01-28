@@ -1,17 +1,26 @@
 use blue_hal::{
     hal::flash,
-    utilities::{iterator::UntilSequence, memory::Address},
+    utilities::{buffer::CollectSlice, iterator::UntilSequence, memory::Address},
 };
 use crc::{crc32, Hasher32};
-use defmt::info;
 use nb::{self, block};
 
 use crate::error::Error;
 
 /// This string precedes the CRC for golden images only
 pub const GOLDEN_STRING: &str = "XPIcbOUrpG";
-/// This string must terminate any valid images, after CRC
+/// This string, INVERTED BYTEWISE must terminate any valid images, after CRC
+///
+/// Note: Why inverted? Because if we used it as-is, no code that includes this
+/// constant could be used as a firmware image, as it contains the magic string
+/// halfway through.
 pub const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+pub fn magic_string_inverted() -> [u8; MAGIC_STRING.len()] {
+    let mut inverted = [0u8; MAGIC_STRING.len()];
+    let mut bytes = MAGIC_STRING.as_bytes().iter().map(|b| !b);
+    bytes.collect_slice(&mut inverted);
+    inverted
+}
 pub const CRC_SIZE_BYTES: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
@@ -56,7 +65,7 @@ where
     // TODO optimise this away so we don't have to scan the image twice. (e.g. with a "window"
     // buffer for the CRC);
     let image_size_with_crc =
-        flash.bytes(bank.location).take(bank.size).until_sequence(MAGIC_STRING.as_bytes()).count();
+        flash.bytes(bank.location).take(bank.size).until_sequence(&magic_string_inverted()).count();
     let image_size = image_size_with_crc.saturating_sub(CRC_SIZE_BYTES);
     let image_bytes = flash.bytes(bank.location).take(image_size);
     let digest = image_bytes.fold(crc32::Digest::new(crc32::IEEE), |mut digest, byte| {
@@ -64,14 +73,10 @@ where
         digest
     });
     let calculated_crc = digest.sum32();
-    info!("Done verifying image. Crc: {:?}, size: {:?}", calculated_crc, image_size);
-
     let crc_offset = image_size;
     let mut crc_bytes = [0u8; CRC_SIZE_BYTES];
     block!(flash.read(bank.location + crc_offset, &mut crc_bytes))?;
     let crc = u32::from_le_bytes(crc_bytes);
-
-    info!("Retrieved crc: {:?}", crc);
 
     let golden_string_offset = crc_offset.saturating_sub(GOLDEN_STRING.len());
     let mut golden_bytes = [0u8; GOLDEN_STRING.len()];
@@ -109,22 +114,9 @@ mod tests {
     fn test_image_with_crc() -> [u8; 38] {
         let mut array = [0u8; 38];
         array[..2].copy_from_slice(&[0xAAu8, 0xBB]); // Image
-        array[2..34].copy_from_slice(MAGIC_STRING.as_bytes());
+        array[2..34].copy_from_slice(&magic_string_inverted());
         array[34..].copy_from_slice(&[0x98, 0x2c, 0x82, 0x49]); // CRC
         array
-    }
-
-    #[test]
-    fn retrieving_image_from_flash() {
-        let mut flash = FakeFlash::new(Address(0));
-        let bank =
-            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
-        let image_with_crc = test_image_with_crc();
-        flash.write(Address(0), &image_with_crc).unwrap();
-        assert_eq!(
-            Ok(Image { size: 2, location: bank.location, bootable: bank.bootable, golden: false }),
-            image_at(&mut flash, bank)
-        );
     }
 
     #[test]

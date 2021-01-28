@@ -25,7 +25,7 @@ commands!( cli, boot_manager, names, helpstrings [
                 bank.index,
                 if bank.bootable { "Bootable" } else { "Non-Bootable" },
                 bank.size,
-                if bank.is_golden { "- GOLDEN" } else { "" }).ok().unwrap();
+                if bank.is_golden { " - GOLDEN" } else { "" }).ok().unwrap();
         }
     },
 
@@ -33,9 +33,11 @@ commands!( cli, boot_manager, names, helpstrings [
         uprintln!(cli.serial, "External images:");
         for bank in boot_manager.external_banks() {
             if let Ok(image) = image::image_at(&mut boot_manager.external_flash, bank) {
-                uwriteln!(cli.serial, "        - [IMAGE] - Size: {}b - CRC: {} ",
+                uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - CRC: {}{}",
+                    bank.index,
                     image.size(),
-                    image.crc()).ok().unwrap();
+                    image.crc(),
+                    if image.is_golden() { " - GOLDEN" } else { "" }).ok().unwrap();
             }
 
         }
