@@ -54,7 +54,6 @@ where
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
 
-
         info!("--Loadstone Initialised--");
         self.try_update_image();
 
@@ -73,7 +72,9 @@ where
         };
 
         match self.restore() {
-            Ok(()) => self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!"),
+            Ok(()) => {
+                self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!")
+            }
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
                 self.recover();
@@ -87,18 +88,26 @@ where
         let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         if let Ok(current_image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
             for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
-                duprintln!(self.serial, "Scanning external bank {:?} for a newer image...", external_bank.index);
+                duprintln!(
+                    self.serial,
+                    "Scanning external bank {:?} for a newer image...",
+                    external_bank.index
+                );
                 match image::image_at(&mut self.external_flash, *external_bank) {
                     // Using CRC for identification for the time being. Will become
                     // the image's signed hash, which is a valid unique identifier.
                     Ok(image) if image.crc() != current_image.crc() => {
-                        duprintln!(self.serial, "Replacing golden image with external bank {:?}...", external_bank.index);
+                        duprintln!(
+                            self.serial,
+                            "Replacing golden image with external bank {:?}...",
+                            external_bank.index
+                        );
                         self.copy_image(*external_bank, *boot_bank, false).unwrap();
-                    },
+                    }
                     Ok(_image) => break,
                     _ => (),
                 }
-            };
+            }
         }
         duprintln!(self.serial, "No newer image found.");
     }

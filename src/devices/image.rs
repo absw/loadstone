@@ -34,6 +34,7 @@ pub struct Image<A: Address> {
 }
 
 impl<A: Address> Image<A> {
+    pub fn location(&self) -> A { self.location }
     pub fn size(&self) -> usize { self.size }
     pub fn is_golden(&self) -> bool { self.golden }
     pub fn crc(&self) -> u32 { self.crc }
@@ -78,7 +79,13 @@ where
     let golden = golden_bytes == GOLDEN_STRING.as_bytes();
 
     if crc == calculated_crc {
-        Ok(Image { size: image_size, location: bank.location, bootable: bank.bootable, golden, crc })
+        Ok(Image {
+            size: image_size,
+            location: bank.location,
+            bootable: bank.bootable,
+            golden,
+            crc,
+        })
     } else {
         Err(Error::CrcInvalid)
     }
