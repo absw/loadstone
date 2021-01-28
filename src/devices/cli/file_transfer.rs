@@ -1,13 +1,13 @@
-use blue_hal::{hal::serial::{Write, TimeoutRead}, utilities::xmodem};
+use blue_hal::{
+    hal::serial::{TimeoutRead, Write},
+    utilities::xmodem,
+};
 
 pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
-pub type FileBlock = [u8; BLOCK_SIZE];
-
-const MAX_RETRIES: u32 = 10;
 
 pub trait FileTransfer: TimeoutRead + Write {
-    fn blocks(&mut self) -> BlockIterator<Self> {
-        BlockIterator { serial: self, received_block: false, finished: false, block_number: 0 }
+    fn blocks(&mut self, max_retries: Option<u32>) -> BlockIterator<Self> {
+        BlockIterator { serial: self, received_block: false, finished: false, block_number: 0, max_retries }
     }
 }
 
@@ -18,10 +18,11 @@ pub struct BlockIterator<'a, S: TimeoutRead + Write + ?Sized> {
     received_block: bool,
     finished: bool,
     block_number: u8,
+    max_retries: Option<u32>,
 }
 
 impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
-    type Item = FileBlock;
+    type Item = [u8; BLOCK_SIZE];
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -31,7 +32,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
         let mut retries = 0;
         let mut buffer = [0u8; xmodem::MAX_PACKET_SIZE];
 
-        'block_loop: while retries < MAX_RETRIES {
+        'block_loop: while self.max_retries.is_none() || retries < self.max_retries.unwrap() {
             let mut buffer_index = 0usize;
 
             let message = if self.received_block { xmodem::ACK } else { xmodem::NAK };
@@ -74,7 +75,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
 }
 
 impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
-    fn process_message(&mut self, buffer: &[u8]) -> Option<FileBlock> {
+    fn process_message(&mut self, buffer: &[u8]) -> Option<[u8; BLOCK_SIZE]> {
         match xmodem::parse_message(&buffer) {
             Ok((_, xmodem::Message::EndOfTransmission)) => {
                 self.end_transmission();
@@ -92,7 +93,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
         }
     }
 
-    fn process_chunk(&self, chunk: xmodem::Chunk) -> Option<FileBlock> {
+    fn process_chunk(&self, chunk: xmodem::Chunk) -> Option<[u8; BLOCK_SIZE]> {
         let next_block = self.block_number.wrapping_add(1);
         (chunk.block_number == next_block).then_some(chunk.payload)
     }
