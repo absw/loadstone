@@ -1,7 +1,10 @@
 use crate::{
     devices::{
         boot_manager::BootManager,
-        cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
+        cli::{
+            file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument,
+            GREETING,
+        },
         image,
     },
     error::Error as ApplicationError,
@@ -99,6 +102,23 @@ commands!( cli, boot_manager, names, helpstrings [
         byte_buffer[0] = !byte_buffer[0];
         nb::block!(boot_manager.external_flash.write(byte_location, &mut byte_buffer)).map_err(|e| Error::ApplicationError(e.into()))?;
         uprintln!(cli.serial, "Flipped an application byte byte from {} to {}.", !byte_buffer[0], byte_buffer[0]);
+    },
+
+    corrupt_mcu_image ["Corrupts greeting text in the current demo image."] ()
+    {
+        let greeting_address_raw = GREETING.as_bytes()[0] as *const u8 as usize;
+        let aligned_greeting: MCUF::Address = (greeting_address_raw + (4 - greeting_address_raw % 4)).into();
+        // Safety: Thoroughly unsafe as it modifies the current binary image live. Naturally, it is going
+        // to make a significant, unpredictable change to the running application. Nothing should be
+        // expected to work after this, hence why it recommends following with a restart.
+        unsafe {
+            nb::block!(boot_manager.mcu_flash.unlimited_write(
+                    aligned_greeting,
+                    "CORRUPTED: YOU SHOULD NOT BE READING THIS\r\n".as_bytes()))
+                .map_err(|e| Error::ApplicationError(e.into()))?;
+        }
+        uprintln!(cli.serial, "Ỹ̷̙̜̼̮̬̱̪͙̈́͑͆̂̑̕o̷̭̠̪͉̞͔͛̓̍̔ŭ̷̻͓̳̳̪͑͗̈͋͛ ̵͔͓̯͒̋̑́̏̇͒͘s̵̨̬̜̤̰͂͐̇̊h̴̨̲̪̟͉̗̣̝̔͆̋̃͑ő̵͕̠͒͝ư̶̰͙̼̪͔͋͆̂̃̈̓͝l̶̢̠̤͕̹̽̾̇͌d̴̨̗̺͔̀ ̷̡̡̰̮̪̽ͅņ̷̻͙̟͓̣̖̈̐̿͐̆͆ǫ̶̧̦͎̜͙̼̤̋̒t̶̝͉͔̘̤͖͛̀̀͆̃̈̊ ̵̭͓̓́͆h̵̯͈̭̳̑̍̇ā̸̦̘̝v̸̩̬̦̘͆̍͑ͅȩ̵̣͚̾ ̸̛͔̮̫͖̤͕̱̄̑̇͘d̷̡̼̘͚͈͂͜o̸̢̹̲̲̍͛͒̑̐̕͠͝n̶̢̠̞̞̰̞͓̓̓͂̒͝e̴͇͋̑͘͜ ̷̡̜͙̰̘͐̿̇̆̄̕ṱ̵̢̦̫̲͍̓̃̇h̵̡͚̟͕̊̅́̎͌͐̚ä̶̢̤͓̻̗̭̣̬́t̸̡̢͖̝̫̖͓̭̽͊͐͒̌̈́");
+        uprintln!(cli.serial, "Image may now behave unpredictably. Please restart.");
     },
 
     format ["Formats external flash."] ()

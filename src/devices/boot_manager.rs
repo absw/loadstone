@@ -11,22 +11,27 @@ use blue_hal::{
     utilities::xmodem,
 };
 
-pub struct BootManager<EXTF, SRL>
+pub struct BootManager<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
+    MCUF: flash::ReadWrite,
+    Error: From<MCUF::Error>,
     SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
+    pub(crate) mcu_flash: MCUF,
     pub(crate) cli: Option<Cli<SRL>>,
 }
 
-impl<EXTF, SRL> BootManager<EXTF, SRL>
+impl<EXTF, MCUF, SRL> BootManager<EXTF, MCUF, SRL>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
+    MCUF: flash::ReadWrite,
+    Error: From<MCUF::Error>,
     SRL: serial::ReadWrite + file_transfer::FileTransfer,
     Error: From<<SRL as serial::Read>::Error>,
 {

@@ -24,9 +24,8 @@ use super::boot_manager::BootManager;
 
 pub mod file_transfer;
 
-const GREETING: &str =
-    //"--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
-    "--=IRREGULAR=-";
+pub const GREETING: &str =
+    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
@@ -174,10 +173,12 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>)
+    pub fn run<EXTF, MCUF>(&mut self, boot_manager: &mut BootManager<EXTF, MCUF, SRL>)
     where
         EXTF: flash::ReadWrite,
         ApplicationError: From<EXTF::Error>,
+        MCUF: flash::ReadWrite,
+        ApplicationError: From<MCUF::Error>,
         ApplicationError: From<<SRL as serial::Read>::Error>,
     {
         if !self.greeted {
@@ -348,12 +349,13 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<EXTF, SRL>(
+        pub(super) fn run<EXTF, MCUF, SRL>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<EXTF, SRL>,
+            $boot_manager: &mut BootManager<EXTF, MCUF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         where
             EXTF: flash::ReadWrite, ApplicationError: From<EXTF::Error>,
+            MCUF: flash::ReadWrite, ApplicationError: From<MCUF::Error>,
             SRL: serial::ReadWrite + FileTransfer, ApplicationError: From<<SRL as serial::Read>::Error>,
         {
             match name {

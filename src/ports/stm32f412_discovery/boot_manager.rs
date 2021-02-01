@@ -1,5 +1,5 @@
 use crate::devices::{boot_manager::BootManager, cli::Cli};
-use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::{time}, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::{bootloader::EXTERNAL_BANKS, pin_configuration::*};
 
 // Flash pins and typedefs
@@ -9,14 +9,15 @@ type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
 type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 
-impl Default for BootManager<ExternalFlash, Serial> {
+impl Default for BootManager<ExternalFlash, flash::McuFlash, Serial> {
     fn default() -> Self { Self::new() }
 }
 
-impl BootManager<ExternalFlash, Serial> {
+impl BootManager<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
+        let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
@@ -35,6 +36,6 @@ impl BootManager<ExternalFlash, Serial> {
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
 
-        BootManager { external_flash, external_banks: &EXTERNAL_BANKS, cli: Some(cli) }
+        BootManager { external_flash, external_banks: &EXTERNAL_BANKS, cli: Some(cli), mcu_flash }
     }
 }
