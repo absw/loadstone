@@ -24,7 +24,9 @@ use super::boot_manager::BootManager;
 
 pub mod file_transfer;
 
-const GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+const GREETING: &str =
+    //"--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+    "--=IRREGULAR=-";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
@@ -214,7 +216,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::ApplicationError(e)) => {
-                uprintln!(self.serial, "[CLI Error] Internal boot_manager error: ");
+                uwriteln!(self.serial, "[CLI Error] Internal boot_manager error: ").ok().unwrap();
                 e.report(&mut self.serial);
                 Ok(())
             }

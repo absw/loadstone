@@ -1,5 +1,5 @@
 use crate::devices::{boot_manager::BootManager, cli::Cli};
-use blue_hal::{drivers::{led, micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::{time, led::Toggle}, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::{time}, stm32pac::{self, USART6}};
 use super::{bootloader::EXTERNAL_BANKS, pin_configuration::*};
 
 // Flash pins and typedefs
@@ -18,7 +18,6 @@ impl BootManager<ExternalFlash, Serial> {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-        let gpioe = peripherals.GPIOE.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);

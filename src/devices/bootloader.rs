@@ -4,14 +4,11 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, CRC_SIZE_BYTES, MAGIC_STRING};
+use super::image::{self, Image, CRC_SIZE_BYTES, MAGIC_STRING};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
-    hal::{
-        flash,
-        serial,
-    },
+    hal::{flash, serial},
 };
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
@@ -31,8 +28,8 @@ where
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    // Closure to initialise drivers for restore/recovery mode.
-    pub(crate) init_stage_two: fn() -> (EXTF, SRL),
+    pub(crate) external_flash: EXTF,
+    pub(crate) serial: SRL,
 }
 
 const DEFAULT_BOOT_BANK: u8 = 1;
@@ -54,73 +51,143 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        info!("--Loadstone Initialised--");
-        info!("Attempting to boot from default bank. This may take some time...");
-        match self.boot(DEFAULT_BOOT_BANK).unwrap_err() {
-            Error::BankInvalid => {
-                info!("Attempted to boot from invalid bank. Restoring image...")
-            }
-            Error::BankEmpty => {
-                info!("Attempted to boot from empty bank. Restoring image...")
-            }
-            Error::CrcInvalid => {
-                info!("Crc invalid for stored image. Restoring image...")
-            }
-            _ => info!("Unexpected boot error. Restoring image..."),
-        };
+        assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
+        assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
 
-        let (mut external_flash, serial) = (self.init_stage_two)();
+        duprintln!(self.serial, "--Loadstone Initialised--");
+        if let Some(image) = self.try_update_image() {
+            duprintln!(self.serial, "Attempting to boot from default bank.");
+            match self.boot(image).unwrap_err() {
+                Error::BankInvalid => {
+                    info!("Attempted to boot from invalid bank. Restoring image...")
+                }
+                Error::BankEmpty => {
+                    info!("Attempted to boot from empty bank. Restoring image...")
+                }
+                Error::CrcInvalid => {
+                    info!("Crc invalid for stored image. Restoring image...")
+                }
+                _ => info!("Unexpected boot error. Restoring image..."),
+            };
+        }
 
-        match self.restore(&mut external_flash) {
-            Ok(()) => {
-                self.boot(DEFAULT_BOOT_BANK).expect("FATAL: Failed to boot from verified image!")
-            }
+        match self.restore() {
+            Ok(image) => self.boot(image).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
-                self.recover(serial);
+                self.recover();
             }
         }
+    }
+
+    /// If the current bootable (MCU flash) image is different from the top
+    /// non-golden external image, attempts to replace it. Returns the current
+    /// bootable image if available.
+    fn try_update_image(&mut self) -> Option<Image<MCUF::Address>> {
+        let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
+        duprintln!(self.serial, "Checking for image updates...");
+
+        let current_image = if let Ok(image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
+            image
+        } else {
+            duprintln!(self.serial, "No current image.");
+            return None;
+        };
+
+        for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+            duprintln!(
+                self.serial,
+                "Scanning external bank {:?} for a newer image...",
+                external_bank.index
+            );
+            match image::image_at(&mut self.external_flash, *external_bank) {
+                // Using CRC for identification for the time being. Will become
+                // the image's signed hash, which is a valid unique identifier.
+                Ok(image) if image.crc() != current_image.crc() => {
+                    duprintln!(
+                        self.serial,
+                        "Replacing current image with external bank {:?}...",
+                        external_bank.index
+                    );
+                    self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    duprintln!(
+                        self.serial,
+                        "Replaced image with external bank {:?}.",
+                        external_bank.index
+                    );
+                }
+                Ok(_image) => break,
+                _ => (),
+            }
+        }
+        duprintln!(self.serial, "No newer image found.");
+        Some(current_image)
     }
 
     /// Restores an image from the preferred external bank. If it fails,
     /// attempts to restore from the golden image.
-    fn restore(&mut self, external_flash: &mut EXTF) -> Result<(), Error> {
-        for input in self.external_banks.iter() {
-            let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
-            if self.copy_image(external_flash, *input, *output).is_ok() {
-                return Ok(());
+    fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {
+        // Attempt to restore from normal image
+        let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
+        for input_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+            duprintln!(self.serial, "Attempting to restore from bank {:?}.", input_bank.index);
+            if self.copy_image(*input_bank, *output, false).is_ok() {
+                duprintln!(
+                    self.serial,
+                    "Restored image from external bank {:?}.",
+                    input_bank.index
+                );
+                return Ok(image::image_at(&mut self.mcu_flash, *output)?);
             };
         }
+
+        // Attempt to restore from golden image
+        let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
+        duprintln!(self.serial, "Attempting to restore from golden bank {:?}.", golden_bank.index);
+        if self.copy_image(*golden_bank, *output, true).is_ok() {
+            duprintln!(
+                self.serial,
+                "Restored image from external golden bank {:?}.",
+                golden_bank.index
+            );
+            return Ok(image::image_at(&mut self.mcu_flash, *output)?);
+        };
+
         Err(Error::NoImageToRestoreFrom)
     }
 
-    fn recover(&mut self, mut serial: SRL) -> ! {
-        duprintln!(serial, "-- Loadstone Recovery Mode --");
-        duprintln!(serial, "Please send firmware image via XMODEM.");
-        let bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
+    fn recover(&mut self) -> ! {
+        duprintln!(self.serial, "-- Loadstone Recovery Mode --");
+        duprintln!(self.serial, "Please send golden firmware image via XMODEM.");
+        let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
 
-        for (i, block) in serial.blocks(Some(10)).enumerate() {
-            nb::block!(self.mcu_flash.write(bank.location + block.len() * i, &block))
-                .map_err(|_| Error::DriverError("Failed to flash image during recovery mode."))
+        for (i, block) in self.serial.blocks(None).enumerate() {
+            nb::block!(self.external_flash.write(golden_bank.location + block.len() * i, &block))
+                .map_err(|_| {
+                    Error::DriverError("Failed to flash golden image during recovery mode.")
+                })
                 .unwrap();
         }
-        duprintln!(serial, "Finished flashing image.");
-        duprintln!(serial, "Rebooting...");
+
+        match image::image_at(&mut self.external_flash, *golden_bank) {
+            Ok(image) if !image.is_golden() => {
+                duprintln!(self.serial, "FATAL: Flashed image is not a golden image")
+            }
+            Err(e) => {
+                duprintln!(self.serial, "FATAL: Image did not flash correctly.");
+                e.report(&mut self.serial);
+            }
+            _ => duprintln!(self.serial, "Finished flashing golden image."),
+        }
+
+        duprintln!(self.serial, "Rebooting...");
         SCB::sys_reset();
     }
 
     /// Boots into a given memory bank.
-    pub fn boot(&mut self, bank_index: u8) -> Result<!, Error> {
-        let bank =
-            self.mcu_banks.iter().find(|b| b.index == bank_index).ok_or(Error::BankInvalid)?;
-
-        if !bank.bootable {
-            return Err(Error::BankInvalid);
-        }
-
-        image::image_at(&mut self.mcu_flash, *bank)?.size();
+    pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
-        let image_location_raw: usize = bank.location.into();
+        let image_location_raw: usize = image.location().into();
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
@@ -148,8 +215,27 @@ where
     }
 
     /// Copy from external bank to MCU bank
-    pub fn copy_image(&mut self, external_flash: &mut EXTF, input_bank: image::Bank<EXTF::Address>, output_bank: image::Bank<MCUF::Address>) -> Result<(), Error> {
-        let input_image = image::image_at(external_flash, input_bank)?;
+    pub fn copy_image(
+        &mut self,
+        input_bank: image::Bank<EXTF::Address>,
+        output_bank: image::Bank<MCUF::Address>,
+        must_be_golden: bool,
+    ) -> Result<(), Error> {
+        let input_image = image::image_at(&mut self.external_flash, input_bank)?;
+        duprintln!(
+            self.serial,
+            "Image found at bank {:?} [Address {:?}, size {:?}], copying to boot bank.",
+            input_bank.index,
+            input_image.location().into(),
+            input_image.size()
+        );
+        if must_be_golden && !input_image.is_golden() {
+            duprintln!(
+                self.serial,
+                "Image is not golden.",
+            );
+            return Err(Error::DeviceError("Image is not golden"));
+        }
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
@@ -158,9 +244,11 @@ where
         let mut byte_index = 0usize;
 
         let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
+
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(external_flash
+            block!(self
+                .external_flash
                 .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
             block!(self
                 .mcu_flash
@@ -168,25 +256,5 @@ where
             byte_index += bytes_to_read;
         }
         Ok(())
-    }
-
-    fn test_flash_read_write_cycle<F>(flash: &mut F) -> Result<(), Error>
-    where
-        F: flash::ReadWrite,
-        Error: From<<F as flash::ReadWrite>::Error>,
-    {
-        let magic_word_buffer = [0xAAu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let superset_byte_buffer = [0xFFu8];
-        let expected_final_buffer = [0xFFu8, 0xBBu8, 0xCCu8, 0xDDu8];
-        let (start, _) = flash.range();
-        block!(flash.write(start, &magic_word_buffer))?;
-        block!(flash.write(start, &superset_byte_buffer))?;
-        let mut final_buffer = [0x00; 4];
-        block!(flash.read(start, &mut final_buffer))?;
-        if expected_final_buffer != final_buffer {
-            Err(Error::DriverError("Flash read-write cycle failed"))
-        } else {
-            Ok(())
-        }
     }
 }

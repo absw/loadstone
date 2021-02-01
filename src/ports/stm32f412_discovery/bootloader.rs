@@ -41,12 +41,12 @@ const fn mcu_image_offset(index: usize) -> flash::Address {
 }
 
 static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
-    image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE, },
+    image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE, is_golden: false },
 ];
 
 pub static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
-    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, },
-    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, },
+    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, is_golden: false },
+    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, is_golden: true },
 ];
 
 impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
@@ -55,40 +55,25 @@ impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
 
 impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
     pub fn new() -> Self {
-        let peripherals = stm32pac::Peripherals::take().unwrap();
+        let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
-
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
+        let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
+        let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
+        let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);
-
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
-        let init_stage_two = || {
-            // Safety: We know (by inspecting this function) that the stage two
-            // closure does not touch any of the peripherals constructed above, so it's safe
-            // to defer accessing these peripherals to later in the bootloader's lifetime.
-            //
-            // The only exception is the RCC peripheral, which is used to re-construct the Clocks
-            // struct. This just amounts to reinitialising the clocks so it's completely safe.
-            let mut peripherals = unsafe { stm32pac::Peripherals::steal() };
-            let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
-            let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
-            let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
-            let clocks = Clocks::hardcoded(peripherals.RCC);
+        let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
+        let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
+        let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
+        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
 
-            let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
-            let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
-            let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-            let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
-
-            let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-            let serial_pins = (gpiog.pg14, gpiog.pg9);
-            let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
-            (external_flash, serial)
-        };
-
-        Bootloader { mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, init_stage_two }
+        let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
+        let serial_pins = (gpiog.pg14, gpiog.pg9);
+        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+        Bootloader { mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, external_flash, serial  }
     }
 }
 
