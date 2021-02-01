@@ -86,39 +86,42 @@ where
     fn try_update_image(&mut self) -> Option<Image<MCUF::Address>> {
         let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         duprintln!(self.serial, "Checking for image updates...");
-        if let Ok(current_image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
-            for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
-                duprintln!(
-                    self.serial,
-                    "Scanning external bank {:?} for a newer image...",
-                    external_bank.index
-                );
-                match image::image_at(&mut self.external_flash, *external_bank) {
-                    // Using CRC for identification for the time being. Will become
-                    // the image's signed hash, which is a valid unique identifier.
-                    Ok(image) if image.crc() != current_image.crc() => {
-                        duprintln!(
-                            self.serial,
-                            "Replacing current image with external bank {:?}...",
-                            external_bank.index
-                        );
-                        self.copy_image(*external_bank, *boot_bank, false).unwrap();
-                        duprintln!(
-                            self.serial,
-                            "Replaced image with external bank {:?}.",
-                            external_bank.index
-                        );
-                    }
-                    Ok(_image) => break,
-                    _ => (),
-                }
-            }
-            duprintln!(self.serial, "No newer image found.");
-            Some(current_image)
+
+        let current_image = if let Ok(image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
+            image
         } else {
             duprintln!(self.serial, "No current image.");
-            None
+            return None;
+        };
+
+        for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+            duprintln!(
+                self.serial,
+                "Scanning external bank {:?} for a newer image...",
+                external_bank.index
+            );
+            match image::image_at(&mut self.external_flash, *external_bank) {
+                // Using CRC for identification for the time being. Will become
+                // the image's signed hash, which is a valid unique identifier.
+                Ok(image) if image.crc() != current_image.crc() => {
+                    duprintln!(
+                        self.serial,
+                        "Replacing current image with external bank {:?}...",
+                        external_bank.index
+                    );
+                    self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    duprintln!(
+                        self.serial,
+                        "Replaced image with external bank {:?}.",
+                        external_bank.index
+                    );
+                }
+                Ok(_image) => break,
+                _ => (),
+            }
         }
+        duprintln!(self.serial, "No newer image found.");
+        Some(current_image)
     }
 
     /// Restores an image from the preferred external bank. If it fails,
