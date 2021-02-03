@@ -6,7 +6,7 @@
 use cortex_m_rt::{entry, exception};
 
 pub const GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+    "--=GREETING VARIANT=--";
 
 #[cfg(target_arch = "arm")]
 #[entry]
