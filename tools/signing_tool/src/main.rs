@@ -8,7 +8,7 @@ use crate::{
 use clap::clap_app;
 use std::fs::{File, OpenOptions};
 
-fn run(image: String, key: String) -> Result<(), Error> {
+fn run(image: String, key: String) -> Result<usize, Error> {
     let image_file = OpenOptions::new()
         .read(true)
         .append(true)
@@ -33,8 +33,8 @@ fn main() -> Result<(), String> {
     let private_key = matches.value_of("private_key").unwrap().to_owned();
 
     match run(image, private_key) {
-        Ok(()) => {
-            println!("Successfully appended signature to image.");
+        Ok(signature_size) => {
+            println!("Successfully appended signature to image ({} bytes).", signature_size);
             Ok(())
         }
         Err(e) => Err(e.to_string()),

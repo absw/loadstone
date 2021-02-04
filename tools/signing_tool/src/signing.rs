@@ -33,7 +33,8 @@ fn read_key(mut file: File) -> Result<Vec<u8>, Error> {
 
 /// Reads the contents of `file` and signs it using ECDSA/SHA256 with the key in `key_file`.
 /// NOTE: This assumes that `file` is in read/append mode and the key is PKCS8.
-pub fn sign_file(mut file: File, key_file: File) -> Result<(), Error> {
+/// Returns the number of bytes appended to the file on success.
+pub fn sign_file(mut file: File, key_file: File) -> Result<usize, Error> {
     let raw_key = read_key(key_file)?;
     let plaintext = read_file(&mut file)?;
     let key =
@@ -50,7 +51,7 @@ pub fn sign_file(mut file: File, key_file: File) -> Result<(), Error> {
         .map_err(|_| Error::FileWriteFailed(error::File::Image))?;
 
     if bytes_written == signature_bytes.len() {
-        Ok(())
+        Ok(bytes_written)
     } else {
         Err(Error::FileWriteFailed(error::File::Image))
     }
