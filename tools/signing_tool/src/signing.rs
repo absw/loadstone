@@ -37,12 +37,12 @@ fn read_key(mut file: File) -> Result<Vec<u8>, Error> {
 pub fn sign_file(mut file: File, key_file: File) -> Result<usize, Error> {
     let raw_key = read_key(key_file)?;
     let plaintext = read_file(&mut file)?;
-    let key =
-        EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &raw_key)
+    let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &raw_key)
         .map_err(|_| Error::KeyParseFailed)?;
 
     let rng = SystemRandom::new();
-    let signature = key.sign(&rng, &plaintext)
+    let signature = key
+        .sign(&rng, &plaintext)
         .map_err(|_| Error::SignatureGenerationFailed)?;
     let signature_bytes = signature.as_ref();
 

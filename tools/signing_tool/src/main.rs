@@ -34,7 +34,10 @@ fn main() -> Result<(), String> {
 
     match run(image, private_key) {
         Ok(signature_size) => {
-            println!("Successfully appended signature to image ({} bytes).", signature_size);
+            println!(
+                "Successfully appended signature to image ({} bytes).",
+                signature_size
+            );
             Ok(())
         }
         Err(e) => Err(e.to_string()),
