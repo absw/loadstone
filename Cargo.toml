@@ -39,6 +39,20 @@ static_assertions = "*"
 defmt = "0.1"
 defmt-rtt = "0.1"
 
+[dependencies.ecdsa]
+version = "*"
+default-features = false
+features = ["pem"]
+
+[dependencies.sha2]
+version = "*"
+default-features = false
+
+[dependencies.p256]
+version = "*"
+default-features = false
+features = ["ecdsa", "sha256", "pem"]
+
 [dependencies.blue_hal]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
 #path = "blue_hal"

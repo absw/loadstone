@@ -33,10 +33,9 @@ commands!( cli, boot_manager, names, helpstrings [
         uprintln!(cli.serial, "External images:");
         for bank in boot_manager.external_banks() {
             if let Ok(image) = image::image_at(&mut boot_manager.external_flash, bank) {
-                uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - CRC: {}{}",
+                uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - {}",
                     bank.index,
                     image.size(),
-                    image.crc(),
                     if image.is_golden() { " - GOLDEN" } else { "" }).ok().unwrap();
             }
 

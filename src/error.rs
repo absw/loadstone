@@ -21,7 +21,7 @@ pub enum Error {
     ImageTooBig,
     FlashCorrupted,
     NoImageToRestoreFrom,
-    CrcInvalid,
+    SignatureInvalid,
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -81,7 +81,7 @@ impl Error {
             Error::FlashCorrupted => {
                 uwriteln!(serial, "[Logic Error] -> Flash memory is corrupted or outdated")
             }
-            Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
+            Error::SignatureInvalid => uwriteln!(serial, "[LogicError] -> Image signature is invalid"),
             Error::NotEnoughData => {
                 uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
             }

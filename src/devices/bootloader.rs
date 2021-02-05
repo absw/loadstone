@@ -64,8 +64,8 @@ where
                 Error::BankEmpty => {
                     info!("Attempted to boot from empty bank. Restoring image...")
                 }
-                Error::CrcInvalid => {
-                    info!("Crc invalid for stored image. Restoring image...")
+                Error::SignatureInvalid => {
+                    info!("Signature invalid for stored image. Restoring image...")
                 }
                 _ => info!("Unexpected boot error. Restoring image..."),
             };
@@ -103,7 +103,7 @@ where
             match image::image_at(&mut self.external_flash, *external_bank) {
                 // Using CRC for identification for the time being. Will become
                 // the image's signed hash, which is a valid unique identifier.
-                Ok(image) if image.crc() != current_image.crc() => {
+                Ok(image) if image.signature() != current_image.signature() => {
                     duprintln!(
                         self.serial,
                         "Replacing current image with external bank {:?}...",
@@ -230,10 +230,7 @@ where
             input_image.size()
         );
         if must_be_golden && !input_image.is_golden() {
-            duprintln!(
-                self.serial,
-                "Image is not golden.",
-            );
+            duprintln!(self.serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));
         }
         let input_image_start_address = input_bank.location;
