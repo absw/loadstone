@@ -36,7 +36,7 @@ fn main() -> Result<(), String> {
     let image_filename = matches.value_of("image").unwrap().to_owned();
     let private_key_filename = matches.value_of("private_key").unwrap().to_owned();
 
-    match process_image_file(image_filename, private_key_filename, matches.occurrences_of("g") > 0) {
+    match process_image_file(image_filename, private_key_filename, matches.occurrences_of("golden") > 0) {
         Ok(signature_size) => {
             println!(
                 "Successfully appended signature to image ({} bytes).",
