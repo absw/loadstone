@@ -121,6 +121,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use super::*;
     use blue_hal::hal::{
         doubles::{
@@ -166,28 +168,24 @@ mod tests {
         assert_eq!(image.is_golden(), false);
     }
 
-    //#[test]
-    //fn retrieving_broken_image_fails() {
-    //    let mut flash = FakeFlash::new(Address(0));
-    //    let bank =
-    //        Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
-    //    let mut image_with_crc = test_image_with_crc();
-    //    image_with_crc[1] = 0xFF; // This will corrupt the image, making the CRC obsolete
-    //    flash.write(Address(0), &image_with_crc).unwrap();
-    //    assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
+    #[test]
+    fn retrieving_broken_image_fails() {
+        let mut flash = FakeFlash::new(Address(0));
+        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
 
-    //    let bank =
-    //        Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
-    //    let mut image_with_crc = test_image_with_crc();
-    //    image_with_crc[4] = 0xFF; // This will break the CRC directly
-    //    flash.write(Address(0), &image_with_crc).unwrap();
-    //    assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
+        let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
+        image[0] = 0xCC; // Corrupted image body;
+        flash.write(Address(0), &image).unwrap();
+        assert_eq!(Err(Error::SignatureInvalid), image_at(&mut flash, bank));
 
-    //    let bank =
-    //        Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
-    //    let mut image_with_crc = test_image_with_crc();
-    //    image_with_crc[12] = 0xFF; // The magic string is not present to delineate the image
-    //    flash.write(Address(0), &image_with_crc).unwrap();
-    //    assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
-    //}
+        let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
+        image[3] = 0xCC; // Corrupted magic string
+        flash.write(Address(0), &image).unwrap();
+        assert_eq!(Err(Error::BankEmpty), image_at(&mut flash, bank));
+
+        let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
+        image[96] = 0xCC; // Corrupted signature
+        flash.write(Address(0), &image).unwrap();
+        assert_eq!(Err(Error::SignatureInvalid), image_at(&mut flash, bank));
+    }
 }
