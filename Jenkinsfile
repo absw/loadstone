@@ -76,7 +76,7 @@ spec:
                     sh 'cargo gen_loadstone'
 
                     echo 'Archiving Artifacts'
-                    archiveArtifacts artifacts: 'bootloader.bin'
+                    archiveArtifacts artifacts: 'loadstone.bin'
                     sh 'rm -f target/thumbv7em-none-eabihf/doc/.lock'
                     archiveArtifacts artifacts: 'target/thumbv7em-none-eabihf/doc/**'
                     publishHTML (target: [

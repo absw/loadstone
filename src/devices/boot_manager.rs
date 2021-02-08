@@ -57,10 +57,10 @@ where
 
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
-    pub fn run(mut self) -> ! {
+    pub fn run(mut self, greeting: &'static str) -> ! {
         let mut cli = self.cli.take().unwrap();
         loop {
-            cli.run(&mut self)
+            cli.run(&mut self, greeting)
         }
     }
 }

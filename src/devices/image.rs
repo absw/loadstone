@@ -125,7 +125,7 @@ mod tests {
         let bank =
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         let mut image_with_crc = test_image_with_crc();
-        image_with_crc[0] = 0xFF; // This will corrupt the image, making the CRC obsolete
+        image_with_crc[1] = 0xFF; // This will corrupt the image, making the CRC obsolete
         flash.write(Address(0), &image_with_crc).unwrap();
         assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
 
