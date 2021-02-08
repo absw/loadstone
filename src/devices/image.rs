@@ -28,7 +28,6 @@ pub fn magic_string_inverted() -> [u8; MAGIC_STRING.len()] {
     bytes.collect_slice(&mut inverted);
     inverted
 }
-pub const CRC_SIZE_BYTES: usize = 4;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Bank<A: Address> {

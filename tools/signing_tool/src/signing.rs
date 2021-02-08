@@ -2,7 +2,6 @@ use p256::ecdsa::SigningKey;
 use std::str::FromStr;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::signature::Signature;
-use sha2::{Digest, Sha256};
 
 use crate::error::{self, Error};
 use std::{

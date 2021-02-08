@@ -19,6 +19,7 @@ pub static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 #[cfg(target_arch = "arm")]
 #[alloc_error_handler]
 fn oom(_: core::alloc::Layout) -> ! {
+    defmt::error!("Out of heap memory!");
     loop {}
 }
 
