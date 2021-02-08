@@ -4,7 +4,6 @@ use std::{
 };
 use crate::error::{self, Error};
 
-
 /// This string identifies a golden image, and must precede the magic string.
 const GOLDEN_STRING: &str = "XPIcbOUrpG";
 /// This string, INVERTED BYTEWISE must terminate any valid image, before the signature.
