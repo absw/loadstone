@@ -2,7 +2,7 @@ use crate::{
     devices::{
         boot_manager::BootManager,
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
-        image,
+        image::{self, MAGIC_STRING},
     },
     error::Error as ApplicationError,
 };
@@ -56,7 +56,7 @@ commands!( cli, boot_manager, names, helpstrings [
 
     },
 
-    corrupt_crc ["Corrupts the CRC of a specified external image."] (
+    corrupt_signature ["Corrupts the ECDSA signature of a specified external image."] (
         bank: u8 ["External bank index."],
         )
     {
@@ -70,12 +70,14 @@ commands!( cli, boot_manager, names, helpstrings [
         let image = image::image_at(&mut boot_manager.external_flash, bank)
             .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
 
-        let crc_location = image.location() + image.size();
-        let mut crc_bytes = [0u8; 4usize];
-        nb::block!(boot_manager.external_flash.read(crc_location, &mut crc_bytes)).map_err(|e| Error::ApplicationError(e.into()))?;
-        crc_bytes[0] = !crc_bytes[0];
-        nb::block!(boot_manager.external_flash.write(crc_location, &mut crc_bytes)).map_err(|e| Error::ApplicationError(e.into()))?;
-        uprintln!(cli.serial, "Flipped the first CRC byte from {} to {}.", !crc_bytes[0], crc_bytes[0]);
+        let signature_location = image.location() + image.size() + MAGIC_STRING.len();
+        let mut signature_bytes = [0u8; 64usize];
+        nb::block!(boot_manager.external_flash.read(signature_location, &mut signature_bytes))
+            .map_err(|e| Error::ApplicationError(e.into()))?;
+        signature_bytes[0] = !signature_bytes[0];
+        nb::block!(boot_manager.external_flash.write(signature_location, &mut signature_bytes))
+            .map_err(|e| Error::ApplicationError(e.into()))?;
+        uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
     },
 
     corrupt_body ["Corrupts a byte inside a specified external image."] (

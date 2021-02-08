@@ -6,7 +6,6 @@
 use cortex_m_rt::{entry, exception};
 pub const HEAP_SIZE_BYTES: usize = 8192;
 
-
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {

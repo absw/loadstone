@@ -81,7 +81,9 @@ impl Error {
             Error::FlashCorrupted => {
                 uwriteln!(serial, "[Logic Error] -> Flash memory is corrupted or outdated")
             }
-            Error::SignatureInvalid => uwriteln!(serial, "[LogicError] -> Image signature is invalid"),
+            Error::SignatureInvalid => {
+                uwriteln!(serial, "[LogicError] -> Image signature is invalid")
+            }
             Error::NotEnoughData => {
                 uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
             }

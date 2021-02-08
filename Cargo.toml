@@ -64,10 +64,6 @@ branch = "main"
 version = "*"
 default-features = false
 
-[dependencies.crc]
-version = "*"
-default-features = false
-
 [lib]
 name = "loadstone_lib"
 test = true

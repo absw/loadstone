@@ -4,20 +4,19 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, GOLDEN_STRING, Image, MAGIC_STRING};
+use super::image::{self, Image, GOLDEN_STRING, MAGIC_STRING};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
     hal::{flash, serial},
 };
-use ecdsa::SignatureSize;
-use p256::NistP256;
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
+use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
 use nb::block;
+use p256::NistP256;
 use ufmt::uwriteln;
-use ecdsa::generic_array::typenum::Unsigned;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
 where
@@ -243,8 +242,7 @@ where
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
-        let total_size =
-            input_image.size()
+        let total_size = input_image.size()
             + SignatureSize::<NistP256>::to_usize()
             + MAGIC_STRING.len()
             + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
