@@ -17,7 +17,7 @@ pub fn magic_string_inverted() -> Vec<u8> {
     MAGIC_STRING.as_bytes().iter().map(|b| !b).collect()
 }
 
-pub fn decorate_file(file: &mut File, is_golden: bool) -> Result<(), Error>{
+pub fn decorate_file(mut file: File, is_golden: bool) -> Result<(), Error>{
     if is_golden {
         file.write(GOLDEN_STRING.as_bytes()).map_err(|_| Error::FileWriteFailed(error::File::Image))?;
         println!("Successfully appended golden string.");

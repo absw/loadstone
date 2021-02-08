@@ -2,6 +2,7 @@ use p256::ecdsa::SigningKey;
 use std::str::FromStr;
 use p256::ecdsa::signature::Signer;
 use p256::ecdsa::signature::Signature;
+use sha2::{Digest, Sha256};
 
 use crate::error::{self, Error};
 use std::{
@@ -29,7 +30,6 @@ pub fn sign_file(mut file: File, key_file: File) -> Result<usize, Error> {
     let key = read_key(key_file)?;
     let plaintext = read_file(&mut file)?;
     let signature = key.sign(&plaintext);
-
     let bytes_written = file
         .write(signature.as_bytes())
         .map_err(|_| Error::FileWriteFailed(error::File::Image))?;

@@ -11,13 +11,19 @@ use clap::clap_app;
 use std::fs::{File, OpenOptions};
 
 fn process_image_file(image_filename: String, private_key_filename: String, image_is_golden: bool) -> Result<usize, Error> {
-    let mut image_file = OpenOptions::new()
+    let image_file = OpenOptions::new()
         .read(true)
         .append(true)
-        .open(image_filename)
+        .open(&image_filename)
         .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
     let key_file = File::open(private_key_filename).map_err(|_| Error::FileOpenFailed(e::File::Key))?;
-    decorate_file(&mut image_file, image_is_golden)?;
+    decorate_file(image_file, image_is_golden)?;
+
+    let image_file = OpenOptions::new()
+        .read(true)
+        .append(true)
+        .open(&image_filename)
+        .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
     sign_file(image_file, key_file)
 }
 
