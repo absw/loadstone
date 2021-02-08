@@ -9,12 +9,10 @@
 #![feature(alloc_error_handler)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
-
 pub use blue_hal::stm32pac;
 
 #[cfg(target_arch = "arm")]
 use alloc_cortex_m::CortexMHeap;
-
 
 #[cfg(target_arch = "arm")]
 #[global_allocator]
