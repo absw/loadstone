@@ -44,9 +44,35 @@ where
     where
         I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
+        let mut last_index = 0;
+        let mut previous_buffer : Option<[u8; xmodem::PAYLOAD_SIZE]> = None;
+
         for (i, block) in blocks.enumerate() {
-            nb::block!(self.external_flash.write(bank.location + block.len() * i, &block))?;
+            last_index = i;
+
+            previous_buffer = match previous_buffer {
+                None => Some(block),
+                Some(b) => {
+                    let mut output = [0u8; xmodem::PAYLOAD_SIZE * 2];
+                    for (source, destination) in b.iter().chain(&block).zip(&mut output) {
+                        *destination = *source;
+                    }
+                    nb::block!(self.external_flash.write(
+                        bank.location + xmodem::PAYLOAD_SIZE * i,
+                        &output)
+                    )?;
+                    None
+                },
+            }
         }
+
+        if let Some(block) = previous_buffer {
+            nb::block!(self.external_flash.write(
+                bank.location + xmodem::PAYLOAD_SIZE * last_index,
+                &block)
+            )?;
+        }
+
         Ok(())
     }
 
