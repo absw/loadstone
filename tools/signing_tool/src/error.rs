@@ -19,6 +19,7 @@ pub enum Error {
     FileReadFailed(File),
     FileOpenFailed(File),
     FileWriteFailed(File),
+    FileAlreadySigned(File),
     KeyParseFailed,
 }
 
@@ -29,6 +30,7 @@ impl Display for Error {
             FileReadFailed(file) => write!(f, "Failed to read {} file.", file),
             FileOpenFailed(file) => write!(f, "Failed to open {} file.", file),
             FileWriteFailed(file) => write!(f, "Failed to write {} file.", file),
+            FileAlreadySigned(file) => write!(f, "File already signed ({} file).", file),
             KeyParseFailed => write!(f, "Failed to parse the private key."),
         }
     }

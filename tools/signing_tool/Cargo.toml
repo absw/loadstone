@@ -21,3 +21,7 @@ version = "*"
 [dependencies.p256]
 version = "*"
 features = ["ecdsa", "sha256", "pem"]
+
+[dependencies.blue_hal]
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "main"

@@ -3,28 +3,31 @@ mod signing;
 mod decorating;
 
 use crate::{
+    decorating::decorate_file,
     error::{self as e, Error},
     signing::sign_file,
-    decorating::decorate_file,
 };
 use clap::clap_app;
 use std::fs::{File, OpenOptions};
 
-fn process_image_file(image_filename: String, private_key_filename: String, image_is_golden: bool) -> Result<usize, Error> {
-    let image_file = OpenOptions::new()
+fn open_image(filename: &str) -> Result<File, Error> {
+    OpenOptions::new()
         .read(true)
         .append(true)
-        .open(&image_filename)
-        .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
-    let key_file = File::open(private_key_filename).map_err(|_| Error::FileOpenFailed(e::File::Key))?;
-    decorate_file(image_file, image_is_golden)?;
+        .open(filename)
+        .map_err(|_| Error::FileOpenFailed(e::File::Image))
+}
 
-    let image_file = OpenOptions::new()
-        .read(true)
-        .append(true)
-        .open(&image_filename)
-        .map_err(|_| Error::FileOpenFailed(e::File::Image))?;
-    sign_file(image_file, key_file)
+fn process_image_file(
+    image_filename: String,
+    private_key_filename: String,
+    image_is_golden: bool,
+) -> Result<usize, Error> {
+    let key_file =
+        File::open(private_key_filename).map_err(|_| Error::FileOpenFailed(e::File::Key))?;
+    let key = signing::read_key(key_file)?;
+    decorate_file(&image_filename, image_is_golden)?;
+    sign_file(&image_filename, key)
 }
 
 fn main() -> Result<(), String> {
@@ -42,12 +45,13 @@ fn main() -> Result<(), String> {
     let image_filename = matches.value_of("image").unwrap().to_owned();
     let private_key_filename = matches.value_of("private_key").unwrap().to_owned();
 
-    match process_image_file(image_filename, private_key_filename, matches.occurrences_of("golden") > 0) {
+    match process_image_file(
+        image_filename,
+        private_key_filename,
+        matches.occurrences_of("golden") > 0,
+    ) {
         Ok(signature_size) => {
-            println!(
-                "Successfully appended signature to image ({} bytes).",
-                signature_size
-            );
+            println!("Successfully appended signature to image ({} bytes).", signature_size);
             Ok(())
         }
         Err(e) => Err(e.to_string()),

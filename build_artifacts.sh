@@ -16,6 +16,7 @@ mv demo_app.bin artifacts/demo_app_self_booting.bin
 cargo clean
 sed -i'' 's/0x0800/0x0801/' memory.x
 cargo gen_demo_app
+cp demo_app.bin artifacts/demo_app_unsigned.bin
 cp demo_app.bin artifacts/demo_app_golden.bin
 cp demo_app.bin artifacts/demo_app_regular.bin
 cargo gen_variant_demo_app
