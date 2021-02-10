@@ -1,15 +1,13 @@
 //! Fully CLI interactive boot manager for the demo application.
 
-use super::{
-    cli::{file_transfer, Cli},
-    image,
-};
+use super::{boot_metrics::boot_metrics, cli::{file_transfer, Cli}, image};
 use crate::error::Error;
 use blue_hal::{
     hal::{flash, serial},
     stm32pac::SCB,
     utilities::xmodem,
 };
+use ufmt::uwriteln;
 
 pub struct BootManager<EXTF, SRL>
 where
@@ -58,7 +56,9 @@ where
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
     pub fn run(mut self, greeting: &'static str) -> ! {
+        let metrics = unsafe { boot_metrics().clone() };
         let mut cli = self.cli.take().unwrap();
+        uwriteln!(cli.serial(), "The test metrics value is {:?}", metrics.test).ok().unwrap();
         loop {
             cli.run(&mut self, greeting)
         }

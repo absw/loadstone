@@ -4,7 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, Image, GOLDEN_STRING, MAGIC_STRING};
+use super::{boot_metrics::{BootMetrics, boot_metrics_mut}, image::{self, Image, GOLDEN_STRING, MAGIC_STRING}};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
@@ -55,7 +55,6 @@ where
     pub fn run(mut self) -> ! {
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
-
         duprintln!(self.serial, "--Loadstone Initialised--");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
@@ -201,6 +200,8 @@ where
                 *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
             (*SCB::ptr()).vtor.write(image_location_raw as u32);
+            *boot_metrics_mut() = BootMetrics { test: 42 };
+            #[allow(deprecated)]
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }
