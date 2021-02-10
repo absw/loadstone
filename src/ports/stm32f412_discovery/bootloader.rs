@@ -49,11 +49,11 @@ pub static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBE
     image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, is_golden: true },
 ];
 
-impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial> {
+impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
     fn default() -> Self { Self::new() }
 }
 
-impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
+impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
@@ -73,7 +73,16 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial> {
         let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
         let serial_pins = (gpiog.pg14, gpiog.pg9);
         let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
-        Bootloader { mcu_flash, external_banks: &EXTERNAL_BANKS, mcu_banks: &MCU_BANKS, external_flash, serial  }
+        Bootloader {
+            mcu_flash,
+            external_banks: &EXTERNAL_BANKS,
+            mcu_banks: &MCU_BANKS,
+            external_flash,
+            serial,
+            boot_metrics: Default::default(),
+            start_time: None,
+            _marker: Default::default(),
+        }
     }
 }
 
