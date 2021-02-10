@@ -1,4 +1,12 @@
-use crate::{devices::{boot_manager::BootManager, boot_metrics::BootPath, cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument}, image::{self, MAGIC_STRING}}, error::Error as ApplicationError};
+use crate::{
+    devices::{
+        boot_manager::BootManager,
+        boot_metrics::BootPath,
+        cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
+        image::{self, MAGIC_STRING},
+    },
+    error::Error as ApplicationError,
+};
 use blue_hal::{
     hal::{flash, serial},
     uprintln,

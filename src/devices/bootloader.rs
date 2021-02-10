@@ -4,11 +4,16 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{boot_metrics::{BootMetrics, BootPath, boot_metrics_mut}, image::{self, Image, GOLDEN_STRING, MAGIC_STRING}};
+use super::{
+    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
+    image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
+};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
-use blue_hal::{duprintln, hal::{flash, serial, time}};
-use core::{cmp::min, mem::size_of};
-use core::marker::PhantomData;
+use blue_hal::{
+    duprintln,
+    hal::{flash, serial, time},
+};
+use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
@@ -141,7 +146,7 @@ where
                     input_bank.index
                 );
                 duprintln!(self.serial, "Verifying the image again in the boot bank...");
-                self.boot_metrics.boot_path = BootPath::Restored{bank: input_bank.index};
+                self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
                 return Ok(image::image_at(&mut self.mcu_flash, *output)?);
             };
         }
@@ -156,7 +161,7 @@ where
                 golden_bank.index
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
-            self.boot_metrics.boot_path = BootPath::Restored{bank: golden_bank.index};
+            self.boot_metrics.boot_path = BootPath::Restored { bank: golden_bank.index };
             return Ok(image::image_at(&mut self.mcu_flash, *output)?);
         };
 

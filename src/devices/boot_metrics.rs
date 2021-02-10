@@ -25,7 +25,6 @@ impl Default for BootMetrics {
             boot_magic_end: BOOT_MAGIC_END,
         }
     }
-
 }
 
 impl BootMetrics {

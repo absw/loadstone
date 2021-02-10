@@ -1,6 +1,10 @@
 //! Fully CLI interactive boot manager for the demo application.
 
-use super::{boot_metrics::{BootMetrics, boot_metrics}, cli::{file_transfer, Cli}, image};
+use super::{
+    boot_metrics::{boot_metrics, BootMetrics},
+    cli::{file_transfer, Cli},
+    image,
+};
 use crate::error::Error;
 use blue_hal::{
     hal::{flash, serial},
@@ -18,7 +22,7 @@ where
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
     pub(crate) cli: Option<Cli<SRL>>,
-    pub(crate) boot_metrics: Option<BootMetrics>
+    pub(crate) boot_metrics: Option<BootMetrics>,
 }
 
 impl<EXTF, SRL> BootManager<EXTF, SRL>
@@ -58,7 +62,11 @@ where
     pub fn run(mut self, greeting: &'static str) -> ! {
         self.boot_metrics = {
             let metrics = unsafe { boot_metrics().clone() };
-            if metrics.is_valid() { Some(metrics) } else { None }
+            if metrics.is_valid() {
+                Some(metrics)
+            } else {
+                None
+            }
         };
         let mut cli = self.cli.take().unwrap();
         loop {
