@@ -4,6 +4,7 @@
 
 #[allow(unused_imports)]
 use cortex_m_rt::{entry, exception};
+pub const HEAP_SIZE_BYTES: usize = 8192;
 
 pub const GREETING: &str =
     "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
@@ -11,6 +12,9 @@ pub const GREETING: &str =
 #[cfg(target_arch = "arm")]
 #[entry]
 fn main() -> ! {
+    let heap_start = cortex_m_rt::heap_start() as usize;
+    unsafe { loadstone_lib::ALLOCATOR.init(heap_start, HEAP_SIZE_BYTES) }
+
     use loadstone_lib::devices::boot_manager;
     let app = boot_manager::BootManager::new();
     app.run(GREETING);

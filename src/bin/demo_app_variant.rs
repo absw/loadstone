@@ -5,8 +5,7 @@
 #[allow(unused_imports)]
 use cortex_m_rt::{entry, exception};
 
-pub const GREETING: &str =
-    "--=GREETING VARIANT=--";
+pub const GREETING: &str = "--=GREETING VARIANT=--";
 
 #[cfg(target_arch = "arm")]
 #[entry]
