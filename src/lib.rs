@@ -3,7 +3,6 @@
 //! This crate contains all functionality for the
 //! secure bootloader project in library form.
 #![feature(never_type)]
-#![feature(const_fn)]
 #![feature(bool_to_option)]
 #![feature(array_value_iter)]
 #![feature(associated_type_bounds)]

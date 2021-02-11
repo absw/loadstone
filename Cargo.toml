@@ -56,9 +56,9 @@ features = ["ecdsa", "sha256", "pem"]
 
 [dependencies.blue_hal]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
-path = "blue_hal"
-#git = "ssh://git@github.com/absw/blue_hal.git"
-#branch = "main"
+#path = "blue_hal"
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "main"
 
 [dependencies.ufmt]
 version = "*"
