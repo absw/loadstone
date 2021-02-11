@@ -4,7 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, Image, CRC_SIZE_BYTES, MAGIC_STRING};
+use super::image::{self, Image, GOLDEN_STRING, MAGIC_STRING};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
@@ -13,7 +13,9 @@ use blue_hal::{
 use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
+use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
 use nb::block;
+use p256::NistP256;
 use ufmt::uwriteln;
 
 pub struct Bootloader<EXTF, MCUF, SRL>
@@ -64,8 +66,8 @@ where
                 Error::BankEmpty => {
                     info!("Attempted to boot from empty bank. Restoring image...")
                 }
-                Error::CrcInvalid => {
-                    info!("Crc invalid for stored image. Restoring image...")
+                Error::SignatureInvalid => {
+                    info!("Signature invalid for stored image. Restoring image...")
                 }
                 _ => info!("Unexpected boot error. Restoring image..."),
             };
@@ -101,9 +103,7 @@ where
                 external_bank.index
             );
             match image::image_at(&mut self.external_flash, *external_bank) {
-                // Using CRC for identification for the time being. Will become
-                // the image's signed hash, which is a valid unique identifier.
-                Ok(image) if image.crc() != current_image.crc() => {
+                Ok(image) if image.signature() != current_image.signature() => {
                     duprintln!(
                         self.serial,
                         "Replacing current image with external bank {:?}...",
@@ -137,6 +137,7 @@ where
                     "Restored image from external bank {:?}.",
                     input_bank.index
                 );
+                duprintln!(self.serial, "Verifying the image again in the boot bank...");
                 return Ok(image::image_at(&mut self.mcu_flash, *output)?);
             };
         }
@@ -150,6 +151,7 @@ where
                 "Restored image from external golden bank {:?}.",
                 golden_bank.index
             );
+            duprintln!(self.serial, "Verifying the image again in the boot bank...");
             return Ok(image::image_at(&mut self.mcu_flash, *output)?);
         };
 
@@ -230,10 +232,7 @@ where
             input_image.size()
         );
         if must_be_golden && !input_image.is_golden() {
-            duprintln!(
-                self.serial,
-                "Image is not golden.",
-            );
+            duprintln!(self.serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));
         }
         let input_image_start_address = input_bank.location;
@@ -243,7 +242,10 @@ where
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
-        let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
+        let total_size = input_image.size()
+            + SignatureSize::<NistP256>::to_usize()
+            + MAGIC_STRING.len()
+            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));

@@ -11,6 +11,17 @@ description = "Tool to calculate and append signatures to images."
 clap = "2"
 base64 = "0.13"
 
-[dependencies.ring]
-version = "0.16"
-features = ["alloc", "std"]
+[dependencies.ecdsa]
+version = "*"
+features = ["pem"]
+
+[dependencies.sha2]
+version = "*"
+
+[dependencies.p256]
+version = "*"
+features = ["ecdsa", "sha256", "pem"]
+
+[dependencies.blue_hal]
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "main"
