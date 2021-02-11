@@ -44,35 +44,27 @@ where
     where
         I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
-        let mut last_index = 0;
-        let mut previous_buffer : Option<[u8; xmodem::PAYLOAD_SIZE]> = None;
+        use crate::utility::*;
 
-        for (i, block) in blocks.enumerate() {
-            last_index = i;
-
-            previous_buffer = match previous_buffer {
-                None => Some(block),
-                Some(b) => {
-                    let mut output = [0u8; xmodem::PAYLOAD_SIZE * 2];
-                    for (source, destination) in b.iter().chain(&block).zip(&mut output) {
-                        *destination = *source;
-                    }
-                    nb::block!(self.external_flash.write(
-                        bank.location + xmodem::PAYLOAD_SIZE * i,
-                        &output)
-                    )?;
-                    None
+        let mut buffer = [0u8; xmodem::PAYLOAD_SIZE * 2];
+        let buffer_slice = buffer.as_mut_slice();
+        for (i, block) in blocks.pairs().enumerate() {
+            let view = match block {
+                Pair::One(a) => {
+                    buffer_slice[..xmodem::PAYLOAD_SIZE].copy_from_slice(&a);
+                    &buffer_slice[..xmodem::PAYLOAD_SIZE]
                 },
-            }
-        }
-
-        if let Some(block) = previous_buffer {
+                Pair::Two(a, b) => {
+                    buffer_slice[..xmodem::PAYLOAD_SIZE].copy_from_slice(&a);
+                    buffer_slice[xmodem::PAYLOAD_SIZE..].copy_from_slice(&b);
+                    &buffer_slice[..]
+                },
+            };
             nb::block!(self.external_flash.write(
-                bank.location + xmodem::PAYLOAD_SIZE * last_index,
-                &block)
-            )?;
+                bank.location + (i * xmodem::PAYLOAD_SIZE * 2),
+                view
+            ))?;
         }
-
         Ok(())
     }
 
