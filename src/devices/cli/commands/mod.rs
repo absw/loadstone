@@ -119,8 +119,8 @@ commands!( cli, boot_manager, names, helpstrings [
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )
     {
         if let Some(metrics) = &boot_manager.boot_metrics {
+            uprintln!(cli.serial, "[Boot Metrics]");
             match metrics.boot_path {
-                uprintln!(cli.serial, "[Boot Metrics]");
                 BootPath::Direct => {
                     uprintln!(cli.serial, "* Application was booted directly from the MCU bank.");
                 },
