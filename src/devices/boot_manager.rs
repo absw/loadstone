@@ -6,11 +6,7 @@ use super::{
     image,
 };
 use crate::error::Error;
-use blue_hal::{
-    hal::{flash, serial},
-    stm32pac::SCB,
-    utilities::xmodem,
-};
+use blue_hal::{KB, hal::{flash, serial}, stm32pac::SCB, utilities::xmodem};
 
 pub struct BootManager<EXTF, SRL>
 where
@@ -46,9 +42,27 @@ where
     where
         I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
-        for (i, block) in blocks.enumerate() {
-            nb::block!(self.external_flash.write(bank.location + block.len() * i, &block))?;
+        // A large transfer array ensures minimal flash thrashing as the flash driver
+        // has enough information to optimize sector read-write cycles
+        const TRANSFER_ARRAY_SIZE: usize = KB!(64);
+        assert!(TRANSFER_ARRAY_SIZE % xmodem::PAYLOAD_SIZE == 0);
+        let mut transfer_array = [0x00u8; TRANSFER_ARRAY_SIZE];
+        let mut memory_index = 0usize;
+
+        for block in blocks {
+            let slice = &mut transfer_array[
+                (memory_index % TRANSFER_ARRAY_SIZE)
+                ..((memory_index % TRANSFER_ARRAY_SIZE) + xmodem::PAYLOAD_SIZE)];
+            slice.clone_from_slice(&block);
+            memory_index += xmodem::PAYLOAD_SIZE;
+
+            if memory_index % TRANSFER_ARRAY_SIZE == 0 {
+                nb::block!(self.external_flash.write(bank.location + (memory_index - TRANSFER_ARRAY_SIZE), &transfer_array))?;
+                transfer_array.iter_mut().for_each(|b| *b = 0x00u8);
+            }
         }
+        let remainder = &transfer_array[0..(memory_index % TRANSFER_ARRAY_SIZE)];
+        nb::block!(self.external_flash.write(bank.location + (memory_index - remainder.len()), &remainder))?;
         Ok(())
     }
 
