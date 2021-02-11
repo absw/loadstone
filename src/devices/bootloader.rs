@@ -4,13 +4,16 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, Image, GOLDEN_STRING, MAGIC_STRING};
+use super::{
+    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
+    image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
+};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
-    hal::{flash, serial},
+    hal::{flash, serial, time},
 };
-use core::{cmp::min, mem::size_of};
+use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
@@ -18,7 +21,7 @@ use nb::block;
 use p256::NistP256;
 use ufmt::uwriteln;
 
-pub struct Bootloader<EXTF, MCUF, SRL>
+pub struct Bootloader<EXTF, MCUF, SRL, T>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
@@ -26,17 +29,21 @@ where
     Error: From<MCUF::Error>,
     SRL: serial::ReadWrite,
     Error: From<<SRL as serial::Read>::Error>,
+    T: time::Now,
 {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
     pub(crate) serial: SRL,
+    pub(crate) boot_metrics: BootMetrics,
+    pub(crate) start_time: Option<T::I>,
+    pub(crate) _marker: PhantomData<T>,
 }
 
 const DEFAULT_BOOT_BANK: u8 = 1;
 
-impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
+impl<EXTF, MCUF, SRL, T> Bootloader<EXTF, MCUF, SRL, T>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
@@ -44,6 +51,7 @@ where
     Error: From<MCUF::Error>,
     SRL: serial::ReadWrite + serial::TimeoutRead,
     Error: From<<SRL as serial::Read>::Error>,
+    T: time::Now,
 {
     /// Main bootloader routine. Attempts to boot from MCU image, and
     /// in case of failure proceeds to:
@@ -53,9 +61,9 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
+        self.start_time = Some(T::now());
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
-
         duprintln!(self.serial, "--Loadstone Initialised--");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
@@ -138,6 +146,7 @@ where
                     input_bank.index
                 );
                 duprintln!(self.serial, "Verifying the image again in the boot bank...");
+                self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
                 return Ok(image::image_at(&mut self.mcu_flash, *output)?);
             };
         }
@@ -152,6 +161,7 @@ where
                 golden_bank.index
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
+            self.boot_metrics.boot_path = BootPath::Restored { bank: golden_bank.index };
             return Ok(image::image_at(&mut self.mcu_flash, *output)?);
         };
 
@@ -190,6 +200,8 @@ where
     pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = image.location().into();
+        let time_ms = T::now() - self.start_time.unwrap();
+        self.boot_metrics.boot_time_ms = time_ms.0;
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
@@ -201,6 +213,8 @@ where
                 *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
             (*SCB::ptr()).vtor.write(image_location_raw as u32);
+            *boot_metrics_mut() = self.boot_metrics.clone();
+            #[allow(deprecated)]
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }

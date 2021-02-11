@@ -1,6 +1,7 @@
 use crate::{
     devices::{
         boot_manager::BootManager,
+        boot_metrics::BootPath,
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
     },
@@ -113,6 +114,24 @@ commands!( cli, boot_manager, names, helpstrings [
     {
         uprintln!(cli.serial, "Restarting...");
         boot_manager.reset();
+    },
+
+    metrics ["Displays boot process metrics relayed by Loadstone."] ( )
+    {
+        if let Some(metrics) = &boot_manager.boot_metrics {
+            uprintln!(cli.serial, "[Boot Metrics]");
+            match metrics.boot_path {
+                BootPath::Direct => {
+                    uprintln!(cli.serial, "* Application was booted directly from the MCU bank.");
+                },
+                BootPath::Restored { bank } => {
+                    uprintln!(cli.serial, "* Application was first restored from bank {}, then booted.", bank);
+                },
+            }
+            uprintln!(cli.serial, "* Boot process took {} milliseconds.", metrics.boot_time_ms);
+        } else {
+            uprintln!(cli.serial, "Loadstone did not relay any boot metrics, or the boot metrics were corrupted.");
+        }
     },
 
 ]);
