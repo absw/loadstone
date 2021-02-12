@@ -6,11 +6,7 @@ use super::{
     image,
 };
 use crate::error::Error;
-use blue_hal::{
-    hal::{flash, serial},
-    stm32pac::SCB,
-    utilities::xmodem,
-};
+use blue_hal::{hal::{flash, serial}, stm32pac::SCB, utilities::xmodem};
 
 pub struct BootManager<EXTF, SRL>
 where
@@ -46,9 +42,7 @@ where
     where
         I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
-        for (i, block) in blocks.enumerate() {
-            nb::block!(self.external_flash.write(bank.location + block.len() * i, &block))?;
-        }
+        self.external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
     }
 

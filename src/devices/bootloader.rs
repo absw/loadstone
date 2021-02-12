@@ -9,10 +9,7 @@ use super::{
     image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
 };
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
-use blue_hal::{
-    duprintln,
-    hal::{flash, serial, time},
-};
+use blue_hal::{KB, duprintln, hal::{flash, serial, time}};
 use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
@@ -173,12 +170,9 @@ where
         duprintln!(self.serial, "Please send golden firmware image via XMODEM.");
         let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
 
-        for (i, block) in self.serial.blocks(None).enumerate() {
-            nb::block!(self.external_flash.write(golden_bank.location + block.len() * i, &block))
-                .map_err(|_| {
-                    Error::DriverError("Failed to flash golden image during recovery mode.")
-                })
-                .unwrap();
+        let blocks = self.serial.blocks(None);
+        if self.external_flash.write_from_blocks(golden_bank.location, blocks).is_err() {
+            duprintln!(self.serial, "FATAL: Failed to flash golden image during recovery mode.");
         }
 
         match image::image_at(&mut self.external_flash, *golden_bank) {
@@ -252,7 +246,7 @@ where
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
-        const TRANSFER_BUFFER_SIZE: usize = 2048;
+        const TRANSFER_BUFFER_SIZE: usize = KB!(64);
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
