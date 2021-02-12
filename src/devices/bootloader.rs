@@ -61,7 +61,7 @@ where
         self.start_time = Some(T::now());
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
-        duprintln!(self.serial, "--Loadstone Initialised--");
+        duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {
@@ -120,6 +120,7 @@ where
                         "Replaced image with external bank {:?}.",
                         external_bank.index
                     );
+                    return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
                 }
                 Ok(_image) => break,
                 _ => (),
@@ -234,7 +235,7 @@ where
         let input_image = image::image_at(&mut self.external_flash, input_bank)?;
         duprintln!(
             self.serial,
-            "Image found at bank {:?} [Address {:?}, size {:?}], copying to boot bank.",
+            "Copying bank {:?} image [Address {:?}, size {:?}] to boot bank.",
             input_bank.index,
             input_image.location().into(),
             input_image.size()
