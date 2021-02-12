@@ -9,7 +9,11 @@ use super::{
     image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
 };
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
-use blue_hal::{KB, duprintln, hal::{flash, serial, time}};
+use blue_hal::{
+    duprintln,
+    hal::{flash, serial, time},
+    KB,
+};
 use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
@@ -115,6 +119,7 @@ where
                         external_bank.index
                     );
                     self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
                     duprintln!(
                         self.serial,
                         "Replaced image with external bank {:?}.",

@@ -14,6 +14,7 @@ const BOOT_MAGIC_END: u32 = 0xCAFEBABE;
 pub enum BootPath {
     Direct,
     Restored { bank: u8 },
+    Updated { bank: u8 },
 }
 
 impl Default for BootMetrics {
