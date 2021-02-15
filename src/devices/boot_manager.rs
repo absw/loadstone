@@ -6,7 +6,11 @@ use super::{
     image,
 };
 use crate::error::Error;
-use blue_hal::{hal::{flash, serial}, stm32pac::SCB, utilities::xmodem};
+use blue_hal::{
+    hal::{flash, serial},
+    stm32pac::SCB,
+    utilities::xmodem,
+};
 
 pub struct BootManager<EXTF, SRL>
 where

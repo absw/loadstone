@@ -9,7 +9,11 @@ use super::{
     image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
 };
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
-use blue_hal::{KB, duprintln, hal::{flash, serial, time}};
+use blue_hal::{
+    duprintln,
+    hal::{flash, serial, time},
+    KB,
+};
 use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
@@ -61,7 +65,7 @@ where
         self.start_time = Some(T::now());
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
-        duprintln!(self.serial, "--Loadstone Initialised--");
+        duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {
@@ -115,11 +119,13 @@ where
                         external_bank.index
                     );
                     self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
                     duprintln!(
                         self.serial,
                         "Replaced image with external bank {:?}.",
                         external_bank.index
                     );
+                    return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
                 }
                 Ok(_image) => break,
                 _ => (),
@@ -234,7 +240,7 @@ where
         let input_image = image::image_at(&mut self.external_flash, input_bank)?;
         duprintln!(
             self.serial,
-            "Image found at bank {:?} [Address {:?}, size {:?}], copying to boot bank.",
+            "Copying bank {:?} image [Address {:?}, size {:?}] to boot bank.",
             input_bank.index,
             input_image.location().into(),
             input_image.size()
