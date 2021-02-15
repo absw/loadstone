@@ -183,7 +183,7 @@ where
 
         match image::image_at(&mut self.external_flash, *golden_bank) {
             Ok(image) if !image.is_golden() => {
-                duprintln!(self.serial, "FATAL: Flashed image is not a golden image")
+                duprintln!(self.serial, "FATAL: Flashed image is not a golden image.")
             }
             Err(e) => {
                 duprintln!(self.serial, "FATAL: Image did not flash correctly.");
