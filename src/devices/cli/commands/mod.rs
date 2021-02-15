@@ -125,7 +125,22 @@ commands!( cli, boot_manager, names, helpstrings [
                     uprintln!(cli.serial, "* Application was booted directly from the MCU bank.");
                 },
                 BootPath::Restored { bank } => {
-                    uprintln!(cli.serial, "* Application was first restored from bank {}, then booted.", bank);
+                    let bank_index = bank;
+                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
+                    uprintln!(cli.serial,
+                        "* Application was first restored from bank {}{}, then booted.",
+                        bank_index,
+                        if bank.is_golden { " (GOLDEN)" } else {""}
+                    );
+                },
+                BootPath::Updated { bank } => {
+                    let bank_index = bank;
+                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
+                    uprintln!(cli.serial,
+                        "* Application was first updated from bank {}{}, then booted.",
+                        bank_index,
+                        if bank.is_golden { " (GOLDEN)" } else {""}
+                    );
                 },
             }
             uprintln!(cli.serial, "* Boot process took {} milliseconds.", metrics.boot_time_ms);
