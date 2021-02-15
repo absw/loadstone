@@ -49,7 +49,7 @@ commands!( cli, boot_manager, names, helpstrings [
     {
         if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
             uprintln!(cli.serial, "Starting XMODEM mode! Send file with your XMODEM client.");
-            boot_manager.store_image(cli.serial.blocks(Some(10)), bank)?;
+            boot_manager.store_image(cli.serial.blocks(None), bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
             uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");
