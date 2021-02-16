@@ -27,16 +27,6 @@ jobs:
       - name: Documentation
         run: ~/.cargo/bin/cargo d
 
-      - name: Deploy Documentation
-        env:
-          PERSONAL_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: ./target/doc
-          SCRIPT_MODE: true
-        run: |
-          wget https://raw.githubusercontent.com/peaceiris/actions-gh-pages/v2.5.0/entrypoint.sh
-          bash ./entrypoint.sh
-
       - name: Artifact Building
         env:
           SCRIPT_MODE: true
