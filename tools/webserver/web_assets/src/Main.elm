@@ -1,31 +1,42 @@
-port module Main exposing (main)
+module Main exposing (main)
 
 import Browser exposing (Document, document)
 import Html exposing (..)
 import Html.Attributes exposing (class, id, value, src)
 import Html.Events exposing (onClick, onInput)
 import Browser.Navigation
-
-port report_websocket_state : (String -> msg) -> Sub msg
-port try_open_websocket : () -> Cmd msg
-port recieve_websocket_data : (String -> msg) -> Sub msg
-port send_metrics_request : () -> Cmd msg
+import Http exposing (expectJson)
+import Json.Decode as Decode
 
 type alias Flags = ()
 
 type alias Metrics = { time: String, path: String }
 
-type Model = WaitingForSocket
-    | WaitingForInfo
+type alias MetricsInfo = { error: String, time: String, path: String }
+
+type Model = WaitingForInfo
     | Error String
     | Info Metrics
 
-type Message = WebSocketChange String
-    | WebSocketRecieve String
+type Message = RecievedInfo (Result Http.Error MetricsInfo)
     | MainButtonClick
 
+decode_json_metrics : Decode.Decoder MetricsInfo
+decode_json_metrics =
+    Decode.map3 MetricsInfo
+        (Decode.field "error" Decode.string)
+        (Decode.field "time" Decode.string)
+        (Decode.field "path" Decode.string)
+
 init : Flags -> (Model, Cmd Message)
-init _ = (WaitingForSocket, try_open_websocket ())
+init _ =
+    (
+        WaitingForInfo,
+        Http.get {
+            url = "/api/metrics",
+            expect = expectJson RecievedInfo decode_json_metrics
+        }
+    )
 
 view_title : String
 view_title = "Loadstone Metrics"
@@ -69,7 +80,6 @@ view_info metrics =
 get_model_id : Model -> String
 get_model_id model =
     case model of
-        WaitingForSocket -> "loading"
         WaitingForInfo -> "loading"
         Info _ -> "info"
         Error _ -> "error"
@@ -77,7 +87,6 @@ get_model_id model =
 get_model_main : Model -> List (Html Message)
 get_model_main model =
     case model of
-        WaitingForSocket -> view_loading "Waiting for response from remote server..."
         WaitingForInfo -> view_loading "Waiting for metrics from remote server..."
         Info metrics -> view_info metrics
         Error message -> view_error message
@@ -100,78 +109,35 @@ view model =
         body = view_body model
     }
 
-failed_to_open_message : String
-failed_to_open_message = "Failed to open a WebSocket connection to the " ++
-    "server. This is most likely because the server failed to communicate" ++
-    " with the board."
+get_http_error_message : Http.Error -> String
+get_http_error_message error = 
+    case error of
+        Http.Timeout -> "The network timed out."
+        Http.NetworkError -> "An unknown network error occured."
+        Http.BadStatus status -> "Error " ++ (String.fromInt status) ++ " occured."
+        _ -> "An internal error occured."
 
-update_waiting_for_socket : Message -> (Model, Cmd Message)
-update_waiting_for_socket message =
-    case message of
-        WebSocketChange "open" ->
-            (WaitingForInfo, send_metrics_request ())
-        WebSocketChange "closed" ->
-            (Error failed_to_open_message, Cmd.none)
-        _ ->
-            (Error websocket_change_message, Cmd.none)
+get_info_error_message : String -> String
+get_info_error_message error =
+    case error of
+       "device" -> "The server failed to initialise a connection to the device."
+       "io" -> "The server initialised a connection to the device, but failed to communicate."
+       "metrics" -> "The server recieved malformed metrics information from the device."
+       _ -> "An unknown error occured when recieving the metrics."
 
-parse_time_metric : String -> Maybe String
-parse_time_metric string =
-    let
-        prefix = "* Boot process took "
-        suffix = " milliseconds."
-        is_valid = String.startsWith prefix string
-            && String.endsWith suffix string
-        slice_start = String.length prefix
-        slice_end = (String.length string) - (String.length suffix)
-    in
-    if is_valid then
-        Just (String.slice slice_start slice_end string)
+handle_recieved_info : MetricsInfo -> Model
+handle_recieved_info info =
+    if info.error == "none" then
+        Info { time = info.time, path = info.path }
     else
-        Nothing
-
-parse_path_metric : String -> Maybe String
-parse_path_metric string =
-    let
-        prefix = "* "
-        slice_start = String.length prefix
-        slice_end = String.length string
-    in
-    Just (String.slice slice_start slice_end string)
-
-parse_metric_lines : String -> String -> Maybe Metrics
-parse_metric_lines path_string time_string =
-    case (parse_time_metric time_string, parse_path_metric path_string) of
-        (Just time, Just path) -> Just { time = time ++ "ms", path = path }
-        _ -> Nothing
-
-parse_metrics : String -> Maybe Metrics
-parse_metrics input =
-    case String.lines input of
-       _ :: second :: third :: _ -> parse_metric_lines second third
-       _ -> Nothing
-
-websocket_change_message : String
-websocket_change_message = "The socket changed state unexpectedly. This " ++
-    "most likely means the server crashed or failed to respond to a request" ++
-    ", or you have lost internet connection."
-
-bad_metrics_message : String
-bad_metrics_message = "The remote server failed to provide meaningful " ++
-    "metrics. Either the server temporarily returned incorrect data or the " ++
-    "board is malfunctioning."
+        Error (get_info_error_message info.error)
 
 update_waiting_for_info : Message -> (Model, Cmd Message)
 update_waiting_for_info message =
     case message of
-        WebSocketChange _ ->
-            (Error websocket_change_message, Cmd.none)
-        WebSocketRecieve metrics ->
-            case (parse_metrics metrics) of
-            Just m -> (Info m, Cmd.none)
-            Nothing -> (Error bad_metrics_message, Cmd.none)
-        _ ->
-            (WaitingForInfo, Cmd.none)
+        RecievedInfo (Err error) -> (Error (get_http_error_message error), Cmd.none)
+        RecievedInfo (Ok info) -> (handle_recieved_info info, Cmd.none)
+        _ -> (WaitingForInfo, Cmd.none)
 
 update_error : String -> Message -> (Model, Cmd Message)
 update_error m message =
@@ -182,17 +148,12 @@ update_error m message =
 update : Message -> Model -> (Model, Cmd Message)
 update message model =
     case model of
-        WaitingForSocket -> update_waiting_for_socket message
         WaitingForInfo -> update_waiting_for_info message
         Info _ -> (model, Cmd.none)
         Error m -> update_error m message
 
 subscriptions : Model -> Sub Message
-subscriptions _ =
-    Sub.batch [
-        report_websocket_state WebSocketChange,
-        recieve_websocket_data WebSocketRecieve
-    ]
+subscriptions _ = Sub.none
 
 main : Program Flags Model Message
 main =

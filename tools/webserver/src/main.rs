@@ -24,7 +24,7 @@ fn try_parse_metrics(string: &str) -> Option<String> {
     let time = captures.get(2)?.as_str();
 
     Some(format!(
-        r#"{{ "error": "false", "path": "{}", "time": "{}" }}"#,
+        r#"{{ "error": "none", "path": "{}", "time": "{}ms" }}"#,
         path, time,
     ))
 }
@@ -36,7 +36,7 @@ fn respond_to_api_request(file_name: String) -> Response {
         },
         "metrics" => {
             let mut device = match setup_device() {
-                None => return Response::new(r#"{ "error": "true", "source": "device" }"#.into()),
+                None => return Response::new(r#"{ "error": "device", "path": "", "time": "" }"#.into()),
                 Some(d) => d,
             };
 
@@ -46,14 +46,14 @@ fn respond_to_api_request(file_name: String) -> Response {
             };
 
             let raw = match try_read() {
-                None => return Response::new(r#"{ "error": "true", "source": "io" }"#.into()),
+                None => return Response::new(r#"{ "error": "io", "path": "", "time": "" }"#.into()),
                 Some(r) => r,
             };
 
             let message = String::from_utf8_lossy(&raw);
 
             match try_parse_metrics(&message) {
-                None => Response::new(r#"{ "error": "true", "source": "metrics" }"#.into()),
+                None => Response::new(r#"{ "error": "metrics", "path": "", "time": "" }"#.into()),
                 Some(m) => Response::new(m.into()),
             }
         },

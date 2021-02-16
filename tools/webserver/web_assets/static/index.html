@@ -12,18 +12,6 @@
     <body>
         <script>
             let app = Elm.Main.init();
-
-            app.ports.try_open_websocket.subscribe(try_open_websocket);
-            app.ports.send_metrics_request.subscribe(send_metrics_request);
-
-            function report_websocket_state(state) {
-                app.ports.report_websocket_state.send(state);
-            }
-
-            function recieve_websocket_data(text) {
-                app.ports.recieve_websocket_data.send(text);
-            }
-
         </script>
     </body>
 </html>
