@@ -60,4 +60,9 @@ h2 {
     main#info {
         margin: 0 1em;
     }
+
+    header {
+        text-align: center;
+        padding-left: 0;
+    }
 }
