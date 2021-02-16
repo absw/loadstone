@@ -184,10 +184,19 @@ async fn main() {
         .and(warp::path!("serial"))
         .map(|ws: warp::ws::Ws| ws.on_upgrade(handle_websocket));
 
+    let not_found = get_request
+        .map(|| {
+            let mut response = Response::new("404 Not found".into());
+            let status = response.status_mut();
+            *status = StatusCode::NOT_FOUND;
+            response
+        });
+
     let routes = index
         .or(api_request)
         .or(files)
-        .or(serial_websocket);
+        .or(serial_websocket)
+        .or(not_found);
 
     warp::serve(routes)
         .run(([127, 0, 0, 1], 8000))
