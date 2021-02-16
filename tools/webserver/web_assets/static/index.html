@@ -1,0 +1,30 @@
+<!doctype html>
+
+<html lang="en-GB">
+    <head>
+        <title>Loadstone</title>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width; initial-scale=1.0"/>
+        <link href="/style.css" rel="stylesheet" type="text/css"/>
+        <script src="/external.js" type="application/javascript"></script>
+        <script src="/main.js" type="application/javascript"></script>
+    </head>
+    <body>
+        <script>
+            let app = Elm.Main.init();
+
+            app.ports.try_open_websocket.subscribe(try_open_websocket);
+            app.ports.send_websocket_data.subscribe(send_websocket_data);
+            app.ports.send_metrics_request.subscribe(send_metrics_request);
+
+            function report_websocket_state(state) {
+                app.ports.report_websocket_state.send(state);
+            }
+
+            function recieve_websocket_data(text) {
+                app.ports.recieve_websocket_data.send(text);
+            }
+
+        </script>
+    </body>
+</html>
