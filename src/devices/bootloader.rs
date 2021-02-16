@@ -38,7 +38,7 @@ where
     pub(crate) external_flash: EXTF,
     pub(crate) serial: SRL,
     pub(crate) boot_metrics: BootMetrics,
-    pub(crate) start_time: Option<T::I>,
+    pub(crate) start_time: T::I,
     pub(crate) _marker: PhantomData<T>,
 }
 
@@ -62,7 +62,6 @@ where
     /// copy to bootable MCU flash bank.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        self.start_time = Some(T::now());
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
         duprintln!(self.serial, "-- Loadstone Initialised --");
@@ -200,7 +199,7 @@ where
     pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = image.location().into();
-        let time_ms = T::now() - self.start_time.unwrap();
+        let time_ms = T::now() - self.start_time;
         self.boot_metrics.boot_time_ms = time_ms.0;
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
