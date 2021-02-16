@@ -1,82 +1,97 @@
 port module Main exposing (main)
 
 import Browser exposing (Document, document)
-import Html exposing (Html, input, text, button, div, span, main_, h1, h2, pre, dl, dt, dd)
-import Html.Attributes exposing (class, id, value)
+import Html exposing (..)
+import Html.Attributes exposing (class, id, value, src)
 import Html.Events exposing (onClick, onInput)
+import Browser.Navigation
 
 port report_websocket_state : (String -> msg) -> Sub msg
 port try_open_websocket : () -> Cmd msg
-port send_websocket_data : String -> Cmd msg
 port recieve_websocket_data : (String -> msg) -> Sub msg
 port send_metrics_request : () -> Cmd msg
 
 type alias Flags = ()
 
-type alias Terminal = { input: String, responses: String }
-
 type alias Metrics = { time: String, path: String }
 
 type Model = WaitingForSocket
-    | BadSocket String
     | WaitingForInfo
+    | Error String
     | Info Metrics
-    | Running Terminal
 
-type Message = InputSubmit
-    | InputChange String
-    | WebSocketChange String
+type Message = WebSocketChange String
     | WebSocketRecieve String
+    | MainButtonClick
 
 init : Flags -> (Model, Cmd Message)
 init _ = (WaitingForSocket, try_open_websocket ())
 
 view_title : String
-view_title = "Loadstone Image Loader"
+view_title = "Loadstone Metrics"
 
-view_running : Terminal -> List (Html Message)
-view_running terminal =
+view_loading : String -> List (Html Message)
+view_loading message =
     [
-        main_ [ id "terminal" ] [
-            pre [ id "response-container" ] [ text terminal.responses ],
-            div [ id "input-container"] [
-                input [ onInput InputChange, value terminal.input ] [],
-                span [ class "spacer" ] [],
-                button [ onClick InputSubmit ] [ text "\u{23CE}" ]
-            ]
+        div [ id "container" ] [
+            img [ src "/loading.gif" ] [],
+            h2 [] [ text message ]
         ]
+    ]
+
+view_error : String -> List (Html Message)
+view_error message =
+    [
+        div [ id "container" ] [
+            h2 [] [ text "Failed to retrieve metrics" ],
+            p [] [ text message ],
+            button [ onClick MainButtonClick ] [ text "Reload" ]
+        ]
+    ]
+
+view_info_pane : String -> String -> String -> Html Message
+view_info_pane name description value =
+    div [ class "info-pane"] [
+        div [ class "info-pane-name" ] [
+            h2 [] [ text name ],
+            span [] [ text description ]
+        ],
+        div [ class "info-pane-value" ] [ text value ]
     ]
 
 view_info : Metrics -> List (Html Message)
 view_info metrics =
     [
-        h1 [] [ text "Loadstone metrics" ],
-        main_ [ id "metrics" ] [
-            dl [] [
-                dt [] [ text "Timing"],
-                dd [] [ text (metrics.time ++ "ms") ],
-                dt [] [ text "Boot path" ],
-                dd [] [ text metrics.path ]
-            ]
-        ]
+        view_info_pane "Timing" "The time taken from power-on until the demo-app is booted into." metrics.time,
+        view_info_pane "Boot path" "The path taken by loadstone when deciding how to boot." metrics.path
     ]
 
-view_message : String -> List (Html Message)
-view_message message =
-    [
-        main_ [ id "solo-message" ] [
-            h1 [] [ text message ]
-        ]
-    ]
+get_model_id : Model -> String
+get_model_id model =
+    case model of
+        WaitingForSocket -> "loading"
+        WaitingForInfo -> "loading"
+        Info _ -> "info"
+        Error _ -> "error"
+
+get_model_main : Model -> List (Html Message)
+get_model_main model =
+    case model of
+        WaitingForSocket -> view_loading "Waiting for response from remote server..."
+        WaitingForInfo -> view_loading "Waiting for metrics from remote server..."
+        Info metrics -> view_info metrics
+        Error message -> view_error message
 
 view_body : Model -> List (Html Message)
 view_body model =
-    case model of
-        WaitingForSocket -> view_message "Waiting for response from remote server..."
-        WaitingForInfo -> view_message "Waiting for metrics from remote server..."
-        Info metrics -> view_info metrics
-        Running terminal -> view_running terminal
-        BadSocket reason -> view_message reason
+    [
+        header [] [
+            h1 [] [ text view_title ]
+        ],
+        main_ [ id (get_model_id model) ] (
+            get_model_main model
+        )
+    ]
 
 view : Model -> Document Message
 view model =
@@ -85,32 +100,20 @@ view model =
         body = view_body model
     }
 
-update_terminal_on_recieve : Terminal -> String -> Terminal
-update_terminal_on_recieve terminal line =
-    { terminal | responses = terminal.responses ++ line }
-
-update_running : Message -> Terminal -> (Model, Cmd Message)
-update_running message terminal =
-    case message of
-        InputChange new_value ->
-            (Running { terminal | input = new_value }, Cmd.none)
-        InputSubmit ->
-            (Running { terminal | input = "" }, send_websocket_data terminal.input )
-        WebSocketChange _ ->
-            (BadSocket "The socket changed state unexpectedly.", Cmd.none)
-        WebSocketRecieve line ->
-            (Running (update_terminal_on_recieve terminal line), Cmd.none)
+failed_to_open_message : String
+failed_to_open_message = "Failed to open a WebSocket connection to the " ++
+    "server. This is most likely because the server failed to communicate" ++
+    " with the board."
 
 update_waiting_for_socket : Message -> (Model, Cmd Message)
 update_waiting_for_socket message =
     case message of
         WebSocketChange "open" ->
             (WaitingForInfo, send_metrics_request ())
---          (Running { input = "", responses = "" }, Cmd.none)
         WebSocketChange "closed" ->
-            (BadSocket "The remote server failed to open a web socket.", Cmd.none)
+            (Error failed_to_open_message, Cmd.none)
         _ ->
-            (WaitingForSocket, Cmd.none)
+            (Error websocket_change_message, Cmd.none)
 
 parse_time_metric : String -> Maybe String
 parse_time_metric string =
@@ -148,26 +151,41 @@ parse_metrics input =
        _ :: second :: third :: _ -> parse_metric_lines second third
        _ -> Nothing
 
+websocket_change_message : String
+websocket_change_message = "The socket changed state unexpectedly. This " ++
+    "most likely means the server crashed or failed to respond to a request" ++
+    ", or you have lost internet connection."
+
+bad_metrics_message : String
+bad_metrics_message = "The remote server failed to provide meaningful " ++
+    "metrics. Either the server temporarily returned incorrect data or the " ++
+    "board is malfunctioning."
+
 update_waiting_for_info : Message -> (Model, Cmd Message)
 update_waiting_for_info message =
     case message of
         WebSocketChange _ ->
-            (BadSocket "The socket changed state unexpectedly.", Cmd.none)
+            (Error websocket_change_message, Cmd.none)
         WebSocketRecieve metrics ->
             case (parse_metrics metrics) of
             Just m -> (Info m, Cmd.none)
-            Nothing -> (BadSocket "The remote server failed to provide meaningful metrics.", Cmd.none)
+            Nothing -> (Error bad_metrics_message, Cmd.none)
         _ ->
             (WaitingForInfo, Cmd.none)
+
+update_error : String -> Message -> (Model, Cmd Message)
+update_error m message =
+    case message of
+       MainButtonClick -> (Error m, Browser.Navigation.reload)
+       _ -> (Error m, Cmd.none)
 
 update : Message -> Model -> (Model, Cmd Message)
 update message model =
     case model of
         WaitingForSocket -> update_waiting_for_socket message
         WaitingForInfo -> update_waiting_for_info message
-        Info metrics -> (model, Cmd.none)
-        Running terminal -> update_running message terminal
-        BadSocket _ -> (model, Cmd.none)
+        Info _ -> (model, Cmd.none)
+        Error m -> update_error m message
 
 subscriptions : Model -> Sub Message
 subscriptions _ =
