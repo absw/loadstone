@@ -14,10 +14,48 @@ use serial::SystemPort;
 #[macro_use]
 extern crate lazy_static;
 
+fn try_parse_metrics(string: &str) -> Option<String> {
+    // TODO: Clean up this function.
+    const REGEX_SOURCE : &str =
+        r#"\[Boot Metrics\][\r\n]+\* (.*)[\r\n]+\* Boot process took (.*) milliseconds\."#;
+    let regex = regex::Regex::new(REGEX_SOURCE).unwrap();
+    let captures = regex.captures(string)?;
+    let path = captures.get(1)?.as_str().trim();
+    let time = captures.get(2)?.as_str();
+
+    Some(format!(
+        r#"{{ "error": "false", "path": "{}", "time": "{}" }}"#,
+        path, time,
+    ))
+}
+
 fn respond_to_api_request(file_name: String) -> Response {
     match file_name.as_str() {
         "server-version" => {
             Response::new(std::env!("CARGO_PKG_VERSION").into())
+        },
+        "metrics" => {
+            let mut device = match setup_device() {
+                None => return Response::new(r#"{ "error": "true", "source": "device" }"#.into()),
+                Some(d) => d,
+            };
+
+            let mut try_read = || {
+                write(&mut device, b"metrics\n").ok()?;
+                read(&mut device).ok()
+            };
+
+            let raw = match try_read() {
+                None => return Response::new(r#"{ "error": "true", "source": "io" }"#.into()),
+                Some(r) => r,
+            };
+
+            let message = String::from_utf8_lossy(&raw);
+
+            match try_parse_metrics(&message) {
+                None => Response::new(r#"{ "error": "true", "source": "metrics" }"#.into()),
+                Some(m) => Response::new(m.into()),
+            }
         },
         _ => {
             let mut response = Response::new("404 Not found".into());
@@ -77,7 +115,7 @@ fn read(serial: &mut SystemPort) -> std::io::Result<Vec<u8>> {
 }
 
 lazy_static! {
-    static ref SERIAL : Mutex<SystemPort> = Mutex::new(setup_device());
+    static ref SERIAL : Mutex<SystemPort> = Mutex::new(setup_device().unwrap());
 }
 
 async fn handle_websocket(socket: WebSocket) {
@@ -110,10 +148,10 @@ async fn handle_websocket(socket: WebSocket) {
     }
 }
 
-pub fn setup_device() -> SystemPort {
+pub fn setup_device() -> Option<SystemPort> {
     use serial::*;
 
-    let mut device = SystemPort::open(&PathBuf::from("/dev/ttyUSB0")).unwrap();
+    let mut device = SystemPort::open(&PathBuf::from("/dev/ttyUSB0")).ok()?;
     device.reconfigure(&|s| {
         s.set_baud_rate(Baud115200)?;
         s.set_char_size(Bits8);
@@ -121,8 +159,8 @@ pub fn setup_device() -> SystemPort {
         s.set_stop_bits(Stop1);
         s.set_flow_control(FlowNone);
         Ok(())
-    }).unwrap();
-    device
+    }).ok()?;
+    Some(device)
 }
 
 #[tokio::main]

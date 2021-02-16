@@ -12,3 +12,4 @@ warp = "0.3"
 futures = { version = "0.3", default-features = false }
 serial = "0.4"
 lazy_static = "1"
+regex = "1"
