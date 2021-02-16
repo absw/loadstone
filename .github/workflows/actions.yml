@@ -41,6 +41,7 @@ jobs:
         env:
           SCRIPT_MODE: true
         run: |
+          bash ~/.cargo/bin/cargo update
           bash ./build_artifacts.sh
 
       - name: Artifact Uploading
