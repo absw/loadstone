@@ -142,7 +142,7 @@ parse_path_metric string =
 parse_metric_lines : String -> String -> Maybe Metrics
 parse_metric_lines path_string time_string =
     case (parse_time_metric time_string, parse_path_metric path_string) of
-        (Just time, Just path) -> Just { time = time, path = path }
+        (Just time, Just path) -> Just { time = time ++ "ms", path = path }
         _ -> Nothing
 
 parse_metrics : String -> Maybe Metrics
