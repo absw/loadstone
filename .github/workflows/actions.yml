@@ -36,22 +36,3 @@ jobs:
           name: artifacts
           path: artifacts.zip
 
-   document-loadstone:
-    runs-on: self-hosted
-    #if: contains('
-    #  refs/head/staging
-    #  refs/head/master
-    #  refs/head/main
-    #  `,github.ref)
-    steps:
-      - name: Documentation
-        run: ~/.cargo/bin/cargo d
-
-      - name: Deploy Documentation
-        env:
-          PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: ./target/doc
-          SCRIPT_MODE: true
-        run: |
-          wget https://raw.githubusercontent.com/peaceiris/actions-gh-pages/v2.5.0/entrypoint.sh
-          bash ./entrypoint.sh
