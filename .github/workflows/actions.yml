@@ -29,6 +29,7 @@ jobs:
 
       - name: Deploy Documentation
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/doc
           SCRIPT_MODE: true
