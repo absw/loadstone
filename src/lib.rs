@@ -4,7 +4,6 @@
 //! secure bootloader project in library form.
 #![feature(never_type)]
 #![feature(bool_to_option)]
-#![feature(array_value_iter)]
 #![feature(associated_type_bounds)]
 #![feature(alloc_error_handler)]
 #![cfg_attr(test, allow(unused_imports))]
