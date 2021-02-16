@@ -198,7 +198,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Bad command encoding")
             }
             Err(Error::CharactersNotAllowed) => {
-                uwriteln!(self.serial, "[CLI Error] Illegal characters In command")
+                uwriteln!(self.serial, "[CLI Error] Illegal characters in command")
             }
             Err(Error::MalformedArguments) => {
                 uwriteln!(self.serial, "[CLI Error] Malformed command arguments")
@@ -213,7 +213,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::ApplicationError(e)) => {
-                uwriteln!(self.serial, "[CLI Error] Internal boot_manager error: ").ok().unwrap();
+                uwriteln!(self.serial, "[CLI Error] Internal boot manager error: ").ok().unwrap();
                 e.report(&mut self.serial);
                 Ok(())
             }
