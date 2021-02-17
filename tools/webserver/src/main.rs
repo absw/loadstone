@@ -1,21 +1,38 @@
-use std::{
-    path::PathBuf,
-    sync::Mutex,
-};
-use futures::{SinkExt, StreamExt};
+use std::path::PathBuf;
+use serial::SystemPort;
 use warp::{
     Filter,
     http::StatusCode,
     reply::Response,
-    ws::{WebSocket, Message}
 };
-use serial::SystemPort;
 
-#[macro_use]
-extern crate lazy_static;
+enum MetricsError {
+    BadPath,
+    BadDevice,
+    WriteError,
+    ReadError,
+    BadMetrics
+}
 
-fn try_parse_metrics(string: &str) -> Option<String> {
-    // TODO: Clean up this function.
+impl std::fmt::Display for MetricsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        use MetricsError::*;
+        match self {
+            BadPath => write!(f, "internal"),
+            BadDevice => write!(f, "device"),
+            WriteError => write!(f, "io"),
+            ReadError => write!(f, "io"),
+            BadMetrics => write!(f, "metrics"),
+        }
+    }
+}
+
+fn get_device_path() -> Option<String> {
+    // The device path should be the first argument passed to the server.
+    std::env::args().nth(1)
+}
+
+fn try_parse_metrics(string: &str) -> Option<(String, String)> {
     const REGEX_SOURCE : &str =
         r#"\[Boot Metrics\][\r\n]+\* (.*)[\r\n]+\* Boot process took (.*) milliseconds\."#;
     let regex = regex::Regex::new(REGEX_SOURCE).unwrap();
@@ -23,10 +40,21 @@ fn try_parse_metrics(string: &str) -> Option<String> {
     let path = captures.get(1)?.as_str().trim();
     let time = captures.get(2)?.as_str();
 
-    Some(format!(
-        r#"{{ "error": "none", "path": "{}", "time": "{}ms" }}"#,
-        path, time,
-    ))
+    Some((path.into(), time.into()))
+}
+
+fn handle_metrics_api_request() -> Result<(String, String), MetricsError> {
+    let device_path = get_device_path().ok_or(MetricsError::BadPath)?;
+    let mut device = setup_device(&device_path).ok_or(MetricsError::BadDevice)?;
+
+    const METRICS_COMMAND : &[u8] = b"metrics\n";
+    write_to_device(&mut device, METRICS_COMMAND).map_err(|_| MetricsError::WriteError)?;
+
+    let raw_data = read_from_device(&mut device).map_err(|_| MetricsError::ReadError)?;
+    if raw_data.is_empty() { return Err(MetricsError::ReadError); }
+
+    let message = String::from_utf8_lossy(&raw_data);
+    try_parse_metrics(&message).ok_or(MetricsError::BadMetrics)
 }
 
 fn respond_to_api_request(file_name: String) -> Response {
@@ -35,27 +63,13 @@ fn respond_to_api_request(file_name: String) -> Response {
             Response::new(std::env!("CARGO_PKG_VERSION").into())
         },
         "metrics" => {
-            let mut device = match setup_device() {
-                None => return Response::new(r#"{ "error": "device", "path": "", "time": "" }"#.into()),
-                Some(d) => d,
+            let body = match handle_metrics_api_request() {
+                Ok((path, time)) =>
+                    format!(r#"{{ "error": "none", "path": "{}", "time": "{}" }}"#, path, time),
+                Err(error) =>
+                    format!(r#"{{ "error": "{}", "path": "", "time": "" }}"#, error),
             };
-
-            let mut try_read = || {
-                write(&mut device, b"metrics\n").ok()?;
-                read(&mut device).ok()
-            };
-
-            let raw = match try_read() {
-                None => return Response::new(r#"{ "error": "io", "path": "", "time": "" }"#.into()),
-                Some(r) => r,
-            };
-
-            let message = String::from_utf8_lossy(&raw);
-
-            match try_parse_metrics(&message) {
-                None => Response::new(r#"{ "error": "metrics", "path": "", "time": "" }"#.into()),
-                Some(m) => Response::new(m.into()),
-            }
+            Response::new(body.into())
         },
         _ => {
             let mut response = Response::new("404 Not found".into());
@@ -66,7 +80,7 @@ fn respond_to_api_request(file_name: String) -> Response {
     }
 }
 
-fn write(serial: &mut SystemPort, buffer: &[u8]) -> std::io::Result<()> {
+fn write_to_device(serial: &mut SystemPort, buffer: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
 
     let mut remaining = buffer.len();
@@ -86,7 +100,7 @@ fn write(serial: &mut SystemPort, buffer: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
-fn read(serial: &mut SystemPort) -> std::io::Result<Vec<u8>> {
+fn read_from_device(serial: &mut SystemPort) -> std::io::Result<Vec<u8>> {
     use std::io::Read;
 
     let mut buffer = Vec::<u8>::new();
@@ -114,44 +128,11 @@ fn read(serial: &mut SystemPort) -> std::io::Result<Vec<u8>> {
     }
 }
 
-lazy_static! {
-    static ref SERIAL : Mutex<SystemPort> = Mutex::new(setup_device().unwrap());
-}
-
-async fn handle_websocket(socket: WebSocket) {
-    // TODO: Tell client that the websocket is about to close before closing.
-    // TODO: Do something better than calling `unwrap`.
-
-    let (mut sender, mut reciever) = socket.split();
-
-    while let Some(request) = reciever.next().await {
-        let message = match request {
-            Ok(message) => message,
-            Err(_) => { Message::close() },
-        };
-
-        if message.is_close() {
-            sender.close().await.unwrap();
-            return;
-        }
-
-        let buffer = {
-            let serial : &mut SystemPort = &mut SERIAL.lock().unwrap();
-            write(serial, message.as_bytes()).unwrap();
-            write(serial, &[b'\n']).unwrap();
-            read(serial).unwrap()
-        };
-
-        let response = Message::text(String::from_utf8_lossy(&buffer));
-
-        sender.send(response).await.unwrap();
-    }
-}
-
-pub fn setup_device() -> Option<SystemPort> {
+pub fn setup_device(path: &str) -> Option<SystemPort> {
     use serial::*;
 
-    let mut device = SystemPort::open(&PathBuf::from("/dev/ttyUSB0")).ok()?;
+    let path = PathBuf::from(path);
+    let mut device = SystemPort::open(&path).ok()?;
     device.reconfigure(&|s| {
         s.set_baud_rate(Baud115200)?;
         s.set_char_size(Bits8);
@@ -165,6 +146,13 @@ pub fn setup_device() -> Option<SystemPort> {
 
 #[tokio::main]
 async fn main() {
+    if let Some(p) = get_device_path() {
+        println!("Using '{}' as a path to the device.", p);
+    } else {
+        eprintln!("No device specified. Please provide the path to the device as an argument.");
+        return;
+    }
+
     let html_directory : PathBuf = PathBuf::from("public_html/");
 
     let get_request = warp::get();
@@ -180,10 +168,6 @@ async fn main() {
         .and(warp::path!("api" / String))
         .map(respond_to_api_request);
 
-    let serial_websocket = warp::ws()
-        .and(warp::path!("serial"))
-        .map(|ws: warp::ws::Ws| ws.on_upgrade(handle_websocket));
-
     let not_found = get_request
         .map(|| {
             let mut response = Response::new("404 Not found".into());
@@ -195,7 +179,6 @@ async fn main() {
     let routes = index
         .or(api_request)
         .or(files)
-        .or(serial_websocket)
         .or(not_found);
 
     warp::serve(routes)

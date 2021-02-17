@@ -12,4 +12,4 @@ Do `cargo build --release` to build the server executable.
 
 ## Running
 
-Do `cargo run --release` to run the server. This requires the web assets to be built (so it can server web files properly).
+Do `cargo run --release <path>` to run the server. This requires the web assets to be built (so it can server web files properly). `<path>` should be replaced with the path to the device with loadstone on.
