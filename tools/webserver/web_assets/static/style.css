@@ -15,7 +15,7 @@ body {
 header {
     padding-left: 1em;
     background-color: #494949;
-    border-bottom: #363638 0.25em solid;
+    border-bottom: #1a1a1b 0.25em solid;
 }
 
 main#error, main#loading {
@@ -29,6 +29,7 @@ main#info {
 }
 
 .info-pane {
+    box-shadow: 0.25em 0.25em #1a1a1b;
     border-left: #0099ff 0.25em solid;
     margin-bottom: 1em;
 }
