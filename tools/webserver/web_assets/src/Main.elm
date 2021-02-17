@@ -89,8 +89,10 @@ view_loading message =
 view_info : Metrics -> List (Html Message)
 view_info metrics =
     [
-        view_info_pane "Timing" "The time taken from power-on until the demo-app is booted into." metrics.time,
-        view_info_pane "Boot path" "The path taken by loadstone when deciding how to boot." metrics.path
+        view_info_pane "Timing"
+            "The time taken from power-on until the demo-app is booted into." metrics.time,
+        view_info_pane "Boot path"
+            "The path taken by loadstone when deciding how to boot." metrics.path
     ]
 
 view_error : String -> List (Html Message)
@@ -120,7 +122,7 @@ update message model =
     case model of
         WaitingForInfo -> update_waiting_for_info message
         Info _ -> (model, Cmd.none)
-        Error m -> update_error m message
+        Error error -> update_error error message
 
 update_waiting_for_info : Message -> (Model, Cmd Message)
 update_waiting_for_info message =
@@ -130,17 +132,17 @@ update_waiting_for_info message =
         _ -> (WaitingForInfo, Cmd.none)
 
 update_error : String -> Message -> (Model, Cmd Message)
-update_error m message =
+update_error error message =
     case message of
-       MainButtonClick -> (Error m, Browser.Navigation.reload)
-       _ -> (Error m, Cmd.none)
+       MainButtonClick -> (Error error, Browser.Navigation.reload)
+       _ -> (Error error, Cmd.none)
 
 get_http_error_message : Http.Error -> String
 get_http_error_message error = 
     case error of
         Http.Timeout -> "The network timed out."
         Http.NetworkError -> "An unknown network error occured."
-        Http.BadStatus status -> "Error " ++ (String.fromInt status) ++ " occured."
+        Http.BadStatus status -> "HTTP error " ++ (String.fromInt status) ++ " occured."
         _ -> "An internal error occured."
 
 handle_recieved_info : MetricsInfo -> Model
@@ -153,6 +155,7 @@ handle_recieved_info info =
 get_info_error_message : String -> String
 get_info_error_message error =
     case error of
+       "internal" -> "The server encountered an internal error."
        "device" -> "The server failed to initialise a connection to the device."
        "io" -> "The server initialised a connection to the device, but failed to communicate."
        "metrics" -> "The server recieved malformed metrics information from the device."
