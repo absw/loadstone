@@ -6,14 +6,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
- 
+
       - name: Authentication
         uses: webfactory/ssh-agent@v0.4.1
         with:
           ssh-private-key: |
             ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
 
-      - name: Cargo initialisation
+      - name: Cargo Initialisation
         run: |
           ~/.cargo/bin/rustup default nightly
           ~/.cargo/bin/rustup update
@@ -21,17 +21,31 @@ jobs:
           ~/.cargo/bin/rustup target add thumbv7em-none-eabihf
           ~/.cargo/bin/cargo install cargo-binutils
 
-      - name: Documentation
-        run: ~/.cargo/bin/cargo d
-
       - name: Tests
         run: ~/.cargo/bin/cargo test --release
 
-      - name: Building
-        run: ~/.cargo/bin/cargo gen_loadstone
+      - name: Documentation
+        run: ~/.cargo/bin/cargo d
 
-      - name: Upload loadstone
+      - name: Deploy Documentation
+        if: contains(github.ref, 'staging')
+        env:
+          PUBLISH_BRANCH: gh-pages
+          PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
+          SCRIPT_MODE: true
+        run: |
+          bash ./tools/deploy_docs.sh
+
+      - name: Artifact Building
+        env:
+          SCRIPT_MODE: true
+        run: |
+          ~/.cargo/bin/cargo update
+          bash ./build_artifacts.sh
+
+      - name: Artifact Uploading
         uses: actions/upload-artifact@v2
         with:
-          name: loadstone
-          path: loadstone.bin
+          name: artifacts
+          path: artifacts.zip
+

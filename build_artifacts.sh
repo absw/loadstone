@@ -28,3 +28,4 @@ cargo run --release -- ../../artifacts/demo_app_variant.bin ../../src/devices/as
 cd ../../
 sed -i'' 's/0x0801/0x0800/' memory.x
 cargo clean
+zip -r artifacts.zip artifacts
