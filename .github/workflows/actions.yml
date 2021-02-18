@@ -28,9 +28,9 @@ jobs:
         run: ~/.cargo/bin/cargo d
 
       - name: Deploy Documentation
+        #if: contains(github.ref, "staging")
         env:
           PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: ./target/doc
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc/loadstone_lib/
           SCRIPT_MODE: true
         run: |
