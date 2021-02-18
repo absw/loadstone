@@ -31,7 +31,7 @@ jobs:
         #if: contains(github.ref, "staging")
         env:
           PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc/loadstone_lib/
+          PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
         run: |
           bash ./tools/deploy_docs.sh
