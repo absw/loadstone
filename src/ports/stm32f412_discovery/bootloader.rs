@@ -2,7 +2,7 @@
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::error::Error;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time::{self, Now}, stm32pac::{self, USART6}};
 use super::pin_configuration::*;
 
 // Flash pins and typedefs
@@ -63,6 +63,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);
         SysTick::init(cortex_peripherals.SYST, clocks);
+        let start_time = SysTick::now();
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
@@ -80,7 +81,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
             external_flash,
             serial,
             boot_metrics: Default::default(),
-            start_time: None,
+            start_time,
             _marker: Default::default(),
         }
     }
