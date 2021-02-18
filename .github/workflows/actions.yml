@@ -28,7 +28,7 @@ jobs:
         run: ~/.cargo/bin/cargo d
 
       - name: Deploy Documentation
-        #if: contains(github.ref, "staging")
+        if: contains(github.ref, "staging")
         env:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
