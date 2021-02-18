@@ -16,6 +16,33 @@ header {
     padding-left: 1em;
     background-color: #494949;
     border-bottom: #1a1a1b 0.25em solid;
+
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+}
+
+.nav-link:link, .nav-link:visited {
+    min-width: 100px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    color: #f2f2f6;
+    background-color: #494949;
+    text-decoration: none;
+}
+
+.nav-link:hover {
+    color: #f2f2f6;
+    background-color: #1a1a1b;
+    text-decoration: none;
+}
+
+.nav-link:active {
+    color: #1a1a1b;
+    background-color: #494949;
+    text-decoration: none;
 }
 
 main#error, main#loading {
@@ -24,24 +51,45 @@ main#error, main#loading {
     align-items: center;
 }
 
-main#info {
+main#info, main#file-select {
     margin: 0 20vw;
 }
 
-.info-pane {
+.pane-success { border-left: #5de029 0.25em solid; }
+.pane-default { border-left: #0099ff 0.25em solid; }
+.pane-failure { border-left: #d12f29 0.25em solid; }
+
+.pane {
     box-shadow: 0.25em 0.25em #1a1a1b;
-    border-left: #0099ff 0.25em solid;
     margin-bottom: 1em;
 }
 
-.info-pane-name {
+.pane-top {
     background-color: #363638;
     padding: 1em;
 }
 
-.info-pane-value {
+.pane-value {
     background-color: #494949;
     padding: 1em;
+}
+
+.pane-button:link, .pane-button:visited {
+    display: block;
+    padding: 1em;
+
+    text-align: center;
+    text-decoration: none;
+    background-color: #494949;
+    color: #f2f2f6;
+}
+
+.pane-button:hover {
+    background-color: #616161;
+}
+
+.pane-button:active {
+    background-color: #363638;
 }
 
 h2 {
@@ -53,12 +101,32 @@ h2 {
     text-align: center;
 }
 
+.pane-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+}
+
+.file-select-button:link, .file-select-button:visited {
+    text-decoration: none;
+    padding: 1em;
+    background-color: #363638;
+    color: #f2f2f6;
+}
+
+.file-select-button:hover {
+    background-color: #494949;
+}
+
+.file-select-button:active {
+    background-color: #616161;
+}
+
 @media only screen and (max-width: 600px) {
     #container {
         max-width: 100vw;
     }
 
-    main#info {
+    main#info, main#file-select {
         margin: 0 1em;
     }
 

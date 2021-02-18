@@ -8,6 +8,6 @@ fi
 mkdir public_html -p
 
 cd web_assets
-elm make --optimize src/* --output=../public_html/main.js 1> /dev/null
+elm make --optimize src/Main.elm --output=../public_html/main.js 1> /dev/null
 cp static/* ../public_html/
 cd ..
