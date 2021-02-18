@@ -1,4 +1,4 @@
-//! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../../../documentation/hardware/discovery.pdf).
+//! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../hardware/discovery.pdf).
 use crate::devices::bootloader::Bootloader;
 use crate::devices::image;
 use crate::error::Error;
