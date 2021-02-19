@@ -54,12 +54,20 @@ where
     Error: From<<SRL as serial::Read>::Error>,
     T: time::Now,
 {
-    /// Main bootloader routine. Attempts to boot from MCU image, and
-    /// in case of failure proceeds to:
+    /// Main bootloader routine.
     ///
-    /// * Verify selected (main) external bank. If valid, copy to bootable MCU flash bank.
-    /// * If main external bank not available or invalid, verify golden image. If valid,
-    /// copy to bootable MCU flash bank.
+    /// In case the MCU flash's main bank contains a valid image, an update is attempted.
+    /// (Any valid image with a different signature in the top occupied external bank is
+    /// considered "newer" for the purposes of updating). The golden image, if available,
+    /// is *never* considered newer than the current MCU image, as it exists only as a final
+    /// resort fallback.
+    ///
+    /// After attempting or skipping the update process, the bootloader attempts to boot
+    /// the current MCU image. In case of failure, the following steps are attempted:
+    ///
+    /// * Verify each external bank in ascending order. If any is found to contain a valid
+    /// image, copy it to bootable MCU flash bank and attempt to boot it.
+    /// * Verify golden image. If valid, copy to bootable MCU flash bank and attempt to boot.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
@@ -91,8 +99,9 @@ where
     }
 
     /// If the current bootable (MCU flash) image is different from the top
-    /// non-golden external image, attempts to replace it. Returns the current
-    /// bootable image if available.
+    /// non-golden external image, attempts to replace it. On failure, this process
+    /// is repeated for all external non-golden banks. Returns the current
+    /// bootable image after the process, if available.
     fn try_update_image(&mut self) -> Option<Image<MCUF::Address>> {
         let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         duprintln!(self.serial, "Checking for image updates...");
@@ -134,8 +143,8 @@ where
         Some(current_image)
     }
 
-    /// Restores an image from the preferred external bank. If it fails,
-    /// attempts to restore from the golden image.
+    /// Restores the first image available in the external banks, attempting to restore
+    /// from the golden image as a last resort.
     fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {
         // Attempt to restore from normal image
         let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
@@ -170,6 +179,8 @@ where
         Err(Error::NoImageToRestoreFrom)
     }
 
+    /// Enters recovery mode, which requests a golden image to be transferred via serial through
+    /// the XMODEM protocol, then reboot.
     fn recover(&mut self) -> ! {
         duprintln!(self.serial, "-- Loadstone Recovery Mode --");
         duprintln!(self.serial, "Please send golden firmware image via XMODEM.");
@@ -229,7 +240,8 @@ where
         self.external_banks.iter().cloned()
     }
 
-    /// Copy from external bank to MCU bank
+    /// Copy from external bank to MCU bank. This routine uses a significant amount
+    /// of stack space to minimise flash erases and thus maximise flash usage efficiency.
     pub fn copy_image(
         &mut self,
         input_bank: image::Bank<EXTF::Address>,
@@ -251,6 +263,8 @@ where
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
+        // Large transfer buffer ensures that the number of read-write cycles needed
+        // to guarantee flash integrity through the process is minimal.
         const TRANSFER_BUFFER_SIZE: usize = KB!(64);
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;

@@ -91,5 +91,3 @@ impl Error {
         .unwrap();
     }
 }
-
-pub trait ConvertibleToBootloaderError {}
