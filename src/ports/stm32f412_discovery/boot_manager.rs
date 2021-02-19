@@ -1,3 +1,5 @@
+//! Concrete boot manager construction and flash bank layout
+//! for the [stm32f412 discovery](../../../../loadstone/hardware/discovery.pdf).
 use crate::devices::{boot_manager::BootManager, cli::Cli};
 use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::{bootloader::EXTERNAL_BANKS, pin_configuration::*};

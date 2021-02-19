@@ -1,3 +1,10 @@
+//! Specific pinout configuration for the stm32f412 Discovery development kit.
+//!
+//! Pin choices, alternate functions and input/output modes are defined here
+//! through macros, as well as binding "earmarks" for the particular use pins
+//! are intended for. The earmarks ensure a pin is impossible to use in the
+//! wrong driver.
+
 use blue_hal::{enable_gpio, gpio, gpio_inner, alternate_functions, enable_qspi, enable_spi, enable_serial, pin_rows};
 use blue_hal::paste;
 use blue_hal::drivers::stm32f4::gpio::*;
