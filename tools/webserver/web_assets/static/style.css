@@ -121,6 +121,16 @@ h2 {
     background-color: #616161;
 }
 
+.progress-bar-container {
+    background-color: #494949;
+    border: #616161 solid 0.5em;
+}
+
+.progress-bar {
+    height: 2em;
+    background-color: #f2f2f6;
+}
+
 @media only screen and (max-width: 600px) {
     #container {
         max-width: 100vw;

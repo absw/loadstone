@@ -1,4 +1,4 @@
-module Pane exposing (PaneStatus, notice_pane, info_pane, file_pane, button_pane)
+module Pane exposing (PaneStatus(..), progress_pane, notice_pane, info_pane, file_pane, button_pane)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -15,6 +15,14 @@ pane_status_class status =
         PaneDefault -> "pane-default"
         PaneSuccess -> "pane-success"
         PaneFailure -> "pane-failure"
+
+progress_pane : String -> String -> PaneStatus -> Float -> Html msg
+progress_pane title description status progress =
+    pane title description status [
+        div [ class "progress-bar-container" ] [
+            div [ class "progress-bar", style "width" (percentage_to_string progress) ] []
+        ]
+    ]
 
 notice_pane : String -> String -> Html msg
 notice_pane title description =
@@ -73,3 +81,9 @@ bytes_to_string n =
         String.fromInt kilobytes ++ "KB"
     else
         String.fromInt megabytes ++ "MB"
+
+percentage_to_string : Float -> String
+percentage_to_string n = n
+    |> (*) 100
+    |> String.fromFloat
+    |> \a -> String.append a "%"
