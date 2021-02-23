@@ -1,243 +1,146 @@
-use crate::{
-    error::Error,
-    hal::flash::{self, UnportableDeserialize, UnportableSerialize},
-    utilities::memory::Address,
+use blue_hal::{
+    hal::flash,
+    utilities::{buffer::CollectSlice, iterator::UntilSequence, memory::Address},
 };
-use core::{cmp::min, mem::size_of};
 use crc::{crc32, Hasher32};
 use nb::{self, block};
 
-pub(crate) const TRANSFER_BUFFER_SIZE: usize = 2048usize;
+use crate::error::Error;
 
-/// Changing this magic will force any headers in
-/// flash memory to be considered incorrect. Change it
-/// whenever you make a modification to any of the
-/// header types below.
-pub const MAGIC: u32 = 0xAB3ACADA;
-
-// If MAGIC was changed to be 0xFFFF_FFFF, uninitialized
-// flash memory would be confused with valid memory.
-static_assertions::const_assert!(MAGIC != 0xFFFF_FFFF);
-
-/// Header present at the lowest writable
-/// address of a flash chip (either MCU or external).
-#[repr(C)]
-pub struct GlobalHeader {
-    magic: u32,
-    /// Scratchpad buffer to test arbitrary read/write operations.
-    /// The value persisted here is meaningless.
-    pub test_buffer: [u8; 4],
+/// This string precedes the CRC for golden images only
+pub const GOLDEN_STRING: &str = "XPIcbOUrpG";
+/// This string, INVERTED BYTEWISE must terminate any valid images, after CRC
+///
+/// Note: Why inverted? Because if we used it as-is, no code that includes this
+/// constant could be used as a firmware image, as it contains the magic string
+/// halfway through.
+pub const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
+pub fn magic_string_inverted() -> [u8; MAGIC_STRING.len()] {
+    let mut inverted = [0u8; MAGIC_STRING.len()];
+    let mut bytes = MAGIC_STRING.as_bytes().iter().map(|b| !b);
+    bytes.collect_slice(&mut inverted);
+    inverted
 }
+pub const CRC_SIZE_BYTES: usize = 4;
 
-/// Header present at the start of any firmware image.
-#[repr(C)]
-pub struct ImageHeader {
-    magic: u32,
-    pub size: usize,
-    pub crc: u32,
-    pub name: Option<[u8; 32]>,
-}
-
-/// Image bank descriptor
-#[derive(Clone)]
+#[derive(Clone, Copy, Debug)]
 pub struct Bank<A: Address> {
     pub index: u8,
     pub size: usize,
     pub location: A,
     pub bootable: bool,
+    pub is_golden: bool,
 }
 
-impl GlobalHeader {
-    /// Attempts to retrieve a header from flash.
-    pub fn retrieve<F, A>(flash: &mut F) -> Result<Self, Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        // Global header is always at the end of the readable region
-        let address = flash.range().1 - size_of::<Self>();
-
-        // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
-        // validity. It will only cause UB when the structs in this file have been modified AND the
-        // magic value at the top has not.
-        let header: Self = block!(unsafe { flash.deserialize(address) })?;
-        if header.magic == MAGIC {
-            Ok(header)
-        } else {
-            Err(Error::FlashCorrupted)
-        }
-    }
-
-    /// Writes a default global header to flash at the right location.
-    pub fn format_default<F, A>(flash: &mut F) -> Result<(), Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        let default_header = Self { magic: MAGIC, test_buffer: [0x00; 4] };
-        // Global header is always at the end of the readable region
-        let address = flash.range().1 - size_of::<Self>();
-
-        // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
-        // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
-        // alongside a magic number that guarantees its safe retrieval from flash.
-        Ok(block!(unsafe { flash.serialize(&default_header, address) })?)
-    }
+/// Image descriptor
+#[derive(Clone, Debug, PartialEq)]
+pub struct Image<A: Address> {
+    size: usize,
+    location: A,
+    bootable: bool,
+    golden: bool,
+    crc: u32,
 }
 
-impl ImageHeader {
-    /// Retrieves an image header from a given bank in flash memory.
-    pub fn retrieve<F, A>(flash: &mut F, bank: &Bank<A>) -> Result<Self, Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        // Image headers are stored at the *end* of images to make sure the binary is aligned
-        let address = bank.location + bank.size;
-        // NOTE(Safety): It is safe to deserialize here since we're checking the magic number for
-        // validity. It will only cause UB when the structs in this file have been modified AND the
-        // magic value at the top has not.
-        let header: Self = block!(unsafe { flash.deserialize(address) })?;
-        if header.magic == MAGIC {
-            Ok(header)
-        } else {
-            Err(Error::FlashCorrupted)
-        }
+impl<A: Address> Image<A> {
+    pub fn location(&self) -> A { self.location }
+    pub fn size(&self) -> usize { self.size }
+    pub fn is_golden(&self) -> bool { self.golden }
+    pub fn crc(&self) -> u32 { self.crc }
+}
+
+pub fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, Error>
+where
+    A: Address,
+    F: flash::ReadWrite<Address = A>,
+    Error: From<F::Error>,
+{
+    // Development build shorcut: We're checking that the image does *not* start with 0xFF. This
+    // will not be part of the final Loadstone release build, but it helps speed up the
+    // verification for invalid images during development.
+    if flash.bytes(bank.location).next().ok_or(Error::BankInvalid)? == 0xFF {
+        return Err(Error::BankEmpty);
     }
 
-    /// Writes a default image header to flash at a given location
-    pub fn format_default<A, F>(flash: &mut F, bank: &Bank<A>) -> Result<(), Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        // Image headers are stored at the *end* of images to make sure the binary is aligned
-        let address = bank.location + bank.size;
-        let default_header = Self { magic: MAGIC, size: 0, crc: 0, name: None };
-        // NOTE(Safety): It is safe to serialize here since the type is defined in this file, and
-        // we guarantee it doesn't contain references, that it's repr C, and that it will be stored
-        // alongside a magic number that guarantees its safe retrieval from flash.
-        Ok(block!(unsafe { flash.serialize(&default_header, address) })?)
-    }
+    // TODO optimise this away so we don't have to scan the image twice. (e.g. with a "window"
+    // buffer for the CRC);
+    let image_size_with_crc =
+        flash.bytes(bank.location).take(bank.size).until_sequence(&magic_string_inverted()).count();
+    let image_size = image_size_with_crc.saturating_sub(CRC_SIZE_BYTES);
+    let image_bytes = flash.bytes(bank.location).take(image_size);
+    let digest = image_bytes.fold(crc32::Digest::new(crc32::IEEE), |mut digest, byte| {
+        digest.write(&[byte]);
+        digest
+    });
+    let calculated_crc = digest.sum32();
+    let crc_offset = image_size;
+    let mut crc_bytes = [0u8; CRC_SIZE_BYTES];
+    block!(flash.read(bank.location + crc_offset, &mut crc_bytes))?;
+    let crc = u32::from_le_bytes(crc_bytes);
 
-    /// Attempts to write a header to a given bank of flash.
-    pub fn write<A, F>(flash: &mut F, bank: &Bank<A>, size: usize) -> Result<(), Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        // Header can **only ever** be written if the image is valid.
-        let crc = Self::validate_image(flash, bank.location, size)?;
-        // Image headers are stored at the *end* of images to make sure the binary is aligned
-        let address = bank.location + bank.size;
-        let header = ImageHeader {
-            name: None, // TODO support named images
-            magic: MAGIC,
-            size,
+    let golden_string_offset = crc_offset.saturating_sub(GOLDEN_STRING.len());
+    let mut golden_bytes = [0u8; GOLDEN_STRING.len()];
+    block!(flash.read(bank.location + golden_string_offset, &mut golden_bytes))?;
+    let golden = golden_bytes == GOLDEN_STRING.as_bytes();
+
+    if crc == calculated_crc {
+        Ok(Image {
+            size: image_size,
+            location: bank.location,
+            bootable: bank.bootable,
+            golden,
             crc,
-        };
-
-        block!(unsafe { flash.serialize(&header, address) })?;
-        if bank.sanity_check(flash).is_err() {
-            Self::format_default(flash, bank).expect("FATAL: Flash unrecoverably corrupted");
-            return Err(Error::FlashCorrupted);
-        }
-        Ok(())
-    }
-
-    /// Performs a CRC check on a given image.
-    pub fn validate_image<A, F>(flash: &mut F, location: A, size: usize) -> Result<u32, Error>
-    where
-        A: Address,
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        if size <= size_of::<u32>() {
-            return Err(Error::BankEmpty);
-        }
-
-        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
-        let mut byte_index = 0usize;
-        let mut digest = crc32::Digest::new(crc32::IEEE);
-        let size_before_crc = size.saturating_sub(size_of::<u32>());
-
-        while byte_index < size_before_crc {
-            let remaining_size = size_before_crc.saturating_sub(byte_index);
-            let bytes_to_read = min(TRANSFER_BUFFER_SIZE, remaining_size);
-            let slice = &mut buffer[0..bytes_to_read];
-            block!(flash.read(location + byte_index, slice))?;
-            digest.write(slice);
-            byte_index += bytes_to_read;
-        }
-
-        let mut crc_bytes = [0u8; 4];
-        block!(flash.read(location + byte_index, &mut crc_bytes))?;
-        let crc = u32::from_le_bytes(crc_bytes);
-        let calculated_crc = digest.sum32();
-        if crc == calculated_crc {
-            Ok(crc)
-        } else {
-            Err(Error::CrcInvalid)
-        }
-    }
-}
-
-impl<A: Address> Bank<A> {
-    /// Ensures that a bank's CRC is still valid and reflects the image within.
-    pub fn sanity_check<F>(&self, flash: &mut F) -> Result<(), Error>
-    where
-        F: flash::ReadWrite<Address = A>,
-        Error: From<F::Error>,
-    {
-        let header = ImageHeader::retrieve(flash, self)?;
-        let header_crc = header.crc;
-        let crc_location = self.location + header.size - size_of::<u32>();
-        let mut crc_bytes = [0u8; 4];
-        block!(flash.read(crc_location, &mut crc_bytes))?;
-        let stored_crc = u32::from_le_bytes(crc_bytes);
-        if header_crc == stored_crc {
-            Ok(())
-        } else {
-            Err(Error::CrcInvalid)
-        }
+        })
+    } else {
+        Err(Error::CrcInvalid)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hal::{
-        doubles::flash::{Address, FakeFlash},
+    use blue_hal::hal::{
+        doubles::{
+            error::FakeError,
+            flash::{Address, FakeFlash},
+        },
         flash::ReadWrite,
     };
 
-    #[test]
-    fn writing_header_with_correct_crc() {
-        // Given
-        let mut flash = FakeFlash::new(Address(0));
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
-        let image_with_crc = [0xAAu8, 0xBB, /*CRC*/ 0x98, 0x2c, 0x82, 0x49];
-        flash.write(Address(0), &image_with_crc).unwrap();
+    impl From<FakeError> for Error {
+        fn from(_: FakeError) -> Self { Error::DeviceError("Something fake happened") }
+    }
 
-        // Then
-        ImageHeader::write(&mut flash, &bank, image_with_crc.len()).unwrap();
+    fn test_image_with_crc() -> [u8; 38] {
+        let mut array = [0u8; 38];
+        array[..2].copy_from_slice(&[0xAAu8, 0xBB]); // Image
+        array[2..34].copy_from_slice(&magic_string_inverted());
+        array[34..].copy_from_slice(&[0x98, 0x2c, 0x82, 0x49]); // CRC
+        array
     }
 
     #[test]
-    fn attempting_to_write_header_with_wrong_crc() {
-        // Given
+    fn retrieving_broken_image_fails() {
         let mut flash = FakeFlash::new(Address(0));
-        let bank = Bank { index: 1, size: 512, location: Address(0), bootable: false };
-        let image_with_crc = [0xAAu8, 0xBB, /*CRC*/ 0x01, 0x02, 0x03, 0x04];
+        let bank =
+            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+        let mut image_with_crc = test_image_with_crc();
+        image_with_crc[0] = 0xFF; // This will corrupt the image, making the CRC obsolete
         flash.write(Address(0), &image_with_crc).unwrap();
+        assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
 
-        // Then
-        let _result = ImageHeader::write(&mut flash, &bank, image_with_crc.len()).unwrap_err();
-        assert!(matches!(Error::CrcInvalid, _result));
+        let bank =
+            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+        let mut image_with_crc = test_image_with_crc();
+        image_with_crc[4] = 0xFF; // This will break the CRC directly
+        flash.write(Address(0), &image_with_crc).unwrap();
+        assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
+
+        let bank =
+            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+        let mut image_with_crc = test_image_with_crc();
+        image_with_crc[12] = 0xFF; // The magic string is not present to delineate the image
+        flash.write(Address(0), &image_with_crc).unwrap();
+        assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
     }
 }

@@ -1,7 +1,9 @@
-//! GPIO configuration and alternate functions for the [stm32f412 discovery](../../../../../../documentation/hardware/discovery.pdf).
-use crate::drivers::stm32f4::serial::{TxPin, RxPin};
-use crate::stm32pac::USART6;
-use crate::drivers::stm32f4::qspi::{
+use blue_hal::{enable_gpio, gpio, gpio_inner, alternate_functions, enable_qspi, enable_spi, enable_serial, pin_rows};
+use blue_hal::paste;
+use blue_hal::drivers::stm32f4::gpio::*;
+use blue_hal::drivers::stm32f4::serial::{TxPin, RxPin};
+use blue_hal::stm32pac::USART6;
+use blue_hal::drivers::stm32f4::qspi::{
     ClkPin as QspiClk,
     Bk1CsPin as QspiChipSelect,
     Bk1Io0Pin as QspiOutput,
@@ -9,8 +11,8 @@ use crate::drivers::stm32f4::qspi::{
     Bk1Io2Pin as QspiSecondaryOutput,
     Bk1Io3Pin as QspiSecondaryInput,
 };
+enable_gpio!();
 
-pin_rows!(a, b, c, d, e, f, g, h, i, j, k,);
 gpio!(a, [
     (0, Input<Floating>), // Boot mode
     (1, Input<Floating>),
