@@ -4,19 +4,25 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::image::{self, Image, CRC_SIZE_BYTES, MAGIC_STRING};
+use super::{
+    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
+    image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
+};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
-    hal::{flash, serial},
+    hal::{flash, serial, time},
+    KB,
 };
-use core::{cmp::min, mem::size_of};
+use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
+use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
 use nb::block;
+use p256::NistP256;
 use ufmt::uwriteln;
 
-pub struct Bootloader<EXTF, MCUF, SRL>
+pub struct Bootloader<EXTF, MCUF, SRL, T>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
@@ -24,17 +30,21 @@ where
     Error: From<MCUF::Error>,
     SRL: serial::ReadWrite,
     Error: From<<SRL as serial::Read>::Error>,
+    T: time::Now,
 {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
     pub(crate) serial: SRL,
+    pub(crate) boot_metrics: BootMetrics,
+    pub(crate) start_time: T::I,
+    pub(crate) _marker: PhantomData<T>,
 }
 
 const DEFAULT_BOOT_BANK: u8 = 1;
 
-impl<EXTF, MCUF, SRL> Bootloader<EXTF, MCUF, SRL>
+impl<EXTF, MCUF, SRL, T> Bootloader<EXTF, MCUF, SRL, T>
 where
     EXTF: flash::ReadWrite,
     Error: From<EXTF::Error>,
@@ -42,6 +52,7 @@ where
     Error: From<MCUF::Error>,
     SRL: serial::ReadWrite + serial::TimeoutRead,
     Error: From<<SRL as serial::Read>::Error>,
+    T: time::Now,
 {
     /// Main bootloader routine. Attempts to boot from MCU image, and
     /// in case of failure proceeds to:
@@ -53,8 +64,7 @@ where
     pub fn run(mut self) -> ! {
         assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
         assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
-
-        duprintln!(self.serial, "--Loadstone Initialised--");
+        duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {
@@ -64,8 +74,8 @@ where
                 Error::BankEmpty => {
                     info!("Attempted to boot from empty bank. Restoring image...")
                 }
-                Error::CrcInvalid => {
-                    info!("Crc invalid for stored image. Restoring image...")
+                Error::SignatureInvalid => {
+                    info!("Signature invalid for stored image. Restoring image...")
                 }
                 _ => info!("Unexpected boot error. Restoring image..."),
             };
@@ -101,20 +111,20 @@ where
                 external_bank.index
             );
             match image::image_at(&mut self.external_flash, *external_bank) {
-                // Using CRC for identification for the time being. Will become
-                // the image's signed hash, which is a valid unique identifier.
-                Ok(image) if image.crc() != current_image.crc() => {
+                Ok(image) if image.signature() != current_image.signature() => {
                     duprintln!(
                         self.serial,
                         "Replacing current image with external bank {:?}...",
                         external_bank.index
                     );
                     self.copy_image(*external_bank, *boot_bank, false).unwrap();
+                    self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
                     duprintln!(
                         self.serial,
                         "Replaced image with external bank {:?}.",
                         external_bank.index
                     );
+                    return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
                 }
                 Ok(_image) => break,
                 _ => (),
@@ -137,6 +147,8 @@ where
                     "Restored image from external bank {:?}.",
                     input_bank.index
                 );
+                duprintln!(self.serial, "Verifying the image again in the boot bank...");
+                self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
                 return Ok(image::image_at(&mut self.mcu_flash, *output)?);
             };
         }
@@ -150,6 +162,8 @@ where
                 "Restored image from external golden bank {:?}.",
                 golden_bank.index
             );
+            duprintln!(self.serial, "Verifying the image again in the boot bank...");
+            self.boot_metrics.boot_path = BootPath::Restored { bank: golden_bank.index };
             return Ok(image::image_at(&mut self.mcu_flash, *output)?);
         };
 
@@ -161,17 +175,14 @@ where
         duprintln!(self.serial, "Please send golden firmware image via XMODEM.");
         let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
 
-        for (i, block) in self.serial.blocks(None).enumerate() {
-            nb::block!(self.external_flash.write(golden_bank.location + block.len() * i, &block))
-                .map_err(|_| {
-                    Error::DriverError("Failed to flash golden image during recovery mode.")
-                })
-                .unwrap();
+        let blocks = self.serial.blocks(None);
+        if self.external_flash.write_from_blocks(golden_bank.location, blocks).is_err() {
+            duprintln!(self.serial, "FATAL: Failed to flash golden image during recovery mode.");
         }
 
         match image::image_at(&mut self.external_flash, *golden_bank) {
             Ok(image) if !image.is_golden() => {
-                duprintln!(self.serial, "FATAL: Flashed image is not a golden image")
+                duprintln!(self.serial, "FATAL: Flashed image is not a golden image.")
             }
             Err(e) => {
                 duprintln!(self.serial, "FATAL: Image did not flash correctly.");
@@ -188,6 +199,8 @@ where
     pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = image.location().into();
+        let time_ms = T::now() - self.start_time;
+        self.boot_metrics.boot_time_ms = time_ms.0;
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
@@ -199,6 +212,8 @@ where
                 *((image_location_raw + size_of::<u32>()) as *const u32) as *const ();
             let reset_handler = core::mem::transmute::<*const (), fn() -> !>(reset_handler_pointer);
             (*SCB::ptr()).vtor.write(image_location_raw as u32);
+            *boot_metrics_mut() = self.boot_metrics.clone();
+            #[allow(deprecated)]
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }
@@ -224,26 +239,26 @@ where
         let input_image = image::image_at(&mut self.external_flash, input_bank)?;
         duprintln!(
             self.serial,
-            "Image found at bank {:?} [Address {:?}, size {:?}], copying to boot bank.",
+            "Copying bank {:?} image [Address {:?}, size {:?}] to boot bank.",
             input_bank.index,
             input_image.location().into(),
             input_image.size()
         );
         if must_be_golden && !input_image.is_golden() {
-            duprintln!(
-                self.serial,
-                "Image is not golden.",
-            );
+            duprintln!(self.serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));
         }
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
-        const TRANSFER_BUFFER_SIZE: usize = 2048;
+        const TRANSFER_BUFFER_SIZE: usize = KB!(64);
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
-        let total_size = input_image.size() + CRC_SIZE_BYTES + MAGIC_STRING.len();
+        let total_size = input_image.size()
+            + SignatureSize::<NistP256>::to_usize()
+            + MAGIC_STRING.len()
+            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));

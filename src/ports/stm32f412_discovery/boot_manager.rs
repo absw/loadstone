@@ -1,5 +1,5 @@
 use crate::devices::{boot_manager::BootManager, cli::Cli};
-use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::{time}, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::{bootloader::EXTERNAL_BANKS, pin_configuration::*};
 
 // Flash pins and typedefs
@@ -33,8 +33,8 @@ impl BootManager<ExternalFlash, Serial> {
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
         let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
-        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(500)).unwrap();
+        let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(5000)).unwrap();
 
-        BootManager { external_flash, external_banks: &EXTERNAL_BANKS, cli: Some(cli) }
+        BootManager { external_flash, external_banks: &EXTERNAL_BANKS, cli: Some(cli), boot_metrics: None }
     }
 }

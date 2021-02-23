@@ -16,12 +16,11 @@ pub enum Error {
     /// Error caused by a high level device driver
     DeviceError(&'static str),
     BankInvalid,
-    NotEnoughData,
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
     NoImageToRestoreFrom,
-    CrcInvalid,
+    SignatureInvalid,
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -81,9 +80,8 @@ impl Error {
             Error::FlashCorrupted => {
                 uwriteln!(serial, "[Logic Error] -> Flash memory is corrupted or outdated")
             }
-            Error::CrcInvalid => uwriteln!(serial, "[LogicError] -> Image CRC is invalid"),
-            Error::NotEnoughData => {
-                uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
+            Error::SignatureInvalid => {
+                uwriteln!(serial, "[LogicError] -> Image signature is invalid")
             }
             Error::NoImageToRestoreFrom => {
                 uwriteln!(serial, "[Logic Error] -> No image to restore from")

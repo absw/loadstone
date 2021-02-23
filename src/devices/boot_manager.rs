@@ -1,6 +1,7 @@
 //! Fully CLI interactive boot manager for the demo application.
 
 use super::{
+    boot_metrics::{boot_metrics, BootMetrics},
     cli::{file_transfer, Cli},
     image,
 };
@@ -21,6 +22,7 @@ where
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
     pub(crate) cli: Option<Cli<SRL>>,
+    pub(crate) boot_metrics: Option<BootMetrics>,
 }
 
 impl<EXTF, SRL> BootManager<EXTF, SRL>
@@ -44,9 +46,7 @@ where
     where
         I: Iterator<Item = [u8; xmodem::PAYLOAD_SIZE]>,
     {
-        for (i, block) in blocks.enumerate() {
-            nb::block!(self.external_flash.write(bank.location + block.len() * i, &block))?;
-        }
+        self.external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
     }
 
@@ -57,10 +57,18 @@ where
 
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
-    pub fn run(mut self) -> ! {
+    pub fn run(mut self, greeting: &'static str) -> ! {
+        self.boot_metrics = {
+            let metrics = unsafe { boot_metrics().clone() };
+            if metrics.is_valid() {
+                Some(metrics)
+            } else {
+                None
+            }
+        };
         let mut cli = self.cli.take().unwrap();
         loop {
-            cli.run(&mut self)
+            cli.run(&mut self, greeting)
         }
     }
 }

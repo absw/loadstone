@@ -24,8 +24,6 @@ use super::boot_manager::BootManager;
 
 pub mod file_transfer;
 
-const GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
@@ -173,14 +171,14 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>)
+    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>, greeting: &'static str)
     where
         EXTF: flash::ReadWrite,
         ApplicationError: From<EXTF::Error>,
         ApplicationError: From<<SRL as serial::Read>::Error>,
     {
         if !self.greeted {
-            uprintln!(self.serial, "{}", GREETING);
+            uprintln!(self.serial, "{}", greeting);
             self.greeted = true;
         }
         if self.needs_prompt {
@@ -200,7 +198,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Bad command encoding")
             }
             Err(Error::CharactersNotAllowed) => {
-                uwriteln!(self.serial, "[CLI Error] Illegal characters In command")
+                uwriteln!(self.serial, "[CLI Error] Illegal characters in command")
             }
             Err(Error::MalformedArguments) => {
                 uwriteln!(self.serial, "[CLI Error] Malformed command arguments")
@@ -215,7 +213,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::ApplicationError(e)) => {
-                uwriteln!(self.serial, "[CLI Error] Internal boot_manager error: ").ok().unwrap();
+                uwriteln!(self.serial, "[CLI Error] Internal boot manager error: ").ok().unwrap();
                 e.report(&mut self.serial);
                 Ok(())
             }

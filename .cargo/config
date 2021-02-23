@@ -24,6 +24,7 @@ rb = "run --release --target thumbv7em-none-eabihf --bin"
 sz = "size --release --bin loadstone --target thumbv7em-none-eabihf"
 gen_blinky = "objcopy --bin blinky --release --target thumbv7em-none-eabihf --features stm32f412 -- -O binary blinky.bin"
 gen_demo_app = "objcopy --bin demo_app --release --target thumbv7em-none-eabihf --features stm32f412 -- -O binary demo_app.bin"
+gen_variant_demo_app = 'objcopy --bin demo_app_variant --release --features stm32f412 --target thumbv7em-none-eabihf -- -O binary demo_app_variant.bin'
 gen_loadstone = "objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features stm32f412 -- -O binary loadstone.bin"
 st = "strip --bin loadstone --release --target thumbv7em-none-eabihf"
 d = "doc --release --target thumbv7em-none-eabihf"

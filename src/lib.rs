@@ -4,12 +4,25 @@
 //! secure bootloader project in library form.
 #![feature(never_type)]
 #![feature(bool_to_option)]
-#![feature(array_value_iter)]
 #![feature(associated_type_bounds)]
+#![feature(alloc_error_handler)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
-
 pub use blue_hal::stm32pac;
+
+#[cfg(target_arch = "arm")]
+use alloc_cortex_m::CortexMHeap;
+
+#[cfg(target_arch = "arm")]
+#[global_allocator]
+pub static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
+
+#[cfg(target_arch = "arm")]
+#[alloc_error_handler]
+fn oom(_: core::alloc::Layout) -> ! {
+    defmt::error!("Out of heap memory!");
+    loop {}
+}
 
 #[cfg(target_arch = "arm")]
 use panic_abort as _;
