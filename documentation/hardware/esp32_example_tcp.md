@@ -65,7 +65,7 @@ Response:
 * When a PC/Phone connects to TCP socket 9999:
 0,CONNECT^M^J
 
-# Data Transfer after connectoin
+# Data Transfer after connection
 * When data is received:
 Response:
 +IPD,0,4:test^M^J	(0=channel, 4=number of chars)
