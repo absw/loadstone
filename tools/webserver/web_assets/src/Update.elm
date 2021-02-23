@@ -1,6 +1,7 @@
 module Update exposing (update, make_metrics_request)
 
 import Model exposing (..)
+import Upload
 
 import Http exposing (expectJson)
 import Json.Decode as Decode
@@ -34,6 +35,7 @@ update message model =
         ConfirmUploadFile file -> update_confirm_upload_file file model
         FileConvertedToBytes bytes -> update_file_converted_to_bytes bytes model
         OpenFileSelectDialogue -> update_open_file_select_dialogue model
+        UploadNotify notification -> update_upload_notification notification model
 
 update_switch_tab : Tab -> Model -> (Model, Cmd Message)
 update_switch_tab tab model =
@@ -76,13 +78,30 @@ update_file_converted_to_bytes bytes model =
         UploadInProgress file UploadWaitingOnBytes ->
             (
                 { model | upload = UploadInProgress file (UploadStarting bytes) },
-                Cmd.none
+                Upload.start bytes
             )
         _ -> (model, Cmd.none)
 
 update_open_file_select_dialogue : Model -> (Model, Cmd Message)
 update_open_file_select_dialogue model =
     (model, File.Select.file [] SelectUploadFile)
+
+update_upload_notification : Upload.Notification -> Model -> (Model, Cmd Message)
+update_upload_notification notification model =
+    case model.upload of
+        UploadInProgress file progress ->
+            (
+                { model | upload = update_upload_progress file progress notification },
+                Cmd.none
+            )
+        _ -> (model, Cmd.none)
+
+update_upload_progress : File -> UploadProgress -> Upload.Notification -> Upload
+update_upload_progress file _ notification =
+    case notification of
+        Upload.UploadNotificationActive progress -> UploadInProgress file (Uploading progress)
+        Upload.UploadNotificationFailed reason -> UploadInProgress file (UploadFailure reason)
+        Upload.UploadNotificationDone -> UploadInProgress file UploadSuccess
 
 handle_recieved_info : Result Http.Error MetricsInfo -> Info
 handle_recieved_info result =

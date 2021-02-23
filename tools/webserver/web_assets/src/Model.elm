@@ -1,5 +1,7 @@
 module Model exposing (..)
 
+import Upload
+
 import Bytes exposing (Bytes)
 import File exposing (File)
 import Http
@@ -19,7 +21,7 @@ type Info = InfoWaiting
 
 type UploadProgress = UploadWaitingOnBytes
     | UploadStarting Bytes
-    | Uploading Bytes Int
+    | Uploading Float
     | UploadFailure String
     | UploadSuccess
 
@@ -36,6 +38,7 @@ type Message = SwitchTab Tab
     | ConfirmUploadFile File
     | FileConvertedToBytes Bytes
     | OpenFileSelectDialogue
+    | UploadNotify Upload.Notification
 
 default : Model
 default =

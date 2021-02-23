@@ -127,17 +127,41 @@ view_upload_file_selected_x file b =
     ]
 
 view_upload_in_progress : File -> UploadProgress -> List (Html Message)
-view_upload_in_progress file progress =
-    case progress of
+view_upload_in_progress file upload =
+    case upload of
         UploadWaitingOnBytes -> view_upload_starting file
         UploadStarting _ -> view_upload_starting file
-        Uploading _ _ -> []
-        UploadFailure _ -> []
-        UploadSuccess -> []
+        Uploading progress -> view_uploading file progress
+        UploadFailure reason -> view_upload_failure file reason
+        UploadSuccess -> view_upload_failure file "You UTTER BAFOON"
 
 view_upload_starting : File -> List (Html Message)
 view_upload_starting file =
     [
         notice_pane "Starting upload" "Waiting for a connection to the server..."
+    ]
+    |> List.append (view_upload_file_selected_x file True)
+
+view_uploading : File -> Float -> List (Html Message)
+view_uploading file progress =
+    [
+        progress_pane "Uploading" "Upload in progress..." PaneDefault progress
+    ]
+    |> List.append (view_upload_file_selected_x file True)
+
+view_upload_sucess : File -> List (Html Message)
+view_upload_sucess file =
+    [
+        progress_pane "Uploading" "Upload complete." PaneSuccess 1
+    ]
+    |> List.append (view_upload_file_selected_x file True)
+
+view_upload_failure : File -> String -> List (Html Message)
+view_upload_failure file reason =
+    [
+        progress_pane "Uploading" "Upload failed." PaneFailure 0,
+        button_pane "Retry" ("Upload error: '" ++ reason ++ ".' Click below "
+            ++ "to re-attempt the upload.")
+            "Upload" False (ConfirmUploadFile file)
     ]
     |> List.append (view_upload_file_selected_x file True)
