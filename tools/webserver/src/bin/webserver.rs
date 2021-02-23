@@ -1,5 +1,10 @@
-use std::path::PathBuf;
-use serial::SystemPort;
+use std::{
+    path::PathBuf,
+};
+use server::{
+    xmodem::XModemSession,
+    device::{new_system_port, write_to_device, read_from_device},
+};
 use warp::{
     Filter,
     http::StatusCode,
@@ -45,7 +50,8 @@ fn try_parse_metrics(string: &str) -> Option<(String, String)> {
 
 fn handle_metrics_api_request() -> Result<(String, String), MetricsError> {
     let device_path = get_device_path().ok_or(MetricsError::BadPath)?;
-    let mut device = setup_device(&device_path).ok_or(MetricsError::BadDevice)?;
+
+    let mut device = new_system_port(&device_path).ok_or(MetricsError::BadDevice)?;
 
     const METRICS_COMMAND : &[u8] = b"metrics\n";
     write_to_device(&mut device, METRICS_COMMAND).map_err(|_| MetricsError::WriteError)?;
@@ -80,68 +86,62 @@ fn respond_to_api_request(file_name: String) -> Response {
     }
 }
 
-fn write_to_device(serial: &mut SystemPort, buffer: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
+async fn handle_websocket(socket: warp::ws::WebSocket) {
+    use futures::{SinkExt, StreamExt};
 
-    let mut remaining = buffer.len();
-    while remaining > 0 {
-        let to_write = &buffer[(buffer.len() - remaining)..];
-        match serial.write(to_write) {
-            Ok(n) => {
-                remaining -= n
-            },
-            Err(e) if (e.kind() == std::io::ErrorKind::Interrupted) => {},
-            Err(e) => {
-                return Err(e);
-            },
+    println!("Started websocket handling routine.");
+
+    let device = get_device_path()
+        .and_then(|path| new_system_port(&path));
+    let device = match device {
+        Some(d) => d,
+        None => {
+            eprintln!("Failed to open device for websocket.");
+            return;
         }
-    }
+    };
 
-    Ok(())
-}
+    println!("Opened device.");
 
-fn read_from_device(serial: &mut SystemPort) -> std::io::Result<Vec<u8>> {
-    use std::io::Read;
+    let mut xmodem = match XModemSession::new(device) {
+        Some(x) => x,
+        None => {
+            eprintln!("Failed to begin xmodem transfer.");
+            return;
+        }
+    };
 
-    let mut buffer = Vec::<u8>::new();
+    println!("Started XModem session.");
 
-    loop {
-        let mut byte = [0u8];
-        match serial.read(&mut byte) {
-            Ok(0) => {
-                return Ok(buffer);
-            },
-            Ok(_) => {
-                if byte[0] == b'\n' {
-                    buffer.push(b'\r');
-                }
-                buffer.push(byte[0]);
-            },
-            Err(e) if (e.kind() == std::io::ErrorKind::Interrupted) => {},
-            Err(e) if (e.kind() == std::io::ErrorKind::TimedOut) => {
-                return Ok(buffer);
-            },
-            Err(e) => {
-                return Err(e);
+    let (mut sender, mut reciever) =  socket.split();
+
+    while let Some(request) = reciever.next().await {
+        println!("Recieved packet.");
+
+        let message = match request {
+            Ok(m) => m,
+            Err(_) => {
+                eprintln!("Recieved bad websocket message.");
+                sender.close().await.unwrap();
+                return;
             }
+        };
+
+        if !xmodem.send(message.as_bytes()) {
+            eprintln!("Failed to send xmodem packet.");
+            sender.close().await.unwrap();
+            return;
         }
+
+        let response = warp::ws::Message::binary(Vec::new());
+        if sender.send(response).await.is_err() {
+            eprintln!("Failed to send response.");
+            sender.close().await.unwrap();
+            return;
+        };
     }
-}
 
-pub fn setup_device(path: &str) -> Option<SystemPort> {
-    use serial::*;
-
-    let path = PathBuf::from(path);
-    let mut device = SystemPort::open(&path).ok()?;
-    device.reconfigure(&|s| {
-        s.set_baud_rate(Baud115200)?;
-        s.set_char_size(Bits8);
-        s.set_parity(ParityNone);
-        s.set_stop_bits(Stop1);
-        s.set_flow_control(FlowNone);
-        Ok(())
-    }).ok()?;
-    Some(device)
+    println!("Done.");
 }
 
 #[tokio::main]
@@ -168,6 +168,12 @@ async fn main() {
         .and(warp::path!("api" / String))
         .map(respond_to_api_request);
 
+    let upload_websocket = warp::ws()
+        .and(warp::path!("upload"))
+        .map(|w: warp::ws::Ws| {
+            w.on_upgrade(handle_websocket)
+        });
+
     let not_found = get_request
         .map(|| {
             let mut response = Response::new("404 Not found".into());
@@ -179,6 +185,7 @@ async fn main() {
     let routes = index
         .or(api_request)
         .or(files)
+        .or(upload_websocket)
         .or(not_found);
 
     warp::serve(routes)
