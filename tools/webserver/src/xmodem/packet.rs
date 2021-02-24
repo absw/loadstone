@@ -11,7 +11,7 @@ pub enum Packet {
 impl Packet {
     const START_OF_HEADER: u8 = 0x01;
     const END_OF_TRANSMISSION: u8 = 0x04;
-    const END_OF_TRANSMISSION_BLOCK: u8 = 0x17;
+    const SUBSTITUTE: u8 = 0x1A;
     const TERMINAL_PACKET : [u8; 1] = [Self::END_OF_TRANSMISSION];
 
     pub fn new(block_number: u8, payload: &[u8]) -> Self {
@@ -30,7 +30,7 @@ impl Packet {
         for padding in data.iter_mut()
             .skip(HEADER_SIZE + payload.len())
             .take(PAYLOAD_SIZE - payload.len()) {
-            *padding = Self::END_OF_TRANSMISSION_BLOCK;
+            *padding = Self::SUBSTITUTE;
             checksum = checksum.wrapping_add(*padding);
         }
         data[HEADER_SIZE + PAYLOAD_SIZE] = checksum;
