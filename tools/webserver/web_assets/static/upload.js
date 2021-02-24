@@ -18,6 +18,7 @@ function upload_start(base64) {
     bytes_so_far = 0;
 
     websocket = new WebSocket("ws://" + window.location.host + "/upload");
+    websocket.binaryType = 'arraybuffer';
     websocket.onopen = websocket_on_open;
     websocket.onclose = websocket_on_close;
     websocket.onmessage = websocket_on_message;
@@ -28,16 +29,19 @@ function websocket_on_open(event) {
     console.log("[websocket] open");
     console.log(event);
 
-    send_next_packet();
+    send_head_packet();
 }
 
 function websocket_on_close(event) {
     console.log("[websocket] close");
     console.log(event);
 
+    let has_already_stopped = data === null;
+    if (has_already_stopped) return;
+
     upload_notify({
         "done": true,
-        "progress": bytes_so_far / data.length,
+        "progress": 1.0,
         "error": "websocket closed unexpectedly D:",
     });
 
@@ -48,16 +52,51 @@ function websocket_on_message(event) {
     console.log("[websocket] message");
     console.log(event);
 
-    upload_notify({
-        "done": false,
-        "progress": bytes_so_far / data.length,
-        "error": "",
-    });
+    if (event.data.byteLength !== 1) {
+        upload_notify({
+            "done": true,
+            "progress": bytes_so_far / data.length,
+            "error": "Recieved an unknown response.",
+        });
 
-    if (bytes_so_far == data.length) {
-        websocket.close();
-    } else {
+        clean_up();
+        return;
+    }
+
+    let view = new DataView(event.data);
+    let response = view.getUint8(0);
+
+    const NEXT = 0x11;
+    const FAIL = 0x22;
+    const DONE = 0x33;
+
+    if (response === DONE) {
+        upload_notify({
+            "done": true,
+            "progress": 1.0,
+            "error": "",
+        });
+
+        clean_up();
+    } else if (response === NEXT) {
+        upload_notify({
+            "done": false,
+            "progress": bytes_so_far / data.length,
+            "error": "",
+        });
+
         send_next_packet();
+    } else {
+        let message = "The server reported an internal error.";
+        if (response !== FAIL) message = "Recieved an unknown response.";
+
+        upload_notify({
+            "done": true,
+            "progress": bytes_so_far / data.length,
+            "error": message,
+        });
+
+        clean_up();
     }
 }
 
@@ -78,6 +117,20 @@ function clean_up() {
     websocket = null;
     data = null;
     bytes_so_far = 0;
+}
+
+function int_to_array(number) {
+    let a = (number >> 24) & 0xFF;
+    let b = (number >> 16) & 0xFF;
+    let c = (number >> 8) & 0xFF;
+    let d = number & 0xFF;
+    return new Uint8Array([ a, b, c, d ]);
+}
+
+function send_head_packet() {
+    let packet_count = Math.ceil(data.length / packet_size)
+    let message = int_to_array(packet_count);
+    websocket.send(message);
 }
 
 function send_next_packet() {
