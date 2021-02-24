@@ -1,10 +1,7 @@
 use std::{
     path::PathBuf,
 };
-use server::{
-    xmodem::XModemSession,
-    device::{new_system_port, write_to_device, read_from_device},
-};
+use server::device::{new_system_port, write_to_device, read_from_device};
 use warp::{
     Filter,
     http::StatusCode,
@@ -38,14 +35,26 @@ fn get_device_path() -> Option<String> {
 }
 
 fn try_parse_metrics(string: &str) -> Option<(String, String)> {
-    const REGEX_SOURCE : &str =
+    const NO_METRICS_MESSAGE : &str =
+        "Loadstone did not relay any boot metrics, or the boot metrics were corrupted";
+    if string.contains(NO_METRICS_MESSAGE) {
+        return Some((
+            "unknown".to_owned(),
+            "unknown".to_owned(),
+        ));
+    }
+
+    const VALID_REGEX_SOURCE : &str =
         r#"\[Boot Metrics\][\r\n]+\* (.*)[\r\n]+\* Boot process took (.*) milliseconds\."#;
-    let regex = regex::Regex::new(REGEX_SOURCE).unwrap();
+    let regex = regex::Regex::new(VALID_REGEX_SOURCE).unwrap();
     let captures = regex.captures(string)?;
     let path = captures.get(1)?.as_str().trim();
     let time = captures.get(2)?.as_str();
 
-    Some((path.into(), time.into()))
+    Some((
+        path.to_owned(),
+        time.to_owned() + "ms",
+    ))
 }
 
 fn handle_metrics_api_request() -> Result<(String, String), MetricsError> {
@@ -87,10 +96,6 @@ fn respond_to_api_request(file_name: String) -> Response {
 }
 
 async fn handle_websocket(socket: warp::ws::WebSocket) {
-    use futures::{SinkExt, StreamExt};
-
-    println!("Started websocket handling routine.");
-
     let device = get_device_path()
         .and_then(|path| new_system_port(&path));
     let device = match device {
@@ -101,47 +106,9 @@ async fn handle_websocket(socket: warp::ws::WebSocket) {
         }
     };
 
-    println!("Opened device.");
-
-    let mut xmodem = match XModemSession::new(device) {
-        Some(x) => x,
-        None => {
-            eprintln!("Failed to begin xmodem transfer.");
-            return;
-        }
-    };
-
-    println!("Started XModem session.");
-
-    let (mut sender, mut reciever) =  socket.split();
-
-    while let Some(request) = reciever.next().await {
-        println!("Recieved packet.");
-
-        let message = match request {
-            Ok(m) => m,
-            Err(_) => {
-                eprintln!("Recieved bad websocket message.");
-                sender.close().await.unwrap();
-                return;
-            }
-        };
-
-        if !xmodem.send(message.as_bytes()) {
-            eprintln!("Failed to send xmodem packet.");
-            sender.close().await.unwrap();
-            return;
-        }
-
-        let response = warp::ws::Message::binary(Vec::new());
-        if sender.send(response).await.is_err() {
-            eprintln!("Failed to send response.");
-            sender.close().await.unwrap();
-            return;
-        };
-    }
-
-    println!("Done.");
+    use server::websocket_session::WebSocketSession;
+    let r = WebSocketSession::run_new(socket, device).await;
+    println!("{:?}", r);
 }
 
 #[tokio::main]
