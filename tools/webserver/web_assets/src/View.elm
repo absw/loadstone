@@ -133,7 +133,7 @@ view_upload_in_progress file upload =
         UploadStarting _ -> view_upload_starting file
         Uploading progress -> view_uploading file progress
         UploadFailure reason -> view_upload_failure file reason
-        UploadSuccess -> view_upload_failure file "You UTTER BAFOON"
+        UploadSuccess -> view_upload_success file
 
 view_upload_starting : File -> List (Html Message)
 view_upload_starting file =
@@ -149,8 +149,8 @@ view_uploading file progress =
     ]
     |> List.append (view_upload_file_selected_x file True)
 
-view_upload_sucess : File -> List (Html Message)
-view_upload_sucess file =
+view_upload_success : File -> List (Html Message)
+view_upload_success file =
     [
         progress_pane "Uploading" "Upload complete." PaneSuccess 1
     ]
