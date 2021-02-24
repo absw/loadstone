@@ -135,7 +135,7 @@ function send_head_packet() {
 
 function send_next_packet() {
     let start = bytes_so_far;
-    let end = Math.min(start + packet_size, data.length - 1);
+    let end = Math.min(start + packet_size, data.length);
 
     let length = end - start;
     if (length === 0) return;
