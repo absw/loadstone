@@ -32,10 +32,10 @@ impl XModemSession {
         }
     }
 
-    pub fn send(&mut self, data: &[u8]) -> bool {
-        self.block_number += 1;
+    pub fn send(&mut self, data: &[u8]) -> Option<()> {
+        self.block_number = self.block_number.wrapping_add(1);
         let packet = Packet::new(self.block_number, &data);
-        self.try_write_packet(packet).is_some()
+        self.try_write_packet(packet)
     }
 
     fn try_write_packet(&mut self, packet: Packet) -> Option<()> {
@@ -89,7 +89,7 @@ impl XModemSession {
 
 impl Drop for XModemSession {
     fn drop(&mut self) {
-        self.block_number += 1;
+        self.block_number = self.block_number.wrapping_add(1);
         self.write_packet(&Packet::Terminal);
     }
 }
