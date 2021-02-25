@@ -75,7 +75,6 @@ view_info_waiting : String -> List (Html Message)
 view_info_waiting message =
     [
         div [ id "container" ] [
-            img [ src "/loading.gif" ] [],
             h2 [] [ text message ]
         ]
     ]
