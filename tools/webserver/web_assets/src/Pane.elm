@@ -32,28 +32,38 @@ info_pane : String -> String -> String -> Html msg
 info_pane title description value =
     pane title description PaneDefault [ div [ class "pane-value" ] [ text value ] ]
 
-file_pane : String -> String -> Maybe File -> msg -> Html msg
-file_pane title description file message =
+file_pane : String -> String -> Maybe File -> Bool -> msg -> Html msg
+file_pane title description file disabled message =
     let
         status = (if file == Nothing then PaneFailure else PaneSuccess)
         value_text = (Maybe.withDefault "No file selected" (Maybe.map get_file_summary file))
         make_full_pane = pane title description status
+        conditional_attributes = if disabled then
+                [ class "disabled-file-button" ]
+            else
+                [ class "file-button", onClick message ]
+        attributes = List.append [ href "#" ] conditional_attributes
     in
     make_full_pane [
         div [ class "pane-controls" ] [
             span [ class "pane-value" ] [ text value_text ],
-            a [ href "#", class "file-select-button", onClick message ] [ text "Select File" ]
+            a attributes [ text "Select File" ]
         ]
     ]
 
-button_pane : String -> String -> String -> Bool -> msg -> Html msg
-button_pane title description content is_okay message =
+button_pane : String -> String -> String -> Bool -> Bool -> msg -> Html msg
+button_pane title description content is_okay disabled message =
     let
         status = (if is_okay then PaneSuccess else PaneFailure)
         make_full_pane = pane title description status
+        conditional_attributes = if disabled then
+                [ class "disabled-button" ]
+            else
+                [ class "pane-button", onClick message ]
+        attributes = List.append [ href "#" ] conditional_attributes
     in
     make_full_pane [
-        a [ href "#", class "pane-button", onClick message ] [ text content ]
+        a attributes [ text content ]
     ]
 
 pane : String -> String -> PaneStatus -> List (Html msg) -> Html msg

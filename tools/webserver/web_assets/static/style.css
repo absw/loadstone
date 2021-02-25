@@ -92,6 +92,16 @@ main#info, main#file-select {
     background-color: #363638;
 }
 
+.disabled-button:link, .disabled-button:visited {
+    display: block;
+    padding: 1em;
+
+    text-align: center;
+    text-decoration: none;
+    background-color: #494949;
+    color: #616161;
+}
+
 h2 {
     margin: 0em;
 }
@@ -106,19 +116,26 @@ h2 {
     grid-template-columns: 1fr auto;
 }
 
-.file-select-button:link, .file-select-button:visited {
+.file-button:link, .file-button:visited {
     text-decoration: none;
     padding: 1em;
     background-color: #363638;
     color: #f2f2f6;
 }
 
-.file-select-button:hover {
+.file-button:hover {
     background-color: #494949;
 }
 
-.file-select-button:active {
+.file-button:active {
     background-color: #616161;
+}
+
+.disabled-file-button:link, .disabled-file-button:visited {
+    text-decoration: none;
+    padding: 1em;
+    background-color: #363638;
+    color: #616161;
 }
 
 .progress-bar-container {
