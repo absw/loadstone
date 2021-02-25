@@ -23,6 +23,7 @@ header {
 
 .nav-link:link, .nav-link:visited {
     min-width: 100px;
+    padding: 1em;
 
     display: flex;
     justify-content: center;
@@ -160,5 +161,8 @@ h2 {
     header {
         text-align: center;
         padding-left: 0;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
