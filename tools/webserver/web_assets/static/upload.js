@@ -36,16 +36,20 @@ function websocket_on_close(event) {
     console.log("[websocket] close");
     console.log(event);
 
-    let has_already_stopped = data === null;
-    if (has_already_stopped) return;
-
-    upload_notify({
-        "done": true,
-        "progress": 1.0,
-        "error": "websocket closed unexpectedly D:",
-    });
-
-    clean_up();
+    if (data === null) {
+        upload_notify({
+            "done": true,
+            "progress": 1.0,
+            "error": "",
+        });
+    } else {
+        upload_notify({
+            "done": true,
+            "progress": 1.0,
+            "error": "The connection to the server closed unexpectedly",
+        });
+        clean_up();
+    }
 }
 
 function websocket_on_message(event) {
@@ -72,11 +76,10 @@ function websocket_on_message(event) {
 
     if (response === DONE) {
         upload_notify({
-            "done": true,
+            "done": false,
             "progress": 1.0,
             "error": "",
         });
-
         clean_up();
     } else if (response === NEXT) {
         upload_notify({

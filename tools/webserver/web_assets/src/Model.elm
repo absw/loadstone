@@ -22,6 +22,7 @@ type Info = InfoWaiting
 type UploadProgress = UploadWaitingOnBytes
     | UploadStarting Bytes
     | Uploading Float
+    | UploadFinalising
     | UploadFailure String
     | UploadSuccess
 

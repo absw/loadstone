@@ -99,7 +99,11 @@ update_upload_notification notification model =
 update_upload_progress : File -> UploadProgress -> Upload.Notification -> Upload
 update_upload_progress file _ notification =
     case notification of
-        Upload.UploadNotificationActive progress -> UploadInProgress file (Uploading progress)
+        Upload.UploadNotificationActive progress ->
+            if abs(1.0 - progress) < 0.00000001 then
+                UploadInProgress file (UploadFinalising)
+            else
+                UploadInProgress file (Uploading progress)
         Upload.UploadNotificationFailed reason -> UploadInProgress file (UploadFailure reason)
         Upload.UploadNotificationDone -> UploadInProgress file UploadSuccess
 

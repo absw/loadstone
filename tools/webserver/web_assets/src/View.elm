@@ -132,6 +132,7 @@ view_upload_in_progress file upload =
         UploadWaitingOnBytes -> view_upload_starting file
         UploadStarting _ -> view_upload_starting file
         Uploading progress -> view_uploading file progress
+        UploadFinalising -> view_upload_finalising file
         UploadFailure reason -> view_upload_failure file reason
         UploadSuccess -> view_upload_success file
 
@@ -148,6 +149,13 @@ view_uploading file progress =
         progress_pane "Uploading" "Upload in progress..." PaneDefault progress
     ]
     |> List.append (view_upload_file_selected_x file True)
+
+view_upload_finalising : File -> List (Html Message)
+view_upload_finalising file =
+    [
+        progress_pane "Finalising" "Waiting for the server to confirm the upload." PaneDefault 1.0
+    ]
+    |> List.append(view_upload_file_selected_x file True)
 
 view_upload_success : File -> List (Html Message)
 view_upload_success file =
