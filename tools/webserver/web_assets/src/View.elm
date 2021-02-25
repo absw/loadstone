@@ -9,7 +9,6 @@ import Html.Attributes exposing (class, id, src, href)
 import Html.Events exposing (onClick)
 import File exposing (File)
 import File.Select exposing (file)
-import Bytes exposing (Bytes)
 
 view : Model -> Document Message
 view model =
