@@ -111,19 +111,16 @@ view_upload_initial : List (Html Message)
 view_upload_initial =
     [
         file_pane "Select file" "Select a firmware image to upload to the board."
-            Nothing OpenFileSelectDialogue
+            Nothing False OpenFileSelectDialogue
     ]
 
 view_upload_file_selected : File -> List (Html Message)
-view_upload_file_selected file = view_upload_file_selected_x file False
-
-view_upload_file_selected_x : File -> Bool -> List (Html Message)
-view_upload_file_selected_x file b =
+view_upload_file_selected file =
     [
         file_pane "Select file" "Select a firmware image to upload to the board."
-            (Just file) OpenFileSelectDialogue,
+            (Just file) False OpenFileSelectDialogue,
         button_pane "Confirm file" "Click below to confirm this image and begin the upload."
-            "Upload" b (ConfirmUploadFile file)
+            "Upload" False False (ConfirmUploadFile file)
     ]
 
 view_upload_in_progress : File -> UploadProgress -> List (Html Message)
@@ -139,37 +136,42 @@ view_upload_in_progress file upload =
 view_upload_starting : File -> List (Html Message)
 view_upload_starting file =
     [
+        file_pane "Select file" "Select a firmware image to upload to the board."
+            (Just file) True OpenFileSelectDialogue,
         notice_pane "Starting upload" "Waiting for a connection to the server..."
     ]
-    |> List.append (view_upload_file_selected_x file True)
 
 view_uploading : File -> Float -> List (Html Message)
 view_uploading file progress =
     [
+        file_pane "Select file" "Select a firmware image to upload to the board."
+            (Just file) True OpenFileSelectDialogue,
         progress_pane "Uploading" "Upload in progress..." PaneDefault progress
     ]
-    |> List.append (view_upload_file_selected_x file True)
 
 view_upload_finalising : File -> List (Html Message)
 view_upload_finalising file =
     [
+        file_pane "Select file" "Select a firmware image to upload to the board."
+            (Just file) True OpenFileSelectDialogue,
         progress_pane "Finalising" "Waiting for the server to confirm the upload." PaneDefault 1.0
     ]
-    |> List.append(view_upload_file_selected_x file True)
 
 view_upload_success : File -> List (Html Message)
 view_upload_success file =
     [
+        file_pane "Select file" "Select a firmware image to upload to the board."
+            (Just file) False OpenFileSelectDialogue,
         progress_pane "Uploading" "Upload complete." PaneSuccess 1
     ]
-    |> List.append (view_upload_file_selected_x file True)
 
 view_upload_failure : File -> String -> List (Html Message)
 view_upload_failure file reason =
     [
+        file_pane "Select file" "Select a firmware image to upload to the board."
+            (Just file) False OpenFileSelectDialogue,
         progress_pane "Uploading" "Upload failed." PaneFailure 0,
         button_pane "Retry" ("Upload error: '" ++ reason ++ ".' Click below "
             ++ "to re-attempt the upload.")
-            "Upload" False (ConfirmUploadFile file)
+            "Upload" False False (ConfirmUploadFile file)
     ]
-    |> List.append (view_upload_file_selected_x file True)
