@@ -129,7 +129,8 @@ async fn main() {
         .and(warp::fs::file(html_directory.join("index.html")));
 
     let files = get_request
-        .and(warp::fs::dir(html_directory));
+        .and(warp::fs::dir(html_directory))
+        .with(warp::compression::gzip());
 
     let api_request = get_request
         .and(warp::path!("api" / String))
