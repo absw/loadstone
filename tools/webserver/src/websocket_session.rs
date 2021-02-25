@@ -32,12 +32,50 @@ impl WebSocketSession {
 
     async fn run(mut self) -> Option<()> {
         let result = self.run_inner().await;
-        let final_response = match result {
-            Some(()) => Self::DONE,
-            None => Self::FAIL,
-        };
-        self.send_response(final_response).await?;
+        if result.is_none() {
+            self.send_response(Self::FAIL).await?;
+            return None;
+        }
+
+        self.send_response(Self::DONE).await?;
+        self.validate_transfer().await?;
+
         result
+    }
+
+    fn contains_subslice(slice: &[u8], subslice: &[u8]) -> bool {
+        slice.windows(subslice.len())
+            .any(|w| w == subslice)
+    }
+
+    async fn validate_transfer(&mut self) -> Option<()> {
+        use std::io::Read;
+        use std::time::*;
+
+        let timeout = Instant::now() + Duration::from_secs(30);
+        let mut interval = tokio::time::interval(Duration::from_millis(250));
+
+        let mut device = self.device.take().unwrap();
+        let mut buffer = Vec::<u8>::new();
+
+        while Instant::now() < timeout {
+            let mut append_buffer = Vec::<u8>::new();
+            let result = device.read_to_end(&mut append_buffer);
+            buffer.extend(append_buffer);
+
+            if let Err(e) = result {
+                let is_nonfatal_error = (e.kind() == std::io::ErrorKind::Interrupted)
+                    || (e.kind() == std::io::ErrorKind::TimedOut);
+                if !is_nonfatal_error { return None; }
+            }
+
+            const SUCCESS_MESSAGE : &[u8] = b"Image transfer complete!";
+            if Self::contains_subslice(&buffer, SUCCESS_MESSAGE) { return Some(()) }
+
+            interval.tick().await;
+        }
+
+        None
     }
 
     async fn run_inner(&mut self) -> Option<()> {
@@ -52,6 +90,8 @@ impl WebSocketSession {
             let packet = self.get_next_packet().await?;
             xmodem.send(&packet)?;
         }
+
+        self.device = Some(xmodem.return_port());
 
         Some(())
     }
