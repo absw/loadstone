@@ -15,6 +15,22 @@ pub struct XModemSession {
 }
 
 impl XModemSession {
+    pub fn return_port(mut self) -> SystemPort {
+        self.send_terminal_packet();
+
+        // Swaps out the system port with empty space, and then forgets self.
+        // This means we can get port out from self. We can forget self because
+        // everything that needs dropping has been moved out.
+        use std::mem::{replace, forget, MaybeUninit};
+        let port = replace(
+            &mut self.port,
+            unsafe { MaybeUninit::<SystemPort>::uninit().assume_init() }
+        );
+        forget(self);
+
+        port
+    }
+
     pub fn new(mut port: SystemPort) -> Option<Self> {
         let write_success = port.write_all( b"flash bank=2\n").is_ok();
         let mut discarded_data = Vec::new();
@@ -85,11 +101,15 @@ impl XModemSession {
             true => None,
         }
     }
+
+    fn send_terminal_packet(&mut self) {
+        self.block_number = self.block_number.wrapping_add(1);
+        self.write_packet(&Packet::Terminal);
+    }
 }
 
 impl Drop for XModemSession {
     fn drop(&mut self) {
-        self.block_number = self.block_number.wrapping_add(1);
-        self.write_packet(&Packet::Terminal);
+        self.send_terminal_packet();
     }
 }
