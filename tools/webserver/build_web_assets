@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ -d public_html ]; then
+    rm -r public_html
+fi
+mkdir public_html -p
+
+cd web_assets
+elm make --optimize src/Main.elm --output=../public_html/main.js 1> /dev/null
+cp static/* ../public_html/
+cd ..
