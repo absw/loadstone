@@ -16,7 +16,6 @@ pub enum Error {
     /// Error caused by a high level device driver
     DeviceError(&'static str),
     BankInvalid,
-    NotEnoughData,
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
@@ -84,9 +83,6 @@ impl Error {
             Error::SignatureInvalid => {
                 uwriteln!(serial, "[LogicError] -> Image signature is invalid")
             }
-            Error::NotEnoughData => {
-                uwriteln!(serial, "[Transfer Error] -> Not enough image data received")
-            }
             Error::NoImageToRestoreFrom => {
                 uwriteln!(serial, "[Logic Error] -> No image to restore from")
             }
@@ -95,5 +91,3 @@ impl Error {
         .unwrap();
     }
 }
-
-pub trait ConvertibleToBootloaderError {}

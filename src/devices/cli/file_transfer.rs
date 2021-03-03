@@ -1,10 +1,17 @@
+//! XMODEM file transfer implementation.
+//!
+//! Provides methods to receive arbitrary byte streams through serial
+//! via the XMODEM protocol.
+
 use blue_hal::{
     hal::serial::{TimeoutRead, Write},
     utilities::xmodem,
 };
 
+/// The size of a single byte block retrieved from an XMODEM stream.
 pub const BLOCK_SIZE: usize = xmodem::PAYLOAD_SIZE;
 
+/// Generic file transfer iterator trait, returning an iterator over byte blocks.
 pub trait FileTransfer: TimeoutRead + Write {
     fn blocks(&mut self, max_retries: Option<u32>) -> BlockIterator<Self> {
         BlockIterator {
@@ -19,6 +26,7 @@ pub trait FileTransfer: TimeoutRead + Write {
 
 impl<T: TimeoutRead + Write> FileTransfer for T {}
 
+/// Generic iterator over byte blocks.
 pub struct BlockIterator<'a, S: TimeoutRead + Write + ?Sized> {
     serial: &'a mut S,
     received_block: bool,

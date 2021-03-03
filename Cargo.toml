@@ -40,6 +40,10 @@ defmt = "0.1"
 defmt-rtt = "0.1"
 alloc-cortex-m = "*"
 
+[dependencies.funty]
+version = "=1.1.0"
+default-features = false
+
 [dependencies.ecdsa]
 version = "*"
 default-features = false

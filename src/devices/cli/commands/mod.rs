@@ -1,6 +1,7 @@
 use crate::{
     devices::{
         boot_manager::BootManager,
+        boot_metrics::BootPath,
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
     },
@@ -47,8 +48,8 @@ commands!( cli, boot_manager, names, helpstrings [
         )
     {
         if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
-            uprintln!(cli.serial, "Starting XModem mode! Send file with your XModem client.");
-            boot_manager.store_image(cli.serial.blocks(Some(10)), bank)?;
+            uprintln!(cli.serial, "Starting XMODEM mode! Send file with your XMODEM client.");
+            boot_manager.store_image(cli.serial.blocks(None), bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
             uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");
@@ -113,6 +114,39 @@ commands!( cli, boot_manager, names, helpstrings [
     {
         uprintln!(cli.serial, "Restarting...");
         boot_manager.reset();
+    },
+
+    metrics ["Displays boot process metrics relayed by Loadstone."] ( )
+    {
+        if let Some(metrics) = &boot_manager.boot_metrics {
+            uprintln!(cli.serial, "[Boot Metrics]");
+            match metrics.boot_path {
+                BootPath::Direct => {
+                    uprintln!(cli.serial, "* Application was booted directly from the MCU bank.");
+                },
+                BootPath::Restored { bank } => {
+                    let bank_index = bank;
+                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
+                    uprintln!(cli.serial,
+                        "* Application was first restored from bank {}{}, then booted.",
+                        bank_index,
+                        if bank.is_golden { " (GOLDEN)" } else {""}
+                    );
+                },
+                BootPath::Updated { bank } => {
+                    let bank_index = bank;
+                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
+                    uprintln!(cli.serial,
+                        "* Application was first updated from bank {}{}, then booted.",
+                        bank_index,
+                        if bank.is_golden { " (GOLDEN)" } else {""}
+                    );
+                },
+            }
+            uprintln!(cli.serial, "* Boot process took {} milliseconds.", metrics.boot_time_ms);
+        } else {
+            uprintln!(cli.serial, "Loadstone did not relay any boot metrics, or the boot metrics were corrupted.");
+        }
     },
 
 ]);
