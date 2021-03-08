@@ -35,7 +35,7 @@ where
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
-    pub(crate) external_flash: EXTF,
+    pub(crate) external_flash: Option<EXTF>,
     pub(crate) serial: SRL,
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: T::I,
@@ -113,30 +113,32 @@ where
             return None;
         };
 
-        for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
-            duprintln!(
-                self.serial,
-                "Scanning external bank {:?} for a newer image...",
-                external_bank.index
-            );
-            match image::image_at(&mut self.external_flash, *external_bank) {
-                Ok(image) if image.signature() != current_image.signature() => {
-                    duprintln!(
-                        self.serial,
-                        "Replacing current image with external bank {:?}...",
-                        external_bank.index
-                    );
-                    self.copy_image(*external_bank, *boot_bank, false).unwrap();
-                    self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
-                    duprintln!(
-                        self.serial,
-                        "Replaced image with external bank {:?}.",
-                        external_bank.index
-                    );
-                    return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
+        if let Some(ref mut external_flash) = self.external_flash {
+            for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+                duprintln!(
+                    self.serial,
+                    "Scanning external bank {:?} for a newer image...",
+                    external_bank.index
+                );
+                match image::image_at(external_flash, *external_bank) {
+                    Ok(image) if image.signature() != current_image.signature() => {
+                        duprintln!(
+                            self.serial,
+                            "Replacing current image with external bank {:?}...",
+                            external_bank.index
+                        );
+                        self.copy_image_from_external(*external_bank, *boot_bank, false).unwrap();
+                        self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
+                        duprintln!(
+                            self.serial,
+                            "Replaced image with external bank {:?}.",
+                            external_bank.index
+                        );
+                        return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
+                    }
+                    Ok(_image) => break,
+                    _ => (),
                 }
-                Ok(_image) => break,
-                _ => (),
             }
         }
         duprintln!(self.serial, "No newer image found.");
@@ -150,7 +152,7 @@ where
         let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         for input_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
             duprintln!(self.serial, "Attempting to restore from bank {:?}.", input_bank.index);
-            if self.copy_image(*input_bank, *output, false).is_ok() {
+            if self.copy_image_from_external(*input_bank, *output, false).is_ok() {
                 duprintln!(
                     self.serial,
                     "Restored image from external bank {:?}.",
@@ -165,7 +167,7 @@ where
         // Attempt to restore from golden image
         let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
         duprintln!(self.serial, "Attempting to restore from golden bank {:?}.", golden_bank.index);
-        if self.copy_image(*golden_bank, *output, true).is_ok() {
+        if self.copy_image_from_external(*golden_bank, *output, true).is_ok() {
             duprintln!(
                 self.serial,
                 "Restored image from external golden bank {:?}.",
@@ -186,20 +188,22 @@ where
         duprintln!(self.serial, "Please send golden firmware image via XMODEM.");
         let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
 
-        let blocks = self.serial.blocks(None);
-        if self.external_flash.write_from_blocks(golden_bank.location, blocks).is_err() {
-            duprintln!(self.serial, "FATAL: Failed to flash golden image during recovery mode.");
-        }
+        if let Some(ref mut external_flash) = self.external_flash {
+            let blocks = self.serial.blocks(None);
+            if external_flash.write_from_blocks(golden_bank.location, blocks).is_err() {
+                duprintln!(self.serial, "FATAL: Failed to flash golden image during recovery mode.");
+            }
 
-        match image::image_at(&mut self.external_flash, *golden_bank) {
-            Ok(image) if !image.is_golden() => {
-                duprintln!(self.serial, "FATAL: Flashed image is not a golden image.")
+            match image::image_at(external_flash, *golden_bank) {
+                Ok(image) if !image.is_golden() => {
+                    duprintln!(self.serial, "FATAL: Flashed image is not a golden image.")
+                }
+                Err(e) => {
+                    duprintln!(self.serial, "FATAL: Image did not flash correctly.");
+                    e.report(&mut self.serial);
+                }
+                _ => duprintln!(self.serial, "Finished flashing golden image."),
             }
-            Err(e) => {
-                duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                e.report(&mut self.serial);
-            }
-            _ => duprintln!(self.serial, "Finished flashing golden image."),
         }
 
         duprintln!(self.serial, "Rebooting...");
@@ -242,13 +246,20 @@ where
 
     /// Copy from external bank to MCU bank. This routine uses a significant amount
     /// of stack space to minimise flash erases and thus maximise flash usage efficiency.
-    pub fn copy_image(
+    pub fn copy_image_from_external(
         &mut self,
         input_bank: image::Bank<EXTF::Address>,
         output_bank: image::Bank<MCUF::Address>,
         must_be_golden: bool,
     ) -> Result<(), Error> {
-        let input_image = image::image_at(&mut self.external_flash, input_bank)?;
+
+        let external_flash = if let Some(ref mut external_flash) = self.external_flash {
+            external_flash
+        } else {
+            return Err(Error::NoExternalFlash);
+        };
+
+        let input_image = image::image_at(external_flash, input_bank)?;
         duprintln!(
             self.serial,
             "Copying bank {:?} image [Address {:?}, size {:?}] to boot bank.",
@@ -276,8 +287,7 @@ where
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(self
-                .external_flash
+            block!(external_flash
                 .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
             block!(self
                 .mcu_flash

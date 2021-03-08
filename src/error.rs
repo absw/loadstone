@@ -19,6 +19,7 @@ pub enum Error {
     BankEmpty,
     ImageTooBig,
     FlashCorrupted,
+    NoExternalFlash,
     NoImageToRestoreFrom,
     SignatureInvalid,
 }
@@ -85,6 +86,9 @@ impl Error {
             }
             Error::NoImageToRestoreFrom => {
                 uwriteln!(serial, "[Logic Error] -> No image to restore from")
+            }
+            Error::NoExternalFlash => {
+                uwriteln!(serial, "[Logic Error] -> No external flash in this configuration")
             }
         }
         .ok()

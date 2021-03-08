@@ -79,7 +79,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
             mcu_flash,
             external_banks: &EXTERNAL_BANKS,
             mcu_banks: &MCU_BANKS,
-            external_flash,
+            external_flash: Some(external_flash),
             serial,
             boot_metrics: Default::default(),
             start_time,
