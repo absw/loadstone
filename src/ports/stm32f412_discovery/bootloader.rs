@@ -1,6 +1,6 @@
 //! Concrete bootloader construction and flash bank layout
 //! for the [stm32f412 discovery](../../../../loadstone/hardware/discovery.pdf).
-use crate::devices::bootloader::Bootloader;
+use crate::{devices::bootloader::Bootloader, error};
 use crate::devices::image;
 use crate::error::Error;
 use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time::{self, Now}, stm32pac::{self, USART6}};
@@ -88,18 +88,18 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
     }
 }
 
-impl From<flash::Error> for Error {
-    fn from(error: flash::Error) -> Self {
-        match error {
+impl error::Convertible for flash::Error {
+    fn into(self) -> Error {
+        match self {
             flash::Error::MemoryNotReachable => Error::DriverError("[MCU Flash] Memory not reachable"),
             flash::Error::MisalignedAccess => Error::DriverError("[MCU Flash] Misaligned memory access"),
         }
     }
 }
 
-impl From<n25q128a_flash::Error> for Error {
-    fn from(error: n25q128a_flash::Error) -> Self {
-        match error {
+impl error::Convertible for n25q128a_flash::Error {
+    fn into(self) -> Error {
+        match self {
             n25q128a_flash::Error::TimeOut => Error::DriverError("[External Flash] Operation timed out"),
             n25q128a_flash::Error::QspiError => Error::DriverError("[External Flash] Qspi error"),
             n25q128a_flash::Error::WrongManufacturerId => Error::DriverError("[External Flash] Wrong manufacturer ID"),
@@ -109,9 +109,9 @@ impl From<n25q128a_flash::Error> for Error {
     }
 }
 
-impl From<serial::Error> for Error {
-    fn from(error: serial::Error) -> Self {
-        match error {
+impl error::Convertible for serial::Error {
+    fn into(self) -> Error {
+        match self {
             serial::Error::Framing => Error::DriverError("[Serial] Framing error"),
             serial::Error::Noise => Error::DriverError("[Serial] Noise error"),
             serial::Error::Overrun => Error::DriverError("[Serial] Overrun error"),

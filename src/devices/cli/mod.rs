@@ -7,10 +7,7 @@
 #![macro_use]
 use crate::error::Error as ApplicationError;
 use blue_hal::{
-    hal::{
-        flash,
-        serial::{self, Read},
-    },
+    hal::serial::{self, Read},
     uprint, uprintln,
     utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
@@ -18,9 +15,7 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
-use self::file_transfer::FileTransfer;
-
-use super::boot_manager::BootManager;
+use super::{boot_manager::BootManager, traits::{Flash, Serial}};
 
 pub mod file_transfer;
 
@@ -171,13 +166,9 @@ const ARGUMENT_SEPARATOR: char = '=';
 const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
-impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
+impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>, greeting: &'static str)
-    where
-        EXTF: flash::ReadWrite,
-        ApplicationError: From<EXTF::Error>,
-        ApplicationError: From<<SRL as serial::Read>::Error>,
+    pub fn run<EXTF: Flash>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>, greeting: &'static str)
     {
         if !self.greeted {
             uprintln!(self.serial, "{}", greeting);
@@ -347,13 +338,10 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<EXTF, SRL>(
+        pub(super) fn run<EXTF: Flash, SRL: Serial>(
             $cli: &mut Cli<SRL>,
             $boot_manager: &mut BootManager<EXTF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
-        where
-            EXTF: flash::ReadWrite, ApplicationError: From<EXTF::Error>,
-            SRL: serial::ReadWrite + FileTransfer, ApplicationError: From<<SRL as serial::Read>::Error>,
         {
             match name {
                 $(
@@ -380,8 +368,14 @@ mod commands;
 
 #[cfg(test)]
 mod test {
+    use crate::error::Convertible;
+
     use super::*;
     use blue_hal::hal::doubles::serial::*;
+
+    impl Convertible for SerialStubError {
+        fn into(self) -> ApplicationError { ApplicationError::DeviceError("Serial stub failed") }
+    }
 
     #[test]
     fn basic_command_parsing() {

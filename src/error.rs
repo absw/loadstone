@@ -24,6 +24,11 @@ pub enum Error {
     SignatureInvalid,
 }
 
+pub trait Convertible {
+    fn into(self) -> Error;
+}
+impl<T: Convertible> From<T> for Error { fn from(t: T) -> Self { t.into() } }
+
 /// Exposes a report_unwrap() method that behaves like
 /// unwrap(), but also reports any errors via serial before panicking.
 pub trait ReportOnUnwrap<T, S: Write> {

@@ -61,7 +61,6 @@ impl BootMetrics {
     }
 }
 
-
 /// Reinterprets an arbitrary memory range as a mutable boot metrics struct.
 ///
 /// # Safety

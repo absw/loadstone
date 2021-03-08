@@ -4,10 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{
-    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
-    image::{self, Image, GOLDEN_STRING, MAGIC_STRING},
-};
+use super::{boot_metrics::{boot_metrics_mut, BootMetrics, BootPath}, image::{self, Bank, Image, GOLDEN_STRING, MAGIC_STRING}, traits::{Flash, Serial}};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
@@ -22,15 +19,7 @@ use nb::block;
 use p256::NistP256;
 use ufmt::uwriteln;
 
-pub struct Bootloader<EXTF, MCUF, SRL, T>
-where
-    EXTF: flash::ReadWrite,
-    Error: From<EXTF::Error>,
-    MCUF: flash::ReadWrite,
-    Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite,
-    Error: From<<SRL as serial::Read>::Error>,
-    T: time::Now,
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now>
 {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
@@ -44,15 +33,7 @@ where
 
 const DEFAULT_BOOT_BANK: u8 = 1;
 
-impl<EXTF, MCUF, SRL, T> Bootloader<EXTF, MCUF, SRL, T>
-where
-    EXTF: flash::ReadWrite,
-    Error: From<EXTF::Error>,
-    MCUF: flash::ReadWrite,
-    Error: From<MCUF::Error>,
-    SRL: serial::ReadWrite + serial::TimeoutRead,
-    Error: From<<SRL as serial::Read>::Error>,
-    T: time::Now,
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T>
 {
     /// Main bootloader routine.
     ///
@@ -70,8 +51,10 @@ where
     /// * Verify golden image. If valid, copy to bootable MCU flash bank and attempt to boot.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
-        assert!(self.external_banks.iter().filter(|b| b.is_golden).count() <= 1);
-        assert_eq!(self.mcu_banks.iter().filter(|b| b.is_golden).count(), 0);
+        let total_golden = self.external_banks.iter().filter(|b| b.is_golden).count()
+            + self.mcu_banks.iter().filter(|b| b.is_golden).count();
+
+        assert!(total_golden <= 1);
         duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
@@ -98,9 +81,43 @@ where
         }
     }
 
+    // Attempts to update from any input flash
+    fn try_update_image_from<F: Flash>(
+        &mut self,
+        current_image: Image<MCUF::Address>,
+        mcu_flash: MCUF,
+        mut source_flash: F,
+        banks: impl Iterator<Item = Bank<F::Address>>,
+    )
+    {
+        for bank in banks.filter(|b| !b.is_golden) {
+            duprintln!(self.serial, "Scanning bank {:?} for a newer image...", bank.index);
+            match image::image_at(&mut source_flash, bank) {
+                Ok(image) if image.signature() != current_image.signature() => {
+                    duprintln!(
+                        self.serial,
+                        "Replacing current image with bank {:?}...",
+                        bank.index
+                    );
+                    unimplemented!();
+                    //self.copy_image_from_external(*external_bank, *boot_bank, false).unwrap();
+                    //self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
+                    //duprintln!(
+                    //    self.serial,
+                    //    "Replaced image with external bank {:?}.",
+                    //    external_bank.index
+                    //);
+                    //return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
+                }
+                Ok(_image) => break,
+                _ => (),
+            }
+        }
+    }
+
     /// If the current bootable (MCU flash) image is different from the top
-    /// non-golden external image, attempts to replace it. On failure, this process
-    /// is repeated for all external non-golden banks. Returns the current
+    /// non-golden image, attempts to replace it. On failure, this process
+    /// is repeated for all non-golden banks. Returns the current
     /// bootable image after the process, if available.
     fn try_update_image(&mut self) -> Option<Image<MCUF::Address>> {
         let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
@@ -128,7 +145,8 @@ where
                             external_bank.index
                         );
                         self.copy_image_from_external(*external_bank, *boot_bank, false).unwrap();
-                        self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
+                        self.boot_metrics.boot_path =
+                            BootPath::Updated { bank: external_bank.index };
                         duprintln!(
                             self.serial,
                             "Replaced image with external bank {:?}.",
@@ -191,7 +209,10 @@ where
         if let Some(ref mut external_flash) = self.external_flash {
             let blocks = self.serial.blocks(None);
             if external_flash.write_from_blocks(golden_bank.location, blocks).is_err() {
-                duprintln!(self.serial, "FATAL: Failed to flash golden image during recovery mode.");
+                duprintln!(
+                    self.serial,
+                    "FATAL: Failed to flash golden image during recovery mode."
+                );
             }
 
             match image::image_at(external_flash, *golden_bank) {
@@ -244,6 +265,15 @@ where
         self.external_banks.iter().cloned()
     }
 
+    pub fn copy_image<I, O>()
+        where
+        I: flash::ReadWrite,
+        Error: From<I::Error>,
+        O: flash::ReadWrite,
+        Error: From<O::Error>,
+    {
+    }
+
     /// Copy from external bank to MCU bank. This routine uses a significant amount
     /// of stack space to minimise flash erases and thus maximise flash usage efficiency.
     pub fn copy_image_from_external(
@@ -252,7 +282,6 @@ where
         output_bank: image::Bank<MCUF::Address>,
         must_be_golden: bool,
     ) -> Result<(), Error> {
-
         let external_flash = if let Some(ref mut external_flash) = self.external_flash {
             external_flash
         } else {

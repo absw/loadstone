@@ -14,26 +14,17 @@
 //! product that needs to interact with Loadstone can use this module as
 //! a starting point.
 
-use super::{
-    boot_metrics::{boot_metrics, BootMetrics},
-    cli::{file_transfer, Cli},
-    image,
-};
+use super::{boot_metrics::{boot_metrics, BootMetrics}, cli::Cli, image, traits::{Flash, Serial}};
 use crate::error::Error;
 use blue_hal::{
-    hal::{flash, serial},
+    hal::flash,
     stm32pac::SCB,
 };
 
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
 /// [ports module](`crate::ports`) provides constructors for specific chips.
-pub struct BootManager<EXTF, SRL>
-where
-    EXTF: flash::ReadWrite,
-    Error: From<EXTF::Error>,
-    SRL: serial::ReadWrite + file_transfer::FileTransfer,
-    Error: From<<SRL as serial::Read>::Error>,
+pub struct BootManager<EXTF: Flash, SRL: Serial>
 {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
@@ -41,12 +32,7 @@ where
     pub(crate) boot_metrics: Option<BootMetrics>,
 }
 
-impl<EXTF, SRL> BootManager<EXTF, SRL>
-where
-    EXTF: flash::ReadWrite,
-    Error: From<EXTF::Error>,
-    SRL: serial::ReadWrite + file_transfer::FileTransfer,
-    Error: From<<SRL as serial::Read>::Error>,
+impl<EXTF: Flash, SRL: Serial> BootManager<EXTF, SRL>
 {
     /// Provides an iterator over all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
@@ -56,13 +42,11 @@ where
     /// Writes a firmware image to an external flash bank. Takes an iterator over byte
     /// blocks, to easily interface with serial or network protocols like XMODEM or TCP/IP
     /// where information is received in chunks.
-    pub fn store_image<I, const N: usize>(
+    pub fn store_image<I: Iterator<Item = [u8; N]>, const N: usize>(
         &mut self,
         blocks: I,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error>
-    where
-        I: Iterator<Item = [u8; N]>,
     {
         self.external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
