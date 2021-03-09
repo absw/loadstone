@@ -14,26 +14,26 @@
 //! product that needs to interact with Loadstone can use this module as
 //! a starting point.
 
-use super::{boot_metrics::{boot_metrics, BootMetrics}, cli::Cli, image, traits::{Flash, Serial}};
-use crate::error::Error;
-use blue_hal::{
-    hal::flash,
-    stm32pac::SCB,
+use super::{
+    boot_metrics::{boot_metrics, BootMetrics},
+    cli::Cli,
+    image,
+    traits::{Flash, Serial},
 };
+use crate::error::Error;
+use blue_hal::{hal::flash, stm32pac::SCB};
 
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
 /// [ports module](`crate::ports`) provides constructors for specific chips.
-pub struct BootManager<EXTF: Flash, SRL: Serial>
-{
+pub struct BootManager<EXTF: Flash, SRL: Serial> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: EXTF,
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
 }
 
-impl<EXTF: Flash, SRL: Serial> BootManager<EXTF, SRL>
-{
+impl<EXTF: Flash, SRL: Serial> BootManager<EXTF, SRL> {
     /// Provides an iterator over all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
@@ -46,8 +46,7 @@ impl<EXTF: Flash, SRL: Serial> BootManager<EXTF, SRL>
         &mut self,
         blocks: I,
         bank: image::Bank<EXTF::Address>,
-    ) -> Result<(), Error>
-    {
+    ) -> Result<(), Error> {
         self.external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
     }

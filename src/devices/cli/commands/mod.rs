@@ -1,10 +1,10 @@
 use crate::{
     devices::{
-        traits::{Flash, Serial},
         boot_manager::BootManager,
         boot_metrics::BootPath,
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
+        traits::{Flash, Serial},
     },
     error::Error as ApplicationError,
 };

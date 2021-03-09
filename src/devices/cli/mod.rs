@@ -15,7 +15,10 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
-use super::{boot_manager::BootManager, traits::{Flash, Serial}};
+use super::{
+    boot_manager::BootManager,
+    traits::{Flash, Serial},
+};
 
 pub mod file_transfer;
 
@@ -168,8 +171,11 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF: Flash>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>, greeting: &'static str)
-    {
+    pub fn run<EXTF: Flash>(
+        &mut self,
+        boot_manager: &mut BootManager<EXTF, SRL>,
+        greeting: &'static str,
+    ) {
         if !self.greeted {
             uprintln!(self.serial, "{}", greeting);
             self.greeted = true;

@@ -4,11 +4,15 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{boot_metrics::{boot_metrics_mut, BootMetrics, BootPath}, image::{self, Bank, Image, GOLDEN_STRING, MAGIC_STRING}, traits::{Flash, Serial}};
+use super::{
+    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
+    image::{self, Bank, Image, GOLDEN_STRING, MAGIC_STRING},
+    traits::{Flash, Serial},
+};
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
 use blue_hal::{
     duprintln,
-    hal::{flash, serial, time},
+    hal::{flash, time},
     KB,
 };
 use core::{cmp::min, marker::PhantomData, mem::size_of};
@@ -19,8 +23,7 @@ use nb::block;
 use p256::NistP256;
 use ufmt::uwriteln;
 
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now>
-{
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -33,8 +36,7 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now>
 
 const DEFAULT_BOOT_BANK: u8 = 1;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T>
-{
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
     /// Main bootloader routine.
     ///
     /// In case the MCU flash's main bank contains a valid image, an update is attempted.
@@ -53,8 +55,15 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     pub fn run(mut self) -> ! {
         let total_golden = self.external_banks.iter().filter(|b| b.is_golden).count()
             + self.mcu_banks.iter().filter(|b| b.is_golden).count();
-
         assert!(total_golden <= 1);
+
+        let all_bank_indices =
+            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
+        all_bank_indices.fold(0, |previous, current| {
+            assert!(previous + 1 == current, "Flash banks are not in sequence!");
+            current + 1
+        });
+
         duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.try_update_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
@@ -81,48 +90,13 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         }
     }
 
-    // Attempts to update from any input flash
-    fn try_update_image_from<F: Flash>(
-        &mut self,
-        current_image: Image<MCUF::Address>,
-        mcu_flash: MCUF,
-        mut source_flash: F,
-        banks: impl Iterator<Item = Bank<F::Address>>,
-    )
-    {
-        for bank in banks.filter(|b| !b.is_golden) {
-            duprintln!(self.serial, "Scanning bank {:?} for a newer image...", bank.index);
-            match image::image_at(&mut source_flash, bank) {
-                Ok(image) if image.signature() != current_image.signature() => {
-                    duprintln!(
-                        self.serial,
-                        "Replacing current image with bank {:?}...",
-                        bank.index
-                    );
-                    unimplemented!();
-                    //self.copy_image_from_external(*external_bank, *boot_bank, false).unwrap();
-                    //self.boot_metrics.boot_path = BootPath::Updated { bank: external_bank.index };
-                    //duprintln!(
-                    //    self.serial,
-                    //    "Replaced image with external bank {:?}.",
-                    //    external_bank.index
-                    //);
-                    //return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
-                }
-                Ok(_image) => break,
-                _ => (),
-            }
-        }
-    }
-
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
     /// is repeated for all non-golden banks. Returns the current
     /// bootable image after the process, if available.
     fn try_update_image(&mut self) -> Option<Image<MCUF::Address>> {
-        let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         duprintln!(self.serial, "Checking for image updates...");
-
+        let boot_bank = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         let current_image = if let Ok(image) = image::image_at(&mut self.mcu_flash, *boot_bank) {
             image
         } else {
@@ -130,37 +104,115 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             return None;
         };
 
-        if let Some(ref mut external_flash) = self.external_flash {
-            for external_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
+        if let Some(updated_image) = self.try_update_internal(*boot_bank, current_image) {
+           return Some(updated_image)
+        } else if let Some(updated_image) = self.try_update_external(*boot_bank, current_image) {
+            return Some(updated_image);
+        }
+        Some(current_image)
+    }
+
+    fn try_update_internal(
+        &mut self,
+        boot_bank: Bank<MCUF::Address>,
+        current_image: Image<MCUF::Address>,
+    ) -> Option<Image<MCUF::Address>> {
+         for bank in self.mcu_banks().filter(|b| !b.is_golden && b.index != boot_bank.index)
+         {
+             duprintln!(
+                 self.serial,
+                 "[{}] Scanning bank {:?} for a newer image...",
+                 MCUF::label(),
+                 bank.index
+             );
+             match image::image_at(&mut self.mcu_flash, bank) {
+                 Ok(image) if image.signature() != current_image.signature() => {
+                     if let Some(value) = self.replace_image_internal(bank, boot_bank) {
+                         return Some(value);
+                     }
+                 }
+                 Ok(_image) => break,
+                 _ => (),
+             }
+         }
+         None
+    }
+
+    fn try_update_external(
+        &mut self,
+        boot_bank: Bank<MCUF::Address>,
+        current_image: Image<MCUF::Address>,
+    ) -> Option<Image<MCUF::Address>> {
+        if self.external_flash.is_some() {
+            for bank in self.external_banks().filter(|b| !b.is_golden)
+            {
                 duprintln!(
                     self.serial,
-                    "Scanning external bank {:?} for a newer image...",
-                    external_bank.index
+                    "[{}] Scanning bank {:?} for a newer image...",
+                    EXTF::label(),
+                    bank.index
                 );
-                match image::image_at(external_flash, *external_bank) {
+                match image::image_at(self.external_flash.as_mut().unwrap(), bank) {
                     Ok(image) if image.signature() != current_image.signature() => {
-                        duprintln!(
-                            self.serial,
-                            "Replacing current image with external bank {:?}...",
-                            external_bank.index
-                        );
-                        self.copy_image_from_external(*external_bank, *boot_bank, false).unwrap();
-                        self.boot_metrics.boot_path =
-                            BootPath::Updated { bank: external_bank.index };
-                        duprintln!(
-                            self.serial,
-                            "Replaced image with external bank {:?}.",
-                            external_bank.index
-                        );
-                        return image::image_at(&mut self.mcu_flash, *boot_bank).ok();
+                        if let Some(value) = self.replace_image_external(bank, boot_bank) {
+                            return Some(value);
+                        }
                     }
                     Ok(_image) => break,
                     _ => (),
                 }
             }
         }
-        duprintln!(self.serial, "No newer image found.");
-        Some(current_image)
+        None
+    }
+
+    fn replace_image_internal(&mut self, bank: Bank<MCUF::Address>, boot_bank: Bank<MCUF::Address>) -> Option<Image<MCUF::Address>> {
+        duprintln!(
+            self.serial,
+            "Replacing current image with bank {:?}.",
+            bank.index,
+        );
+        Self::copy_image_single_flash(
+            &mut self.serial,
+            &mut self.mcu_flash,
+            bank,
+            boot_bank,
+            false,
+        )
+        .unwrap();
+        self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
+        duprintln!(
+            self.serial,
+            "Replaced image with bank {:?} [{}]",
+            bank.index,
+            EXTF::label(),
+        );
+        image::image_at(&mut self.mcu_flash, boot_bank).ok()
+    }
+
+    fn replace_image_external(&mut self, bank: Bank<EXTF::Address>, boot_bank: Bank<MCUF::Address>) -> Option<Image<MCUF::Address>> {
+        duprintln!(
+            self.serial,
+            "Replacing current image with bank {:?}.",
+            bank.index,
+        );
+        Self::copy_image(
+            &mut self.serial,
+            self.external_flash.as_mut().unwrap(),
+            &mut self.mcu_flash,
+            bank,
+            boot_bank,
+            false,
+        )
+        .unwrap();
+        self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
+        duprintln!(
+            self.serial,
+            "Replaced image with bank {:?} [{}]",
+            bank.index,
+            EXTF::label(),
+        );
+        image::image_at(&mut self.mcu_flash, boot_bank).ok()
     }
 
     /// Restores the first image available in the external banks, attempting to restore
@@ -170,7 +222,16 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         let output = self.mcu_banks.iter().find(|b| b.index == DEFAULT_BOOT_BANK).unwrap();
         for input_bank in self.external_banks.iter().filter(|b| !b.is_golden) {
             duprintln!(self.serial, "Attempting to restore from bank {:?}.", input_bank.index);
-            if self.copy_image_from_external(*input_bank, *output, false).is_ok() {
+            if Self::copy_image(
+                &mut self.serial,
+                self.external_flash.as_mut().unwrap(),
+                &mut self.mcu_flash,
+                *input_bank,
+                *output,
+                false,
+            )
+            .is_ok()
+            {
                 duprintln!(
                     self.serial,
                     "Restored image from external bank {:?}.",
@@ -185,7 +246,16 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         // Attempt to restore from golden image
         let golden_bank = self.external_banks.iter().find(|b| b.is_golden).unwrap();
         duprintln!(self.serial, "Attempting to restore from golden bank {:?}.", golden_bank.index);
-        if self.copy_image_from_external(*golden_bank, *output, true).is_ok() {
+        if Self::copy_image(
+            &mut self.serial,
+            self.external_flash.as_mut().unwrap(),
+            &mut self.mcu_flash,
+            *golden_bank,
+            *output,
+            false,
+        )
+        .is_ok()
+        {
             duprintln!(
                 self.serial,
                 "Restored image from external golden bank {:?}.",
@@ -265,41 +335,30 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         self.external_banks.iter().cloned()
     }
 
-    pub fn copy_image<I, O>()
-        where
-        I: flash::ReadWrite,
-        Error: From<I::Error>,
-        O: flash::ReadWrite,
-        Error: From<O::Error>,
-    {
-    }
-
-    /// Copy from external bank to MCU bank. This routine uses a significant amount
-    /// of stack space to minimise flash erases and thus maximise flash usage efficiency.
-    pub fn copy_image_from_external(
-        &mut self,
-        input_bank: image::Bank<EXTF::Address>,
-        output_bank: image::Bank<MCUF::Address>,
+    pub fn copy_image_single_flash<F: Flash>(
+        serial: &mut SRL,
+        flash: &mut F,
+        input_bank: image::Bank<F::Address>,
+        output_bank: image::Bank<F::Address>,
         must_be_golden: bool,
     ) -> Result<(), Error> {
-        let external_flash = if let Some(ref mut external_flash) = self.external_flash {
-            external_flash
-        } else {
-            return Err(Error::NoExternalFlash);
-        };
-
-        let input_image = image::image_at(external_flash, input_bank)?;
-        duprintln!(
-            self.serial,
-            "Copying bank {:?} image [Address {:?}, size {:?}] to boot bank.",
-            input_bank.index,
-            input_image.location().into(),
-            input_image.size()
-        );
+        if input_bank.index == output_bank.index {
+            return Err(Error::DeviceError("Attempted to copy a bank into itself"));
+        }
+        let input_image = image::image_at(flash, input_bank)?;
         if must_be_golden && !input_image.is_golden() {
-            duprintln!(self.serial, "Image is not golden.",);
+            duprintln!(serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));
         }
+        duprintln!(
+            serial,
+            "Copying bank {:?} image [Address {:?}, size {:?}]\r\n* Input: [{}]\r\n* Output: [{}]",
+            input_bank.index,
+            input_image.location().into(),
+            input_image.size(),
+            F::label(),
+            F::label(),
+        );
         let input_image_start_address = input_bank.location;
         let output_image_start_address = output_bank.location;
 
@@ -316,10 +375,56 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(external_flash
+            block!(
+                flash.read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read])
+            )?;
+            block!(flash.write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
+            byte_index += bytes_to_read;
+        }
+        Ok(())
+    }
+
+    pub fn copy_image<I: Flash, O: Flash>(
+        serial: &mut SRL,
+        input_flash: &mut I,
+        output_flash: &mut O,
+        input_bank: image::Bank<I::Address>,
+        output_bank: image::Bank<O::Address>,
+        must_be_golden: bool,
+    ) -> Result<(), Error> {
+        let input_image = image::image_at(input_flash, input_bank)?;
+        if must_be_golden && !input_image.is_golden() {
+            duprintln!(serial, "Image is not golden.",);
+            return Err(Error::DeviceError("Image is not golden"));
+        }
+        duprintln!(
+            serial,
+            "Copying bank {:?} image [Address {:?}, size {:?}]\r\n* Input: [{}]\r\n* Output: [{}]",
+            input_bank.index,
+            input_image.location().into(),
+            input_image.size(),
+            I::label(),
+            O::label(),
+        );
+        let input_image_start_address = input_bank.location;
+        let output_image_start_address = output_bank.location;
+
+        // Large transfer buffer ensures that the number of read-write cycles needed
+        // to guarantee flash integrity through the process is minimal.
+        const TRANSFER_BUFFER_SIZE: usize = KB!(64);
+        let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
+        let mut byte_index = 0usize;
+
+        let total_size = input_image.size()
+            + SignatureSize::<NistP256>::to_usize()
+            + MAGIC_STRING.len()
+            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
+
+        while byte_index < total_size {
+            let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
+            block!(input_flash
                 .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
-            block!(self
-                .mcu_flash
+            block!(output_flash
                 .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
             byte_index += bytes_to_read;
         }
