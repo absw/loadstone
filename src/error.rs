@@ -18,6 +18,8 @@ pub enum Error {
     BankInvalid,
     BankEmpty,
     ImageTooBig,
+    ImageIsNotGolden,
+    NoGoldenBankSupport,
     FlashCorrupted,
     NoExternalFlash,
     NoImageToRestoreFrom,
@@ -96,6 +98,12 @@ impl Error {
             }
             Error::NoExternalFlash => {
                 uwriteln!(serial, "[Logic Error] -> No external flash in this configuration")
+            }
+            Error::ImageIsNotGolden => {
+                uwriteln!(serial, "[Logic Error] -> Image is not golden")
+            }
+            Error::NoGoldenBankSupport => {
+                uwriteln!(serial, "[Logic Error] -> No golden bank support")
             }
         }
         .ok()

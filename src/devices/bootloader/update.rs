@@ -126,6 +126,4 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         );
         image::image_at(&mut self.mcu_flash, boot_bank).ok()
     }
-
-
 }

@@ -108,8 +108,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
-        // or literally anything could happen here. After the interrupts are disabled, there is
-        // no turning back.
+        // or literally anything could happen here. No turning back after entering this unsafe block.
         unsafe {
             let initial_stack_pointer = *(image_location_raw as *const u32);
             let reset_handler_pointer =
