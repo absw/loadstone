@@ -8,10 +8,7 @@ use crate::{
     },
     error::Error as ApplicationError,
 };
-use blue_hal::{
-    hal::{flash, serial},
-    uprintln,
-};
+use blue_hal::uprintln;
 use ufmt::uwriteln;
 
 commands!( cli, boot_manager, names, helpstrings [
