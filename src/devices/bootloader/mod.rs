@@ -23,11 +23,17 @@ use nb::block;
 use p256::NistP256;
 use ufmt::uwriteln;
 
+/// Operations related to updating images with newer ones.
 mod update;
+/// Operations related to restoring an image when there's no current one to boot.
 mod restore;
+/// Operations related to serial recovery when there's no fallback to restore to.
 mod recover;
+/// Operations related to copying images between flash chips.
 mod copy;
 
+/// Main bootloader struct.
+// Members are public for the `ports` layer to be able to construct them freely and easily.
 pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
@@ -38,8 +44,6 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) start_time: T::I,
     pub(crate) _marker: PhantomData<T>,
 }
-
-const DEFAULT_BOOT_BANK: u8 = 1;
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
     /// Main bootloader routine.
@@ -53,14 +57,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// After attempting or skipping the update process, the bootloader attempts to boot
     /// the current MCU image. In case of failure, the following steps are attempted:
     ///
-    /// * Verify each external bank in ascending order. If any is found to contain a valid
+    /// * Verify each bank in ascending order. If any is found to contain a valid
     /// image, copy it to bootable MCU flash bank and attempt to boot it.
     /// * Verify golden image. If valid, copy to bootable MCU flash bank and attempt to boot.
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
         duprintln!(self.serial, "-- Loadstone Initialised --");
-        if let Some(image) = self.try_update_image() {
+        if let Some(image) = self.latest_bootable_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {
                 Error::BankInvalid => {
@@ -85,18 +89,31 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         }
     }
 
+    /// Makes several sanity checks on the flash bank configuration.
     fn verify_bank_correctness(&self) {
+        // There is at most one golden bank between internal and external flash
         let total_golden = self.external_banks.iter().filter(|b| b.is_golden).count()
             + self.mcu_banks.iter().filter(|b| b.is_golden).count();
         assert!(total_golden <= 1);
 
+        // There is only one bootable MCU bank
+        assert_eq!(self.mcu_banks().filter(|b| b.bootable).count(), 1);
+
+        // Banks are sequential across flash chips
         let all_bank_indices =
             self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
         all_bank_indices.fold(0, |previous, current| {
             assert!(previous + 1 == current, "Flash banks are not in sequence!");
-            current + 1
+            current
         });
 
+        // Either there's no external flash and no external flash banks, or there
+        // is external flash and there is at least one external bank.
+        assert!(
+            self.external_flash.is_some() && self.external_banks().count() > 0
+                || self.external_flash.is_none() && self.external_banks().count() == 0,
+            "Incorrect external flash configuration"
+        );
     }
 
     /// Boots into a given memory bank.
@@ -120,6 +137,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             cortex_m::register::msp::write(initial_stack_pointer);
             reset_handler()
         }
+    }
+
+    pub fn boot_bank(&self) -> image::Bank<MCUF::Address> {
+        self.mcu_banks().find(|b| b.bootable).unwrap()
     }
 
     /// Returns an iterator of all MCU flash banks.
