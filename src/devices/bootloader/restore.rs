@@ -4,17 +4,11 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.
     pub fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {
-        if let Some(restored_image) = self.restore_internal(false) {
-            Ok(restored_image)
-        } else if let Some(restored_image) = self.restore_external(false) {
-            Ok(restored_image)
-        } else if let Some(restored_image) = self.restore_internal(true) {
-            Ok(restored_image)
-        } else if let Some(restored_image) = self.restore_external(true) {
-            Ok(restored_image)
-        } else {
-            Err(Error::NoImageToRestoreFrom)
-        }
+        self.restore_internal(false)
+            .or(self.restore_external(false))
+            .or(self.restore_internal(true))
+            .or(self.restore_external(true))
+            .ok_or(Error::NoImageToRestoreFrom)
     }
 
     fn restore_external(&mut self, golden: bool) -> Option<Image<MCUF::Address>> {

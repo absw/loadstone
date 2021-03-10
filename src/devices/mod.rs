@@ -13,25 +13,20 @@ pub mod cli;
 pub mod traits {
     use crate::error;
     use blue_hal::hal::{flash, serial};
+    use marker_blanket::marker_blanket;
 
     /// A supported flash must be able to read, write, and report errors
     /// to the bootloader or boot manager.
+    #[marker_blanket]
     pub trait Flash: flash::ReadWrite<Error: error::Convertible> {}
-    impl<T: flash::ReadWrite<Error: error::Convertible>> Flash for T {}
 
     /// A supported serial must be able to read, write, read with a timeout,
     /// and report errors to the bootloader or boot manager.
+    #[marker_blanket]
     pub trait Serial:
         serial::Read<Error: error::Convertible>
         + serial::Write
         + serial::TimeoutRead<Error: error::Convertible>
-    {
-    }
-    impl<
-            T: serial::Read<Error: error::Convertible>
-                + serial::Write
-                + serial::TimeoutRead<Error: error::Convertible>,
-        > Serial for T
     {
     }
 }
