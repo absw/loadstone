@@ -14,14 +14,14 @@ type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 
 // Serial pins and typedefs
-const EXTERNAL_NUMBER_OF_BANKS: usize = 2;
+const EXTERNAL_NUMBER_OF_BANKS: usize = 3;
 const EXTERNAL_BANK_MAX_IMAGE_SIZE: usize = {
     let (start, end) = (n25q128a_flash::MemoryMap::location(), n25q128a_flash::MemoryMap::end());
     let total_size = (end.0 - start.0) as usize;
     total_size / EXTERNAL_NUMBER_OF_BANKS
 };
 
-const MCU_NUMBER_OF_BANKS: usize = 1;
+const MCU_NUMBER_OF_BANKS: usize = 2;
 const MCU_BANK_MAX_IMAGE_SIZE: usize = {
     let (start, end) = (flash::MemoryMap::writable_start(), flash::MemoryMap::writable_end());
     let total_size = (end.0 - start.0) as usize;
@@ -41,13 +41,15 @@ const fn mcu_image_offset(index: usize) -> flash::Address {
         + (index * IMAGE_SIZE) as u32)
 }
 
-static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
+pub static MCU_BANKS: [image::Bank<flash::Address>; MCU_NUMBER_OF_BANKS] = [
     image::Bank { index: 1, bootable: true, location: mcu_image_offset(0), size: IMAGE_SIZE, is_golden: false },
+    image::Bank { index: 2, bootable: false, location: mcu_image_offset(1), size: IMAGE_SIZE, is_golden: false },
 ];
 
 pub static EXTERNAL_BANKS: [image::Bank<n25q128a_flash::Address>; EXTERNAL_NUMBER_OF_BANKS] = [
-    image::Bank { index: 2, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, is_golden: false },
-    image::Bank { index: 3, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, is_golden: true },
+    image::Bank { index: 3, bootable: false, location: external_image_offset(0), size: IMAGE_SIZE, is_golden: false },
+    image::Bank { index: 4, bootable: false, location: external_image_offset(1), size: IMAGE_SIZE, is_golden: true },
+    image::Bank { index: 5, bootable: false, location: external_image_offset(2), size: IMAGE_SIZE, is_golden: false },
 ];
 
 impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {

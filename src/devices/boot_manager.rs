@@ -26,29 +26,56 @@ use blue_hal::{hal::flash, stm32pac::SCB};
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
 /// [ports module](`crate::ports`) provides constructors for specific chips.
-pub struct BootManager<EXTF: Flash, SRL: Serial> {
+pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
+    pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
+    pub(crate) mcu_flash: MCUF,
     pub(crate) external_flash: EXTF,
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
 }
 
-impl<EXTF: Flash, SRL: Serial> BootManager<EXTF, SRL> {
+impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
     /// Provides an iterator over all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
     }
 
+    pub fn boot_bank(&self) -> image::Bank<MCUF::Address> {
+        self.mcu_banks().find(|b| b.bootable).unwrap()
+    }
+
+    /// Returns an iterator of all MCU flash banks.
+    pub fn mcu_banks(&self) -> impl Iterator<Item = image::Bank<MCUF::Address>> {
+        self.mcu_banks.iter().cloned()
+    }
+
     /// Writes a firmware image to an external flash bank. Takes an iterator over byte
     /// blocks, to easily interface with serial or network protocols like XMODEM or TCP/IP
     /// where information is received in chunks.
-    pub fn store_image<I: Iterator<Item = [u8; N]>, const N: usize>(
+    pub fn store_image_external<I: Iterator<Item = [u8; N]>, const N: usize>(
         &mut self,
         blocks: I,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error> {
         self.external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
+    }
+
+    /// Writes a firmware image to a MCU flash bank that is not bootable. Takes an iterator over byte
+    /// blocks, to easily interface with serial or network protocols like XMODEM or TCP/IP
+    /// where information is received in chunks.
+    pub fn store_image_mcu<I: Iterator<Item = [u8; N]>, const N: usize>(
+        &mut self,
+        blocks: I,
+        bank: image::Bank<MCUF::Address>,
+    ) -> Result<(), Error> {
+        if bank.bootable {
+            Err(Error::BankInvalid)
+        } else {
+            self.mcu_flash.write_from_blocks(bank.location, blocks)?;
+            Ok(())
+        }
     }
 
     /// Fully erases the external flash bank, ensuring there are no leftover images

@@ -17,8 +17,16 @@ commands!( cli, boot_manager, names, helpstrings [
         cli.print_help(names, helpstrings, command)
     },
 
-    banks ["Displays external bank information"] (){
-        uprintln!(cli.serial, "External Banks:");
+    banks ["Displays bank information"] (){
+        uprintln!(cli.serial, "[{}] Banks:", MCUF::label());
+        for bank in boot_manager.mcu_banks() {
+            uwriteln!(cli.serial, "   - [{}] {} - Size: {}b{}",
+                bank.index,
+                if bank.bootable { "Bootable" } else { "Non-Bootable" },
+                bank.size,
+                if bank.is_golden { " - GOLDEN" } else { "" }).ok().unwrap();
+        }
+        uprintln!(cli.serial, "[{}] Banks:", EXTF::label());
         for bank in boot_manager.external_banks() {
             uwriteln!(cli.serial, "   - [{}] {} - Size: {}b{}",
                 bank.index,
@@ -28,8 +36,17 @@ commands!( cli, boot_manager, names, helpstrings [
         }
     },
 
-    images ["Displays external image information (WARNING: Slow)"] (){
-        uprintln!(cli.serial, "External images:");
+    images ["Displays image information (WARNING: Slow)"] (){
+        uprintln!(cli.serial, "[{}] Images:", MCUF::label());
+        for bank in boot_manager.mcu_banks() {
+            if let Ok(image) = image::image_at(&mut boot_manager.mcu_flash, bank) {
+                uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - {}",
+                    bank.index,
+                    image.size(),
+                    if image.is_golden() { " - GOLDEN" } else { "" }).ok().unwrap();
+            }
+        }
+        uprintln!(cli.serial, "[{}] Images:", EXTF::label());
         for bank in boot_manager.external_banks() {
             if let Ok(image) = image::image_at(&mut boot_manager.external_flash, bank) {
                 uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - {}",
@@ -37,46 +54,64 @@ commands!( cli, boot_manager, names, helpstrings [
                     image.size(),
                     if image.is_golden() { " - GOLDEN" } else { "" }).ok().unwrap();
             }
-
         }
     },
 
-    flash ["Stores a FW image in an external bank."] (
-        bank: u8 ["External bank index."],
+    flash ["Stores a FW image in a non-bootable bank."] (
+        bank: u8 ["Bank index."],
         )
     {
         if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
             uprintln!(cli.serial, "Starting XMODEM mode! Send file with your XMODEM client.");
-            boot_manager.store_image(cli.serial.blocks(None), bank)?;
+            boot_manager.store_image_external(cli.serial.blocks(None), bank)?;
+            uprintln!(cli.serial, "Image transfer complete!");
+        } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
+            if bank.bootable {
+                uprintln!(cli.serial, "You can't erase the bootable image, it's what you are");
+                uprintln!(cli.serial, "currently running! You can still corrupt its signature");
+                uprintln!(cli.serial, "to force it to be invalid.");
+                return Err(Error::ApplicationError(ApplicationError::BankInvalid));
+            }
+            uprintln!(cli.serial, "Starting XMODEM mode! Send file with your XMODEM client.");
+            boot_manager.store_image_mcu(cli.serial.blocks(None), bank)?;
             uprintln!(cli.serial, "Image transfer complete!");
         } else {
-            uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");
+            uprintln!(cli.serial, "Index supplied does not correspond to any bank.");
         }
 
     },
 
-    corrupt_signature ["Corrupts the ECDSA signature of a specified external image."] (
-        bank: u8 ["External bank index."],
+    corrupt_signature ["Corrupts the ECDSA signature of a specified image."] (
+        bank: u8 ["Bank index."],
         )
     {
-        let bank = if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
-            bank
+        if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
+            let image = image::image_at(&mut boot_manager.external_flash, bank)
+                .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
+            let signature_location = image.location() + image.size() + MAGIC_STRING.len();
+            let mut signature_bytes = [0u8; 64usize];
+            nb::block!(boot_manager.external_flash.read(signature_location, &mut signature_bytes))
+                .map_err(|e| Error::ApplicationError(e.into()))?;
+            signature_bytes[0] = !signature_bytes[0];
+            nb::block!(boot_manager.external_flash.write(signature_location, &mut signature_bytes))
+                .map_err(|e| Error::ApplicationError(e.into()))?;
+            uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
+        } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
+            let image = image::image_at(&mut boot_manager.mcu_flash, bank)
+                .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
+            let signature_location = image.location() + image.size() + MAGIC_STRING.len();
+            let mut signature_bytes = [0u8; 64usize];
+            nb::block!(boot_manager.mcu_flash.read(signature_location, &mut signature_bytes))
+                .map_err(|e| Error::ApplicationError(e.into()))?;
+            signature_bytes[0] = !signature_bytes[0];
+            nb::block!(boot_manager.mcu_flash.write(signature_location, &mut signature_bytes))
+                .map_err(|e| Error::ApplicationError(e.into()))?;
+            uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
         } else {
-            uprintln!(cli.serial, "Index supplied does not correspond to an external bank.");
+            uprintln!(cli.serial, "Index supplied does not correspond to any bank.");
             return Ok(());
         };
 
-        let image = image::image_at(&mut boot_manager.external_flash, bank)
-            .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
-
-        let signature_location = image.location() + image.size() + MAGIC_STRING.len();
-        let mut signature_bytes = [0u8; 64usize];
-        nb::block!(boot_manager.external_flash.read(signature_location, &mut signature_bytes))
-            .map_err(|e| Error::ApplicationError(e.into()))?;
-        signature_bytes[0] = !signature_bytes[0];
-        nb::block!(boot_manager.external_flash.write(signature_location, &mut signature_bytes))
-            .map_err(|e| Error::ApplicationError(e.into()))?;
-        uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
     },
 
     corrupt_body ["Corrupts a byte inside a specified external image."] (

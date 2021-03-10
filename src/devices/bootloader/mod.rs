@@ -90,7 +90,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     }
 
     /// Makes several sanity checks on the flash bank configuration.
-    fn verify_bank_correctness(&self) {
+    pub fn verify_bank_correctness(&self) {
         // There is at most one golden bank between internal and external flash
         let total_golden = self.external_banks.iter().filter(|b| b.is_golden).count()
             + self.mcu_banks.iter().filter(|b| b.is_golden).count();

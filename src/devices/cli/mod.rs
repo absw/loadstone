@@ -171,9 +171,9 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF: Flash>(
+    pub fn run<MCUF: Flash, EXTF: Flash>(
         &mut self,
-        boot_manager: &mut BootManager<EXTF, SRL>,
+        boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
         greeting: &'static str,
     ) {
         if !self.greeted {
@@ -344,9 +344,9 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<EXTF: Flash, SRL: Serial>(
+        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<EXTF, SRL>,
+            $boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         {
             match name {
