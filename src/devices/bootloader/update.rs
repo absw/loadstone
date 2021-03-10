@@ -15,13 +15,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             return None;
         };
 
-        if let Some(updated_image) = self.try_update_internal(boot_bank, current_image) {
-            Some(updated_image)
-        } else if let Some(updated_image) = self.try_update_external(boot_bank, current_image) {
-            Some(updated_image)
-        } else {
-            Some(current_image)
-        }
+        self.try_update_internal(boot_bank, current_image)
+            .or(self.try_update_external(boot_bank, current_image))
+            .or(Some(current_image))
     }
 
     fn try_update_internal(
