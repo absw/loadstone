@@ -18,9 +18,19 @@ pub enum Error {
     BankInvalid,
     BankEmpty,
     ImageTooBig,
+    ImageIsNotGolden,
+    NoGoldenBankSupport,
     FlashCorrupted,
+    NoExternalFlash,
     NoImageToRestoreFrom,
     SignatureInvalid,
+}
+
+pub trait Convertible {
+    fn into(self) -> Error;
+}
+impl<T: Convertible> From<T> for Error {
+    fn from(t: T) -> Self { t.into() }
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -85,6 +95,15 @@ impl Error {
             }
             Error::NoImageToRestoreFrom => {
                 uwriteln!(serial, "[Logic Error] -> No image to restore from")
+            }
+            Error::NoExternalFlash => {
+                uwriteln!(serial, "[Logic Error] -> No external flash in this configuration")
+            }
+            Error::ImageIsNotGolden => {
+                uwriteln!(serial, "[Logic Error] -> Image is not golden")
+            }
+            Error::NoGoldenBankSupport => {
+                uwriteln!(serial, "[Logic Error] -> No golden bank support")
             }
         }
         .ok()

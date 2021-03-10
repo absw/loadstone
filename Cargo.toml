@@ -36,9 +36,10 @@ cortex-m-semihosting = "0.3.3"
 nb = "*"
 panic-abort = "*"
 static_assertions = "*"
-defmt = "0.1"
-defmt-rtt = "0.1"
+defmt = "0.2"
+defmt-rtt = "0.2"
 alloc-cortex-m = "*"
+marker-blanket = "*"
 
 [dependencies.funty]
 version = "=1.1.0"
