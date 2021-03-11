@@ -97,6 +97,8 @@ commands!( cli, boot_manager, names, helpstrings [
                 .map_err(|e| Error::ApplicationError(e.into()))?;
             uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
         } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
+            uprintln!(cli.serial, "Warning: Corrupting a signature in the MCU flash should work, but it might cause");
+            uprintln!(cli.serial, "the application to crash.");
             let image = image::image_at(&mut boot_manager.mcu_flash, bank)
                 .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
             let signature_location = image.location() + image.size() + MAGIC_STRING.len();
@@ -111,7 +113,6 @@ commands!( cli, boot_manager, names, helpstrings [
             uprintln!(cli.serial, "Index supplied does not correspond to any bank.");
             return Ok(());
         };
-
     },
 
     corrupt_body ["Corrupts a byte inside a specified external image."] (
