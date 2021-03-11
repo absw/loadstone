@@ -88,7 +88,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             false,
         )
         .unwrap();
-        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, EXTF::label(),);
+        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
         image::image_at(&mut self.mcu_flash, boot_bank).ok()
     }
 

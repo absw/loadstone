@@ -177,6 +177,7 @@ impl<SRL: Serial> Cli<SRL> {
         greeting: &'static str,
     ) {
         if !self.greeted {
+            uprintln!(self.serial, "");
             uprintln!(self.serial, "{}", greeting);
             self.greeted = true;
         }

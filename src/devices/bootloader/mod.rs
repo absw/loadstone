@@ -63,6 +63,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
+        duprintln!(self.serial, "");
         duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.latest_bootable_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");

@@ -26,7 +26,10 @@ commands!( cli, boot_manager, names, helpstrings [
                 bank.size,
                 if bank.is_golden { " - GOLDEN" } else { "" }).ok().unwrap();
         }
-        uprintln!(cli.serial, "[{}] Banks:", EXTF::label());
+
+        if boot_manager.external_banks().count() > 0 {
+            uprintln!(cli.serial, "[{}] Banks:", EXTF::label());
+        }
         for bank in boot_manager.external_banks() {
             uwriteln!(cli.serial, "   - [{}] {} - Size: {}b{}",
                 bank.index,
@@ -169,21 +172,39 @@ commands!( cli, boot_manager, names, helpstrings [
                 },
                 BootPath::Restored { bank } => {
                     let bank_index = bank;
-                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
-                    uprintln!(cli.serial,
-                        "* Application was first restored from bank {}{}, then booted.",
-                        bank_index,
-                        if bank.is_golden { " (GOLDEN)" } else {""}
-                    );
+                    if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
+                        uprintln!(cli.serial,
+                            "* Application was first restored from bank {}{}, ([{}]) then booted.",
+                            bank_index,
+                            if bank.is_golden { " (GOLDEN)" } else {""},
+                            EXTF::label(),
+                        );
+                    } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
+                        uprintln!(cli.serial,
+                            "* Application was first restored from bank {}{}, ([{}]) then booted.",
+                            bank_index,
+                            if bank.is_golden { " (GOLDEN)" } else {""},
+                            MCUF::label(),
+                        );
+                    }
                 },
                 BootPath::Updated { bank } => {
                     let bank_index = bank;
-                    let bank = boot_manager.external_banks().find(|b| b.index == bank).unwrap();
-                    uprintln!(cli.serial,
-                        "* Application was first updated from bank {}{}, then booted.",
-                        bank_index,
-                        if bank.is_golden { " (GOLDEN)" } else {""}
-                    );
+                    if let Some(bank) = boot_manager.external_banks().find(|b| b.index == bank) {
+                        uprintln!(cli.serial,
+                            "* Application was first updated from bank {}{}, ([{}]), then booted.",
+                            bank_index,
+                            if bank.is_golden { " (GOLDEN)" } else {""},
+                            EXTF::label()
+                        );
+                    } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
+                        uprintln!(cli.serial,
+                            "* Application was first updated from bank {}{}, ([{}]), then booted.",
+                            bank_index,
+                            if bank.is_golden { " (GOLDEN)" } else {""},
+                            MCUF::label()
+                        );
+                    }
                 },
             }
             uprintln!(cli.serial, "* Boot process took {} milliseconds.", metrics.boot_time_ms);

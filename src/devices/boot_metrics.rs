@@ -31,6 +31,7 @@ pub const BOOT_MAGIC_START: u32 = 0xDEADBEEF;
 pub const BOOT_MAGIC_END: u32 = 0xCAFEBABE;
 
 /// Actions taken by Loadstone that ultimately led to an image being booted.
+#[repr(C)]
 #[derive(Clone)]
 pub enum BootPath {
     /// The image was booted directly from the main MCU flash bank, as there
