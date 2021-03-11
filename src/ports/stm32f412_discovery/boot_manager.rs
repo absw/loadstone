@@ -39,7 +39,7 @@ impl BootManager<flash::McuFlash, ExternalFlash, Serial> {
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(5000)).unwrap();
 
         BootManager {
-            external_flash,
+            external_flash: Some(external_flash),
             mcu_flash,
             external_banks: &EXTERNAL_BANKS,
             mcu_banks: &MCU_BANKS,
