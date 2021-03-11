@@ -1,8 +1,8 @@
 //! Concrete boot manager construction and flash bank layout
 //! for the [stm32f412 discovery](../../../../loadstone/hardware/discovery.pdf).
 use crate::devices::{boot_manager::BootManager, cli::Cli};
-use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
-use super::{bootloader::EXTERNAL_BANKS, pin_configuration::*};
+use blue_hal::{drivers::{micron::n25q128a_flash::MicronN25q128a, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
+use super::{bootloader::{EXTERNAL_BANKS, MCU_BANKS}, pin_configuration::*};
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -11,14 +11,15 @@ type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
 type UsartPins = (Pg14<AF8>, Pg9<AF8>);
 type Serial = serial::Serial<USART6, UsartPins>;
 
-impl Default for BootManager<ExternalFlash, Serial> {
+impl Default for BootManager<flash::McuFlash, ExternalFlash, Serial> {
     fn default() -> Self { Self::new() }
 }
 
-impl BootManager<ExternalFlash, Serial> {
+impl BootManager<flash::McuFlash, ExternalFlash, Serial> {
     pub fn new() -> Self {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
+        let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
         let gpiob = peripherals.GPIOB.split(&mut peripherals.RCC);
         let gpiog = peripherals.GPIOG.split(&mut peripherals.RCC);
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
@@ -37,6 +38,13 @@ impl BootManager<ExternalFlash, Serial> {
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(5000)).unwrap();
 
-        BootManager { external_flash, external_banks: &EXTERNAL_BANKS, cli: Some(cli), boot_metrics: None }
+        BootManager {
+            external_flash,
+            mcu_flash,
+            external_banks: &EXTERNAL_BANKS,
+            mcu_banks: &MCU_BANKS,
+            cli: Some(cli),
+            boot_metrics: None
+        }
     }
 }

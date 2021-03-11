@@ -16,7 +16,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         };
 
         self.try_update_internal(boot_bank, current_image)
-            .or(self.try_update_external(boot_bank, current_image))
+            .or_else(|| self.try_update_external(boot_bank, current_image))
             .or(Some(current_image))
     }
 
@@ -39,7 +39,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                         return Some(updated_image);
                     }
                 }
-                Ok(_image) => break,
+                Ok(_image) => return Some(current_image),
                 _ => (),
             }
         }
@@ -66,7 +66,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                             return Some(updated_image);
                         }
                     }
-                    Ok(_image) => break,
+                    Ok(_image) => return Some(current_image),
                     _ => (),
                 }
             }
@@ -88,7 +88,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             false,
         )
         .unwrap();
-        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, EXTF::label(),);
+        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
         image::image_at(&mut self.mcu_flash, boot_bank).ok()
     }
 
