@@ -5,9 +5,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// from the golden image as a last resort.
     pub fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {
         self.restore_internal(false)
-            .or(self.restore_external(false))
-            .or(self.restore_internal(true))
-            .or(self.restore_external(true))
+            .or_else(|| self.restore_external(false))
+            .or_else(|| self.restore_internal(true))
+            .or_else(|| self.restore_external(true))
             .ok_or(Error::NoImageToRestoreFrom)
     }
 

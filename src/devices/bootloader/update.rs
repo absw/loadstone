@@ -16,7 +16,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         };
 
         self.try_update_internal(boot_bank, current_image)
-            .or(self.try_update_external(boot_bank, current_image))
+            .or_else(|| self.try_update_external(boot_bank, current_image))
             .or(Some(current_image))
     }
 

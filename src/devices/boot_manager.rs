@@ -30,7 +30,7 @@ pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) mcu_flash: MCUF,
-    pub(crate) external_flash: EXTF,
+    pub(crate) external_flash: Option<EXTF>,
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
 }
@@ -58,7 +58,8 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
         blocks: I,
         bank: image::Bank<EXTF::Address>,
     ) -> Result<(), Error> {
-        self.external_flash.write_from_blocks(bank.location, blocks)?;
+        let external_flash = self.external_flash.as_mut().ok_or(Error::NoExternalFlash)?;
+        external_flash.write_from_blocks(bank.location, blocks)?;
         Ok(())
     }
 
@@ -81,7 +82,8 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
     /// Fully erases the external flash bank, ensuring there are no leftover images
     /// and future writes to the external flash are as fast as possible.
     pub fn format_external(&mut self) -> Result<(), Error> {
-        nb::block!(self.external_flash.erase())?;
+        let external_flash = self.external_flash.as_mut().ok_or(Error::NoExternalFlash)?;
+        nb::block!(external_flash.erase())?;
         Ok(())
     }
 
