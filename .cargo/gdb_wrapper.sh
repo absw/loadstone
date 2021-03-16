@@ -17,6 +17,7 @@ set -x
 
 "${GDB}" \
     -ex "target extended-remote :3333" \
+    -ex "svd_load svd/EFM32GG11B820F2048GM64.svd" \
     -ex "set print asm-demangle on" \
     -ex "monitor arm semihosting enable" \
     -ex "load" \
