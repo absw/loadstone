@@ -21,7 +21,8 @@ use super::{
     traits::{Flash, Serial},
 };
 use crate::error::Error;
-use blue_hal::{hal::flash, stm32pac::SCB};
+use blue_hal::hal::flash;
+use cortex_m::peripheral::SCB;
 
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
