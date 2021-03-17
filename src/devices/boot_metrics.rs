@@ -19,7 +19,7 @@ pub struct BootMetrics {
     pub boot_path: BootPath,
     /// Time from construction of Loadstone's driver suite to the target image
     /// being booted.
-    pub boot_time_ms: u32,
+    pub boot_time_ms: Option<u32>,
     /// Magic string to ensure the boot metrics' integrity when read. Must
     /// be equal to [`BOOT_MAGIC_END`] when read to guarantee validity.
     pub boot_magic_end: u32,
@@ -48,7 +48,7 @@ impl Default for BootMetrics {
         Self {
             boot_magic_start: BOOT_MAGIC_START,
             boot_path: BootPath::Direct,
-            boot_time_ms: 0u32,
+            boot_time_ms: None,
             boot_magic_end: BOOT_MAGIC_END,
         }
     }

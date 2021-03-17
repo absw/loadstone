@@ -26,7 +26,7 @@ fn oom(_: core::alloc::Layout) -> ! {
 }
 
 #[cfg(target_arch = "arm")]
-use panic_abort as _;
+use panic_semihosting as _;
 
 #[cfg(target_arch = "arm")]
 use defmt_rtt as _; // global logger

@@ -5,15 +5,14 @@ name = "loadstone"
 version = "0.1.0"
 default-run = "loadstone"
 
+[features]
+default = [
+   "wgm160p",
+   "defmt-default",
+]
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
 # implies cortex M...
-
-[features]
-default = [
-   "stm32f412_discovery",
-   "defmt-default",
-]
 stm32f412_discovery = ["blue_hal/stm32f412_discovery", "stm32f412"]
 stm32f429 = ["stm32f4_any"]
 stm32f469 = ["stm32f4_any"]
@@ -22,6 +21,8 @@ stm32f412 = ["stm32f4_any"]
 stm32f4_any = ["stm32_any"]
 stm32_any = ["cortex_m_any"]
 cortex_m_any = []
+wgm160p = ["blue_hal/wgm160p", "efm32gg11b_any"]
+efm32gg11b_any = ["cortex_m_any"]
 defmt-default = []
 defmt-trace = []
 defmt-debug = []
@@ -34,7 +35,7 @@ cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
 nb = "*"
-panic-abort = "*"
+panic-semihosting = "*"
 static_assertions = "*"
 defmt = "0.2"
 defmt-rtt = "0.2"
@@ -63,7 +64,7 @@ features = ["ecdsa", "sha256", "pem"]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
 #path = "blue_hal"
 git = "ssh://git@github.com/bluefruit/blue_hal.git"
-branch = "main"
+branch = "efm32gg_support"
 
 [dependencies.ufmt]
 version = "*"

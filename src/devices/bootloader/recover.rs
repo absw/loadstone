@@ -1,5 +1,3 @@
-use blue_hal::uprintln;
-
 use super::*;
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
@@ -22,7 +20,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 }
                 Err(e) => {
                     duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    e.report(&mut self.serial);
+                    if let Some(serial) = self.serial.as_mut() {
+                        e.report(serial);
+                    }
                     self.reboot();
                 }
             }
@@ -37,7 +37,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 }
                 Err(e) => {
                     duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    e.report(&mut self.serial);
+                    if let Some(serial) = self.serial.as_mut() {
+                        e.report(serial);
+                    }
                     self.reboot();
                 }
             }
@@ -47,12 +49,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             duprintln!(self.serial, "Attempting image recovery to MCU flash...");
             match self.recover_internal(false) {
                 Ok(_) => {
-                    uprintln!(self.serial, "Finished flashing image.");
+                    duprintln!(self.serial, "Finished flashing image.");
                     self.reboot();
                 }
                 Err(e) => {
-                    uprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    e.report(&mut self.serial);
+                    duprintln!(self.serial, "FATAL: Image did not flash correctly.");
+                    if let Some(serial) = self.serial.as_mut() {
+                        e.report(serial);
+                    }
                     self.reboot();
                 }
             }
@@ -67,7 +71,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 }
                 Err(e) => {
                     duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    e.report(&mut self.serial);
+                    if let Some(serial) = self.serial.as_mut() {
+                        e.report(serial);
+                    }
                     self.reboot();
                 }
             }
@@ -82,24 +88,28 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     }
 
     fn recover_internal(&mut self, golden: bool) -> Result<(), Error> {
-        if let Some(bank) = self.mcu_banks().find(|b| b.is_golden == golden) {
-            uprintln!(
+        if self.serial.is_none() {
+            return Err(Error::NoRecoverySupport);
+        }
+
+        if let Some(bank) = self.mcu_banks.iter().find(|b| b.is_golden == golden) {
+            duprintln!(
                 self.serial,
                 "Please send{} firmware image via XMODEM.",
                 if golden { " golden" } else { "" }
             );
-            let blocks = self.serial.blocks(None);
+            let blocks = self.serial.as_mut().unwrap().blocks(None);
             if self.mcu_flash.write_from_blocks(bank.location, blocks).is_err() {
-                uprintln!(
+                duprintln!(
                     self.serial,
                     "FATAL: Failed to flash{} image during recovery mode.",
                     if golden { " golden" } else { "" },
                 );
                 panic!();
             }
-            match image::image_at(&mut self.mcu_flash, bank) {
+            match image::image_at(&mut self.mcu_flash, *bank) {
                 Ok(image) if golden && !image.is_golden() => {
-                    uprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
+                    duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)
                 }
                 Err(e) => Err(e),
@@ -111,13 +121,17 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     }
 
     fn recover_external(&mut self, golden: bool) -> Result<(), Error> {
-        if let Some(bank) = self.external_banks().find(|b| b.is_golden == golden) {
+        if self.serial.is_none() {
+            return Err(Error::NoRecoverySupport);
+        }
+
+        if let Some(bank) = self.external_banks.iter().find(|b| b.is_golden == golden) {
             duprintln!(
                 self.serial,
                 "Please send{} firmware image via XMODEM.",
                 if golden { " golden" } else { "" }
             );
-            let blocks = self.serial.blocks(None);
+            let blocks = self.serial.as_mut().unwrap().blocks(None);
             if self
                 .external_flash
                 .as_mut()
@@ -132,7 +146,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 );
                 panic!();
             }
-            match image::image_at(self.external_flash.as_mut().unwrap(), bank) {
+            match image::image_at(self.external_flash.as_mut().unwrap(), *bank) {
                 Ok(image) if golden && !image.is_golden() => {
                     duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)

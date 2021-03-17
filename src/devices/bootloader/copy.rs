@@ -2,7 +2,7 @@ use super::*;
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
     pub fn copy_image_single_flash<F: Flash>(
-        serial: &mut SRL,
+        serial: &mut Option<SRL>,
         flash: &mut F,
         input_bank: image::Bank<F::Address>,
         output_bank: image::Bank<F::Address>,
@@ -51,7 +51,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     }
 
     pub fn copy_image<I: Flash, O: Flash>(
-        serial: &mut SRL,
+        serial: &mut Option<SRL>,
         input_flash: &mut I,
         output_flash: &mut O,
         input_bank: image::Bank<I::Address>,

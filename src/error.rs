@@ -23,6 +23,7 @@ pub enum Error {
     FlashCorrupted,
     NoExternalFlash,
     NoImageToRestoreFrom,
+    NoRecoverySupport,
     SignatureInvalid,
 }
 
@@ -104,6 +105,9 @@ impl Error {
             }
             Error::NoGoldenBankSupport => {
                 uwriteln!(serial, "[Logic Error] -> No golden bank support")
+            }
+            Error::NoRecoverySupport => {
+                uwriteln!(serial, "[Logic Error] -> No image recovery support")
             }
         }
         .ok()
