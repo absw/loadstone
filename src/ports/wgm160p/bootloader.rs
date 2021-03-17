@@ -18,9 +18,8 @@ const fn image_offset(index: usize) -> flash::Address {
 pub static MCU_BANKS: [image::Bank<flash::Address>; NUMBER_OF_BANKS] = [
     image::Bank { index: 1, bootable: true, location: image_offset(0), size: IMAGE_SIZE, is_golden: false },
     image::Bank { index: 2, bootable: false, location: image_offset(1), size: IMAGE_SIZE, is_golden: false },
-    image::Bank { index: 3, bootable: false, location: image_offset(1), size: IMAGE_SIZE, is_golden: true },
+    image::Bank { index: 3, bootable: false, location: image_offset(2), size: IMAGE_SIZE, is_golden: true },
 ];
-
 
 impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
     pub fn new() -> Self {
