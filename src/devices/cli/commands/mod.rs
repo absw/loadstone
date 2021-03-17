@@ -207,7 +207,9 @@ commands!( cli, boot_manager, names, helpstrings [
                     }
                 },
             }
-            uprintln!(cli.serial, "* Boot process took {} milliseconds.", metrics.boot_time_ms);
+            if let Some(boot_time_ms) = metrics.boot_time_ms {
+                uprintln!(cli.serial, "* Boot process took {} milliseconds.", boot_time_ms);
+            }
         } else {
             uprintln!(cli.serial, "Loadstone did not relay any boot metrics, or the boot metrics were corrupted.");
         }

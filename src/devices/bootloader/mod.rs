@@ -39,9 +39,9 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) external_flash: Option<EXTF>,
-    pub(crate) serial: SRL,
+    pub(crate) serial: Option<SRL>,
     pub(crate) boot_metrics: BootMetrics,
-    pub(crate) start_time: T::I,
+    pub(crate) start_time: Option<T::I>,
     pub(crate) _marker: PhantomData<T>,
 }
 
@@ -121,8 +121,8 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = image.location().into();
-        let time_ms = T::now() - self.start_time;
-        self.boot_metrics.boot_time_ms = time_ms.0;
+        let time_ms = self.start_time.and_then(|t| Some((T::now() - t).0));
+        self.boot_metrics.boot_time_ms = time_ms;
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an
         // entirely different firmware image! We have to assume everything is at the right place,
