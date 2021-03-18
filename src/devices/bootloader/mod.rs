@@ -65,9 +65,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         self.verify_bank_correctness();
         duprintln!(self.serial, "");
         duprintln!(self.serial, "-- Loadstone Initialised --");
-        if let Some(image) = self.latest_bootable_image() {
+        if self.latest_bootable_image().is_some() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
-            match self.boot(image).unwrap_err() {
+            match self.boot().unwrap_err() {
                 Error::BankInvalid => {
                     info!("Attempted to boot from invalid bank. Restoring image...")
                 }
@@ -82,7 +82,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         }
 
         match self.restore() {
-            Ok(image) => self.boot(image).expect("FATAL: Failed to boot from verified image!"),
+            Ok(_) => self.boot().expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
                 self.recover();
@@ -118,8 +118,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     }
 
     /// Boots into a given memory bank.
-    pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
+    pub fn boot(&mut self) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
+        let bank = self.boot_bank();
+        let image = image::image_at(&mut self.mcu_flash, bank)?;
         let image_location_raw: usize = image.location().into();
         let time_ms = self.start_time.and_then(|t| Some((T::now() - t).0));
         self.boot_metrics.boot_time_ms = time_ms;
