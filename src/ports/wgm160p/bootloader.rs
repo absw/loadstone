@@ -6,7 +6,8 @@ use crate::{devices::{bootloader::Bootloader, image}, error::{self, Error}};
 use blue_hal::KB;
 
 const IMAGES_START: flash::Address = flash::Address(KB!(64));
-const IMAGE_SIZE: usize = KB!(660);
+const IMAGE_SIZE: usize = KB!(700);
+const GOLDEN_IMAGE_SIZE: usize = KB!(436);
 
 const fn image_offset(index: usize) -> flash::Address {
     flash::Address(IMAGES_START.0 + (index * IMAGE_SIZE) as u32)
@@ -14,7 +15,7 @@ const fn image_offset(index: usize) -> flash::Address {
 pub static MCU_BANKS: [image::Bank<flash::Address>; 3] = [
     image::Bank { index: 1, bootable: true, location: image_offset(0), size: IMAGE_SIZE, is_golden: false },
     image::Bank { index: 2, bootable: false, location: image_offset(1), size: IMAGE_SIZE, is_golden: false },
-    image::Bank { index: 3, bootable: false, location: image_offset(2), size: IMAGE_SIZE, is_golden: true },
+    image::Bank { index: 3, bootable: false, location: image_offset(2), size: GOLDEN_IMAGE_SIZE, is_golden: true },
 ];
 impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
     pub fn new() -> Self {
