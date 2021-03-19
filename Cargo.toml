@@ -64,7 +64,7 @@ features = ["ecdsa", "sha256", "pem"]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
 #path = "blue_hal"
 git = "ssh://git@github.com/bluefruit/blue_hal.git"
-branch = "efm32gg_support"
+branch = "staging"
 
 [dependencies.ufmt]
 version = "*"
