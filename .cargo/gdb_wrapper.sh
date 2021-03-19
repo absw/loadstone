@@ -21,5 +21,6 @@ set -x
     -ex "set print asm-demangle on" \
     -ex "monitor arm semihosting enable" \
     -ex "load" \
+    -ex "monitor reset halt" \
     -ex "continue" \
     "$@"
