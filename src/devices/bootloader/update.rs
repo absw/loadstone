@@ -1,5 +1,11 @@
 use super::*;
 
+enum UpdateResult<MCUF: Flash> {
+    NotUpdated(Image<MCUF::Address>),
+    UpdatedTo(Image<MCUF::Address>),
+    UpdateError,
+}
+
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
@@ -15,16 +21,24 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             return None;
         };
 
-        self.try_update_internal(boot_bank, current_image)
-            .or_else(|| self.try_update_external(boot_bank, current_image))
-            .or(Some(current_image))
+        let current_image = match self.update_internal(boot_bank, current_image) {
+            UpdateResult::NotUpdated(current_image) => current_image,
+            UpdateResult::UpdatedTo(new_image) => return Some(new_image),
+            UpdateResult::UpdateError => return None,
+        };
+
+        match self.update_external(boot_bank, current_image) {
+            UpdateResult::NotUpdated(current_image) => Some(current_image),
+            UpdateResult::UpdatedTo(new_image) => Some(new_image),
+            UpdateResult::UpdateError => None,
+        }
     }
 
-    fn try_update_internal(
+    fn update_internal(
         &mut self,
         boot_bank: Bank<MCUF::Address>,
         current_image: Image<MCUF::Address>,
-    ) -> Option<Image<MCUF::Address>> {
+    ) -> UpdateResult<MCUF> {
         for bank in self.mcu_banks().filter(|b| !b.is_golden && b.index != boot_bank.index) {
             duprintln!(
                 self.serial,
@@ -36,21 +50,23 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 Ok(image) if image.signature() != current_image.signature() => {
                     if let Some(updated_image) = self.replace_image_internal(bank, boot_bank) {
                         self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
-                        return Some(updated_image);
+                        return UpdateResult::UpdatedTo(updated_image);
+                    } else {
+                        return UpdateResult::UpdateError;
                     }
                 }
-                Ok(_image) => return Some(current_image),
+                Ok(_image) => return UpdateResult::NotUpdated(current_image),
                 _ => (),
             }
         }
-        None
+        return UpdateResult::NotUpdated(current_image);
     }
 
-    fn try_update_external(
+    fn update_external(
         &mut self,
         boot_bank: Bank<MCUF::Address>,
         current_image: Image<MCUF::Address>,
-    ) -> Option<Image<MCUF::Address>> {
+    ) -> UpdateResult<MCUF> {
         if self.external_flash.is_some() {
             for bank in self.external_banks().filter(|b| !b.is_golden) {
                 duprintln!(
@@ -63,15 +79,17 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                     Ok(image) if image.signature() != current_image.signature() => {
                         if let Some(updated_image) = self.replace_image_external(bank, boot_bank) {
                             self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
-                            return Some(updated_image);
+                            return UpdateResult::UpdatedTo(updated_image);
+                        } else {
+                            return UpdateResult::UpdateError;
                         }
                     }
-                    Ok(_image) => return Some(current_image),
+                    Ok(_image) => return UpdateResult::NotUpdated(current_image),
                     _ => (),
                 }
             }
         }
-        None
+        return UpdateResult::NotUpdated(current_image);
     }
 
     fn replace_image_internal(

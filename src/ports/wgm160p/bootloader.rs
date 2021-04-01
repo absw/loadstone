@@ -1,6 +1,6 @@
 //! Concrete bootloader construction and flash bank layout for the wgm160p
 
-use blue_hal::{drivers::efm32gg11b::flash::{self, Flash}, efm32pac, hal::null::{NullFlash, NullSerial, NullSystick}};
+use blue_hal::{drivers::efm32gg11b::{clocks, flash::{self, Flash}}, efm32pac, hal::null::{NullFlash, NullSerial, NullSystick}};
 
 use crate::{devices::{bootloader::Bootloader, image}, error::{self, Error}};
 use blue_hal::KB;
@@ -17,8 +17,9 @@ pub static MCU_BANKS: [image::Bank<flash::Address>; 2] = [
 ];
 impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
     pub fn new() -> Self {
-        let peripherals = efm32pac::Peripherals::take().unwrap();
-        let mcu_flash = flash::Flash::new(peripherals.MSC);
+        let mut peripherals = efm32pac::Peripherals::take().unwrap();
+        let clocks = clocks::Clocks::new(peripherals.CMU, &mut peripherals.MSC);
+        let mcu_flash = flash::Flash::new(peripherals.MSC, &clocks);
 
         Bootloader {
             mcu_flash,
