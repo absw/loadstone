@@ -31,3 +31,6 @@ st = "strip --bin loadstone --release --target thumbv7em-none-eabi"
 d = "doc --release --target thumbv7em-none-eabi"
 dop = "doc --release --target thumbv7em-none-eabi --open"
 bl = "bloat --release --bin loadstone --target thumbv7em-none-eabi"
+
+[net]
+git-fetch-with-cli = true
