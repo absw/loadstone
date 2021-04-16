@@ -4,6 +4,8 @@ jobs:
   setup:
     runs-on: self-hosted
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Docker image
         run: docker build -t loadstonebuild docker/
 
@@ -12,8 +14,6 @@ jobs:
     runs-on: self-hosted
     container: loadstonebuild:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Tests
         run: cargo test --release
 
@@ -22,8 +22,6 @@ jobs:
     runs-on: self-hosted
     container: loadstonebuild:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Documentation
         run: ~/.cargo/bin/cargo d
       - name: Deploy Documentation
@@ -40,8 +38,6 @@ jobs:
     runs-on: self-hosted
     container: loadstonebuild:latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
       - name: Build
         env:
           SCRIPT_MODE: true
