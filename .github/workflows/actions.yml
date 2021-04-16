@@ -10,11 +10,11 @@ jobs:
 
       - name: Cargo Initialisation
         run: |
-          ~/.cargo/bin/rustup default nightly
-          ~/.cargo/bin/rustup update
-          ~/.cargo/bin/rustup component add llvm-tools-preview
-          ~/.cargo/bin/rustup target add thumbv7em-none-eabihf
-          ~/.cargo/bin/cargo install cargo-binutils
+          rustup default nightly
+          rustup update
+          rustup component add llvm-tools-preview
+          rustup target add thumbv7em-none-eabihf
+          cargo install cargo-binutils
 
   test:
     needs: setup
@@ -22,7 +22,7 @@ jobs:
     container: rust:1.31
     steps:
       - name: Tests
-        run: ~/.cargo/bin/cargo test --release
+        run: cargo test --release
 
   documentation:
     needs: setup
@@ -50,7 +50,7 @@ jobs:
         env:
           SCRIPT_MODE: true
         run: |
-          ~/.cargo/bin/cargo update
+          cargo update
           bash ./build_artifacts.sh
 
       - name: Upload artifacts
