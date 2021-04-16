@@ -3,6 +3,7 @@ on: [push]
 jobs:
   setup:
     runs-on: self-hosted
+    contaner: rust:1.31
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -18,6 +19,7 @@ jobs:
   test:
     needs: setup
     runs-on: self-hosted
+    contaner: rust:1.31
     steps:
       - name: Tests
         run: ~/.cargo/bin/cargo test --release
@@ -25,6 +27,7 @@ jobs:
   documentation:
     needs: setup
     runs-on: self-hosted
+    contaner: rust:1.31
     steps:
       - name: Documentation
         run: ~/.cargo/bin/cargo d
@@ -41,6 +44,7 @@ jobs:
   build:
     needs: setup
     runs-on: self-hosted
+    contaner: rust:1.31
     steps:
       - name: Build
         env:
