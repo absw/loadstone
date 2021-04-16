@@ -45,15 +45,18 @@ jobs:
           bash ./tools/deploy_docs.sh
 
   build:
-    - name: Build
-      env:
-        SCRIPT_MODE: true
-      run: |
-        ~/.cargo/bin/cargo update
-        bash ./build_artifacts.sh
+    needs: setup
+    runs-on: self-hosted
+    steps:
+      - name: Build
+        env:
+          SCRIPT_MODE: true
+        run: |
+          ~/.cargo/bin/cargo update
+          bash ./build_artifacts.sh
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: artifacts
-        path: artifacts.zip
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: artifacts
+          path: artifacts.zip
