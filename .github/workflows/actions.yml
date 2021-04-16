@@ -1,7 +1,7 @@
 name: actions
 on: [push]
 jobs:
-  build-loadstone:
+  setup:
     runs-on: self-hosted
     steps:
       - name: Checkout
@@ -21,9 +21,17 @@ jobs:
           ~/.cargo/bin/rustup target add thumbv7em-none-eabihf
           ~/.cargo/bin/cargo install cargo-binutils
 
+  test:
+    needs: setup
+    runs-on: self-hosted
+    steps:
       - name: Tests
         run: ~/.cargo/bin/cargo test --release
 
+  documentation:
+    needs: setup
+    runs-on: self-hosted
+    steps:
       - name: Documentation
         run: ~/.cargo/bin/cargo d
 
@@ -36,16 +44,16 @@ jobs:
         run: |
           bash ./tools/deploy_docs.sh
 
-      - name: Artifact Building
+  build:
+      - name: Build
         env:
           SCRIPT_MODE: true
         run: |
           ~/.cargo/bin/cargo update
           bash ./build_artifacts.sh
 
-      - name: Artifact Uploading
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
           path: artifacts.zip
-
