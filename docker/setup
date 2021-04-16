@@ -2,8 +2,6 @@
 
 set -e
 
-export RUSTUP_UNPACK_RAM=4096M
-
 # Install rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 source $HOME/.cargo/env
@@ -12,3 +10,5 @@ rustup update
 cargo install cargo-binutils
 rustup component add llvm-tools-preview
 rustup target add thumbv7em-none-eabi
+
+source $HOME/.bashrc

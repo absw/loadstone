@@ -4,7 +4,7 @@ set -e
 
 # Install prerequesites
 apt-get update
-apt-get install -y gcc curl # gdb-multiarch openocd qemu-system-arm
+apt-get install -y gcc curl
 
 # Create user
 adduser --disabled-password --gecos '' user
