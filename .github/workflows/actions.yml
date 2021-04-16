@@ -1,5 +1,5 @@
 name: actions
-on: [push]
+on: [push, pull-request]
 jobs:
   setup:
     runs-on: self-hosted

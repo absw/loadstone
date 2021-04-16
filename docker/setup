@@ -2,6 +2,8 @@
 
 set -e
 
+export RUSTUP_UNPACK_RAM=4096M
+
 # Install rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
 source $HOME/.cargo/env
