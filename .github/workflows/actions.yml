@@ -3,7 +3,7 @@ on: [push]
 jobs:
   setup:
     runs-on: self-hosted
-    setups:
+    steps:
       - name: Docker image
         run: docker build -t loadstonebuild docker/
 
