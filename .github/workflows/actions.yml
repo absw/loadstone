@@ -12,19 +12,19 @@ jobs:
   test:
     needs: setup
     runs-on: self-hosted
-    container: bluefruitpathfinder/ubuntu-rust:latest
+    container: bluefruitpathfinder/loadstone-build:latest
     steps:
       - name: Tests
-        shell: bash -eo pipefail {0}
+        shell: bash
         run: cargo test --release
 
   documentation:
     needs: setup
     runs-on: self-hosted
-    container: bluefruitpathfinder/ubuntu-rust:latest
+    container: bluefruitpathfinder/loadstone-build:latest
     steps:
       - name: Documentation
-        shell: bash -eo pipefail {0}
+        shell: bash
         run: cargo d
       - name: Deploy Documentation
         if: contains(github.ref, 'staging')
@@ -32,16 +32,16 @@ jobs:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
-        shell: bash -eo pipefail {0}
+        shell: bash
         run: ./tools/deploy_docs.sh
 
   build:
     needs: setup
     runs-on: self-hosted
-    container: bluefruitpathfinder/ubuntu-rust:latest
+    container: bluefruitpathfinder/loadstone-build:latest
     steps:
       - name: Build
-        shell: bash -eo pipefail {0}
+        shell: bash
         env:
           SCRIPT_MODE: true
         run: |

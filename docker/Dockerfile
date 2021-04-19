@@ -1,12 +1,7 @@
-FROM ubuntu:20.04
+FROM rust:buster
 
-WORKDIR /src/
-COPY . .
-
-RUN ./rootsetup
-
-USER user
-RUN ./setup
-
-# Add cargo bin directory to PATH.
-ENV PATH="/home/user/.cargo/bin:${PATH}"
+RUN rustup default nightly
+RUN rustup update
+RUN cargo install cargo-binutils
+RUN rustup component add llvm-tools-preview
+RUN rustup target add thumbv7em-none-eabi
