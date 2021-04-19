@@ -13,6 +13,7 @@ jobs:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
+    shell: bash
     steps:
       - name: Tests
         run: cargo test --release
@@ -21,6 +22,7 @@ jobs:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
+    shell: bash
     steps:
       - name: Documentation
         run: ~/.cargo/bin/cargo d
@@ -37,6 +39,7 @@ jobs:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
+    shell: bash
     steps:
       - name: Build
         env:
