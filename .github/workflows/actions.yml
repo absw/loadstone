@@ -17,10 +17,8 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
       - name: Tests
-        shell: bash
         run: cargo test --release
       - name: Documentation
-        shell: bash
         run: cargo d
       - name: Deploy Documentation
         if: contains(github.ref, 'staging')
@@ -28,10 +26,8 @@ jobs:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
-        shell: bash
         run: ./tools/deploy_docs.sh
       - name: Build
-        shell: bash
         env:
           SCRIPT_MODE: true
         run: |
