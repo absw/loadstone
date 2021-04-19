@@ -13,40 +13,40 @@ jobs:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
-    shell: bash
     steps:
       - name: Tests
+        shell: bash
         run: cargo test --release
 
   documentation:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
-    shell: bash
     steps:
       - name: Documentation
-        run: ~/.cargo/bin/cargo d
+        shell: bash
+        run: cargo d
       - name: Deploy Documentation
         if: contains(github.ref, 'staging')
         env:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
-        run: |
-          bash ./tools/deploy_docs.sh
+        shell: bash
+        run: ./tools/deploy_docs.sh
 
   build:
     needs: setup
     runs-on: self-hosted
     container: bluefruitpathfinder/ubuntu-rust:latest
-    shell: bash
     steps:
       - name: Build
+        shell: bash
         env:
           SCRIPT_MODE: true
         run: |
           cargo update
-          bash ./build_artifacts.sh
+          ./build_artifacts.sh
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
