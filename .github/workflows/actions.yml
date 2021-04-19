@@ -15,7 +15,7 @@ jobs:
     container: bluefruitpathfinder/ubuntu-rust:latest
     steps:
       - name: Tests
-        shell: bash
+        shell: bash -eo pipefail {0}
         run: cargo test --release
 
   documentation:
@@ -24,7 +24,7 @@ jobs:
     container: bluefruitpathfinder/ubuntu-rust:latest
     steps:
       - name: Documentation
-        shell: bash
+        shell: bash -eo pipefail {0}
         run: cargo d
       - name: Deploy Documentation
         if: contains(github.ref, 'staging')
@@ -32,7 +32,7 @@ jobs:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
-        shell: bash
+        shell: bash -eo pipefail {0}
         run: ./tools/deploy_docs.sh
 
   build:
@@ -41,7 +41,7 @@ jobs:
     container: bluefruitpathfinder/ubuntu-rust:latest
     steps:
       - name: Build
-        shell: bash
+        shell: bash -eo pipefail {0}
         env:
           SCRIPT_MODE: true
         run: |
