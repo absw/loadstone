@@ -1,10 +1,10 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 # Install prerequesites
 apt-get update
-apt-get install -y apt-utils gcc curl
+apt-get install -y gcc curl git
 
 # Create user
 adduser --disabled-password --gecos '' user

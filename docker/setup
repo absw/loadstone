@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -eo pipefail
 
 # Install rust
 curl https://sh.rustup.rs -sSf | sh -s -- -y
