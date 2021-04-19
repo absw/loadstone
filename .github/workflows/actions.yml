@@ -1,30 +1,24 @@
 name: actions
 on: [push]
 jobs:
-  setup:
+  docker-login:
     runs-on: self-hosted
     steps:
       - name: Docker login
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+  build:
+    needs: docker-login
+    container: bluefruitpathfinder/loadstone-build:latest
+    runs-on: self-hosted
+    steps:
       - name: ssh-agent Setup
         uses: webfactory/ssh-agent@v0.4.1
         with:
           ssh-private-key: ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
-
-  test:
-    needs: setup
-    runs-on: self-hosted
-    container: bluefruitpathfinder/loadstone-build:latest
-    steps:
       - name: Tests
         shell: bash
         run: cargo test --release
-
-  documentation:
-    needs: setup
-    runs-on: self-hosted
-    container: bluefruitpathfinder/loadstone-build:latest
-    steps:
       - name: Documentation
         shell: bash
         run: cargo d
@@ -36,12 +30,6 @@ jobs:
           SCRIPT_MODE: true
         shell: bash
         run: ./tools/deploy_docs.sh
-
-  build:
-    needs: setup
-    runs-on: self-hosted
-    container: bluefruitpathfinder/loadstone-build:latest
-    steps:
       - name: Build
         shell: bash
         env:
