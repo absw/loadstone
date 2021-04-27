@@ -12,11 +12,12 @@ jobs:
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
     steps:
-      - name: Add SSH key
-        uses: shimataro/ssh-key-action@v2
-        with:
-          key: ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
-          known_hosts: ${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}
+      - name: Configure SSH
+        run: |
+          mkdir -p $HOME/.ssh/
+          echo ${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }} >> $HOME/.ssh/known_hosts
+          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > $HOME/.ssh/id_rsa
+          chmod 600 $HOME/.ssh/id_rsa
       - name: Tests
         run: cargo test --release
       - name: Documentation
