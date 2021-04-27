@@ -14,10 +14,10 @@ jobs:
     steps:
       - name: Configure SSH
         run: |
-          mkdir -p $HOME/.ssh/
-          echo ${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }} >> $HOME/.ssh/known_hosts
-          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > $HOME/.ssh/id_rsa
-          chmod 600 $HOME/.ssh/id_rsa
+          mkdir -p /home/user/.ssh/
+          echo ${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }} >> /home/user/.ssh/known_hosts
+          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
+          chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
         run: cargo test --release
       - name: Documentation
