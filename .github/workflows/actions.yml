@@ -12,10 +12,11 @@ jobs:
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
     steps:
-      - name: ssh-agent Setup
-        uses: webfactory/ssh-agent@v0.4.1
-        with:
-          ssh-private-key: ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
+    - name: Add SSH key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
+        known_hosts: ${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}
       - name: Tests
         run: cargo test --release
       - name: Documentation
