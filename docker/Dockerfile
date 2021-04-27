@@ -1,5 +1,9 @@
 FROM rust:buster
 
+# Install zip
+RUN apt-get update
+RUN apt-get install zip -y
+
 # Add user
 RUN adduser --disabled-password --gecos '' user
 RUN usermod -aG sudo user
