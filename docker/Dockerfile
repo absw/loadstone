@@ -1,5 +1,14 @@
 FROM rust:buster
 
+# Add user
+RUN adduser --disabled-password --gecos '' user
+RUN usermod -aG sudo user
+USER user
+
+# Enable SSH Agent
+RUN eval `ssh-agent`
+
+# Install rust dependencies
 RUN rustup default nightly
 RUN rustup update
 RUN cargo install cargo-binutils
