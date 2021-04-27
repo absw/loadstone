@@ -4,6 +4,7 @@ FROM rust:buster
 RUN adduser --disabled-password --gecos '' user
 RUN usermod -aG sudo user
 USER user
+WORKDIR /home/user/
 
 # Enable SSH Agent
 RUN eval `ssh-agent`
