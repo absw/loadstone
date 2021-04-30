@@ -3,7 +3,7 @@
 //! This module offers tools to partition flash memory spaces
 //! into image banks and scan those banks for valid, signed images.
 
-use ::ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
+use ::ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
 use blue_hal::{
     hal::flash,
     utilities::{buffer::CollectSlice, iterator::UntilSequence, memory::Address},

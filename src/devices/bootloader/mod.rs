@@ -18,7 +18,7 @@ use blue_hal::{
 use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
-use ecdsa::{generic_array::typenum::Unsigned, SignatureSize};
+use ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
 use nb::block;
 use p256::NistP256;
 use ufmt::uwriteln;
