@@ -18,6 +18,7 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
+          ssh-add
       - name: Tests
         run: cargo test --release
       - name: Documentation
