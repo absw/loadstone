@@ -21,7 +21,7 @@ jobs:
           eval `ssh-agent -s`
           ssh-add /home/user/.ssh/id_rsa
       - name: Tests
-        run: cargo test --release
+        run: cargo test --release --verbose
       - name: Documentation
         run: cargo d
       - name: Deploy Documentation
