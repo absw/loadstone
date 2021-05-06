@@ -10,6 +10,8 @@ RUN usermod -aG sudo user
 USER user
 WORKDIR /home/user/
 
+RUN eval `ssh-agent -s`
+
 # Install rust dependencies
 RUN rustup default nightly
 RUN rustup update
