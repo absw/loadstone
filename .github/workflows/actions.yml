@@ -11,6 +11,8 @@ jobs:
     needs: docker-login
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: true
     steps:
       - name: Configure SSH
         run: |
@@ -22,9 +24,6 @@ jobs:
           ssh-add /home/user/.ssh/id_rsa
       - name: Tests
         run: cargo test --release --verbose
-        env:
-          SSH_AUTH_SOCK: $SSH_AUTH_SOCK
-          SSH_AGENT_PID: $SSH_AGENT_PID
       - name: Documentation
         run: cargo d
       - name: Deploy Documentation
