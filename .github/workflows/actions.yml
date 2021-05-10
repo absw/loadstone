@@ -1,51 +1,44 @@
 name: actions
 on: [push]
 jobs:
-  build-loadstone:
+  docker-login:
     runs-on: self-hosted
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
+      - name: Docker login
+        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Authentication
-        uses: webfactory/ssh-agent@v0.4.1
-        with:
-          ssh-private-key: |
-            ${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}
-
-      - name: Cargo Initialisation
+  build:
+    needs: docker-login
+    container: bluefruitpathfinder/loadstone-build:latest
+    runs-on: self-hosted
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: true
+    steps:
+      - name: Configure SSH
         run: |
-          ~/.cargo/bin/rustup default nightly
-          ~/.cargo/bin/rustup update
-          ~/.cargo/bin/rustup component add llvm-tools-preview
-          ~/.cargo/bin/rustup target add thumbv7em-none-eabihf
-          ~/.cargo/bin/cargo install cargo-binutils
-
+          mkdir -p /home/user/.ssh/
+          echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
+          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
+          chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
-        run: ~/.cargo/bin/cargo test --release
-
+        run: cargo test --release
       - name: Documentation
-        run: ~/.cargo/bin/cargo d
-
+        run: cargo d
       - name: Deploy Documentation
         if: contains(github.ref, 'staging')
         env:
           PUBLISH_BRANCH: gh-pages
           PUBLISH_DIR: ./target/thumbv7em-none-eabihf/doc
           SCRIPT_MODE: true
-        run: |
-          bash ./tools/deploy_docs.sh
-
-      - name: Artifact Building
+        run: ./tools/deploy_docs.sh
+      - name: Build
         env:
           SCRIPT_MODE: true
         run: |
-          ~/.cargo/bin/cargo update
-          bash ./build_artifacts.sh
-
-      - name: Artifact Uploading
+          cargo update
+          ./build_artifacts.sh
+      - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: artifacts
           path: artifacts.zip
-
