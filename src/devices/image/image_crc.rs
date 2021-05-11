@@ -128,5 +128,4 @@ mod tests {
         flash.write(Address(0), &TEST_IMAGE_WITH_BAD_CRC).unwrap();
         assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
     }
-
 }

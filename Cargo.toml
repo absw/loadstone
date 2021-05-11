@@ -9,7 +9,7 @@ default-run = "loadstone"
 default = [
    "wgm160p",
    "defmt-default",
-   #"ecdsa-verify"
+   "ecdsa-verify"
 ]
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -70,9 +70,9 @@ optional = true
 
 [dependencies.blue_hal]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
-path = "blue_hal"
-#git = "ssh://git@github.com/absw/blue_hal.git"
-#branch = "staging"
+#path = "blue_hal"
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "staging"
 
 [dependencies.ufmt]
 version = "*"

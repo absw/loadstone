@@ -8,8 +8,8 @@ pub mod image_ecdsa;
 
 #[cfg(feature = "ecdsa-verify")]
 pub use image_ecdsa::image_at as image_at;
-
-use core::mem::size_of;
+#[cfg(feature = "ecdsa-verify")]
+use image_ecdsa::*;
 
 #[cfg(not(feature = "ecdsa-verify"))]
 pub mod image_crc;
@@ -91,14 +91,14 @@ impl<A: Address> Image<A> {
         self.size()
             + SignatureSize::<NistP256>::to_usize()
             + MAGIC_STRING.len()
-            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 }
+            + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
     }
 
     /// Size of the firmware image, including decoration and crc.
     #[cfg(not(feature = "ecdsa-verify"))]
     pub fn total_size(&self) -> usize {
         self.size()
-            + size_of::<u32>()
+            + core::mem::size_of::<u32>()
             + MAGIC_STRING.len()
             + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
     }

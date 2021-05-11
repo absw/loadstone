@@ -21,11 +21,6 @@ use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
 
-#[cfg(feature = "ecdsa-verify")]
-use ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
-#[cfg(feature = "ecdsa-verify")]
-use p256::NistP256;
-
 /// Operations related to updating images with newer ones.
 mod update;
 /// Operations related to restoring an image when there's no current one to boot.
