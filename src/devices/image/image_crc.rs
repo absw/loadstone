@@ -78,4 +78,55 @@ mod tests {
     impl From<FakeError> for Error {
         fn from(_: FakeError) -> Self { Error::DeviceError("Something fake happened") }
     }
+
+    #[rustfmt::skip]
+    const TEST_IMAGE_WITH_CORRECT_CRC: &[u8] = &[
+        // Image
+        0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x0a,
+        // Magic string inverted
+        0xb7, 0xac, 0x9c, 0xc8, 0x9c, 0xcd, 0x8f, 0x8b,
+        0x86, 0x9b, 0xa5, 0xb7, 0xcd, 0xae, 0x94, 0x8e, 0xa5, 0xa8,
+        0xaf, 0x9c, 0xb5, 0x98, 0xb8, 0xcc, 0xb5, 0x8b, 0x91, 0xb5,
+        0xc9, 0xa9, 0x8a, 0xbe,
+        // CRC
+        0xf0, 0xc9, 0x42, 0xad
+    ];
+
+    #[rustfmt::skip]
+    const TEST_IMAGE_WITH_BAD_CRC: &[u8] = &[
+        // Image
+        0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64, 0x0a,
+        // Magic string inverted
+        0xb7, 0xac, 0x9c, 0xc8, 0x9c, 0xcd, 0x8f, 0x8b,
+        0x86, 0x9b, 0xa5, 0xb7, 0xcd, 0xae, 0x94, 0x8e, 0xa5, 0xa8,
+        0xaf, 0x9c, 0xb5, 0x98, 0xb8, 0xcc, 0xb5, 0x8b, 0x91, 0xb5,
+        0xc9, 0xa9, 0x8a, 0xbe,
+        // CRC (first byte invalid)
+        0x77, 0xc9, 0x42, 0xad
+    ];
+
+    #[test]
+    fn retrieving_image_with_correct_crc_succeeds() {
+        let mut flash = FakeFlash::new(Address(0));
+        let bank =
+            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+        flash.write(Address(0), &TEST_IMAGE_WITH_CORRECT_CRC).unwrap();
+
+        let image = image_at(&mut flash, bank).unwrap();
+        assert_eq!(image.size, 12usize);
+        assert_eq!(image.location, bank.location);
+        assert_eq!(image.bootable, false);
+        assert_eq!(image.is_golden(), false);
+    }
+
+    #[test]
+    fn retrieving_image_with_incorrect_crc_fails() {
+        let mut flash = FakeFlash::new(Address(0));
+        let bank =
+            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+
+        flash.write(Address(0), &TEST_IMAGE_WITH_BAD_CRC).unwrap();
+        assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
+    }
+
 }
