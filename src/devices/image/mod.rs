@@ -1,7 +1,7 @@
 //! Firmware image manipulation and inspection utilities.
 //!
 //! This module offers tools to partition flash memory spaces
-//! into image banks and scan those banks for valid, signed images.
+//! into image banks and scan those banks for valid images.
 
 #[cfg(feature = "ecdsa-verify")]
 pub mod image_ecdsa;
@@ -38,7 +38,7 @@ pub fn magic_string_inverted() -> [u8; MAGIC_STRING.len()] {
 
 /// Image bank descriptor.
 ///
-/// A bank represents a section of flash memory that may contain a single signed
+/// A bank represents a section of flash memory that may contain a single signed/crc'd
 /// firmware image, for the purposes of booting, backup, update or recovery.
 #[derive(Clone, Copy, Debug)]
 pub struct Bank<A: Address> {
@@ -83,7 +83,7 @@ impl<A: Address> Image<A> {
     /// Address of the start of the firmware image. Will generally coincide
     /// with the start of its associated image bank.
     pub fn location(&self) -> A { self.location }
-    /// Size of the firmware image, excluding decoration and signature.
+    /// Size of the firmware image, excluding decoration and signature/crc.
     pub fn size(&self) -> usize { self.size }
     /// Size of the firmware image, including decoration and signature.
     #[cfg(feature = "ecdsa-verify")]
@@ -93,7 +93,6 @@ impl<A: Address> Image<A> {
             + MAGIC_STRING.len()
             + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
     }
-
     /// Size of the firmware image, including decoration and crc.
     #[cfg(not(feature = "ecdsa-verify"))]
     pub fn total_size(&self) -> usize {
