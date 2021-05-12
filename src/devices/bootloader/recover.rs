@@ -1,3 +1,5 @@
+use crate::devices::cli::file_transfer::FileTransfer;
+
 use super::*;
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {

@@ -21,6 +21,12 @@ impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
         let clocks = clocks::Clocks::new(peripherals.CMU, &mut peripherals.MSC);
         let mcu_flash = flash::Flash::new(peripherals.MSC, &clocks);
 
+        #[cfg(feature = "serial")]
+        compile_error!("Serial communications not yet supported in the wgm160p port");
+
+        #[cfg(feature = "boot-time-metrics")]
+        compile_error!("Boot time metrics not yet supported in the wgm160p port");
+
         Bootloader {
             mcu_flash,
             external_banks: &[],
@@ -29,7 +35,6 @@ impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
             serial: None,
             boot_metrics: Default::default(),
             start_time: None,
-            _marker: Default::default(),
         }
     }
 }

@@ -9,13 +9,13 @@ use super::{
     image::{self, Bank, Image},
     traits::{Flash, Serial},
 };
-use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
+use crate::error::Error;
 use blue_hal::{
     duprintln,
     hal::{flash, time},
     KB,
 };
-use core::{cmp::min, marker::PhantomData, mem::size_of};
+use core::{cmp::min, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
@@ -23,12 +23,13 @@ use ufmt::uwriteln;
 
 /// Operations related to updating images with newer ones.
 mod update;
-/// Operations related to restoring an image when there's no current one to boot.
-mod restore;
-/// Operations related to serial recovery when there's no fallback to restore to.
-mod recover;
 /// Operations related to copying images between flash chips.
 mod copy;
+/// Operations related to restoring an image when there's no current one to boot.
+mod restore;
+#[cfg(feature = "serial-recovery")]
+/// Operations related to serial recovery when there's no fallback to restore to.
+mod recover;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
@@ -40,7 +41,6 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) serial: Option<SRL>,
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
-    pub(crate) _marker: PhantomData<T>,
 }
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
@@ -61,6 +61,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
+        self.verify_feature_availability();
         duprintln!(self.serial, "");
         duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.latest_bootable_image() {
@@ -83,9 +84,24 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             Ok(image) => self.boot(image).expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
+
+                #[cfg(feature = "serial-recovery")]
                 self.recover();
+
+                #[cfg(not(feature = "serial-recovery"))]
+                panic!("FATAL: Failed to boot, and serial recovery is not supported.");
             }
         }
+    }
+
+    /// Makes several sanity checks on port drivers available for the current features
+    pub fn verify_feature_availability(&self) {
+        #[cfg(feature = "serial")]
+        assert!(self.serial.is_some(), "Missing serial driver at runtime. \
+                Consider disabling the \"serial\" feature if unsupported by your port.");
+        #[cfg(not(feature = "serial"))]
+        assert!(self.serial.is_none(), "Serial driver found at runtime with a disabled serial feature. \
+            This is a mistake in the port layer.");
     }
 
     /// Makes several sanity checks on the flash bank configuration.
