@@ -1,8 +1,11 @@
-use core::mem::size_of;
 use crate::error::Error;
+use core::mem::size_of;
 
 use super::*;
-use blue_hal::{hal::flash, utilities::{iterator::UntilSequence, memory::Address}};
+use blue_hal::{
+    hal::flash,
+    utilities::{iterator::UntilSequence, memory::Address},
+};
 use crc::{crc32, Hasher32};
 use nb::block;
 

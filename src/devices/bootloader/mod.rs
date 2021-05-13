@@ -97,11 +97,17 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// Makes several sanity checks on port drivers available for the current features
     pub fn verify_feature_availability(&self) {
         #[cfg(feature = "serial")]
-        assert!(self.serial.is_some(), "Missing serial driver at runtime. \
-                Consider disabling the \"serial\" feature if unsupported by your port.");
+        assert!(
+            self.serial.is_some(),
+            "Missing serial driver at runtime. \
+                Consider disabling the \"serial\" feature if unsupported by your port."
+        );
         #[cfg(not(feature = "serial"))]
-        assert!(self.serial.is_none(), "Serial driver found at runtime with a disabled serial feature. \
-            This is a mistake in the port layer.");
+        assert!(
+            self.serial.is_none(),
+            "Serial driver found at runtime with a disabled serial feature. \
+            This is a mistake in the port layer."
+        );
     }
 
     /// Makes several sanity checks on the flash bank configuration.
