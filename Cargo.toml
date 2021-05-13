@@ -9,6 +9,7 @@ default-run = "loadstone"
 default = [
    "wgm160p",
    "defmt-default",
+   "ecdsa-verify"
 ]
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
@@ -29,6 +30,7 @@ defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
+ecdsa-verify = ["ecdsa", "p256"]
 
 [dependencies]
 cortex-m = "0.6.0"
@@ -46,10 +48,15 @@ marker-blanket = "*"
 version = "=1.1.0"
 default-features = false
 
+[dependencies.crc]
+version = "*"
+default-features = false
+
 [dependencies.ecdsa]
 version = "0.11"
 default-features = false
 features = ["pem"]
+optional = true
 
 [dependencies.sha2]
 version = "*"
@@ -59,6 +66,7 @@ default-features = false
 version = "*"
 default-features = false
 features = ["ecdsa", "sha256", "pem"]
+optional = true
 
 [dependencies.blue_hal]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel

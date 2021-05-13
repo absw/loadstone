@@ -47,7 +47,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 bank.index
             );
             match image::image_at(&mut self.mcu_flash, bank) {
-                Ok(image) if image.signature() != current_image.signature() => {
+                Ok(image) if image.identifier() != current_image.identifier() => {
                     if let Some(updated_image) = self.replace_image_internal(bank, boot_bank) {
                         self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
                         return UpdateResult::UpdatedTo(updated_image);
@@ -76,7 +76,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                     bank.index
                 );
                 match image::image_at(self.external_flash.as_mut().unwrap(), bank) {
-                    Ok(image) if image.signature() != current_image.signature() => {
+                    Ok(image) if image.identifier() != current_image.identifier() => {
                         if let Some(updated_image) = self.replace_image_external(bank, boot_bank) {
                             self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
                             return UpdateResult::UpdatedTo(updated_image);

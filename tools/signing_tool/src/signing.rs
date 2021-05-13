@@ -3,6 +3,7 @@ use p256::ecdsa::{
     SigningKey,
 };
 use std::str::FromStr;
+use crc::{crc32, Hasher32};
 
 use crate::{
     error::{self, Error},
@@ -36,6 +37,24 @@ pub fn sign_file(image_filename: &str, key: SigningKey) -> Result<usize, Error> 
         file.write(signature.as_bytes()).map_err(|_| Error::FileWriteFailed(error::File::Image))?;
 
     if bytes_written == signature.as_bytes().len() {
+        Ok(bytes_written)
+    } else {
+        Err(Error::FileWriteFailed(error::File::Image))
+    }
+}
+
+pub fn calculate_and_append_crc(image_filename: &str) -> Result<usize, Error> {
+    let mut file = open_image(image_filename)?;
+    let plaintext = read_file(&mut file)?;
+
+    let mut digest = crc32::Digest::new(crc32::IEEE);
+    digest.write(&plaintext);
+    println!("{:x?}", plaintext);
+
+    let bytes_written =
+        file.write(&digest.sum32().to_le_bytes()).map_err(|_| Error::FileWriteFailed(error::File::Image))?;
+
+    if bytes_written == core::mem::size_of::<u32>() {
         Ok(bytes_written)
     } else {
         Err(Error::FileWriteFailed(error::File::Image))

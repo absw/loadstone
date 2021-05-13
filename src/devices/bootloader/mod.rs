@@ -6,7 +6,7 @@
 //! specific information.
 use super::{
     boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
-    image::{self, Bank, Image, GOLDEN_STRING, MAGIC_STRING},
+    image::{self, Bank, Image},
     traits::{Flash, Serial},
 };
 use crate::{devices::cli::file_transfer::FileTransfer, error::Error};
@@ -18,9 +18,7 @@ use blue_hal::{
 use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
-use ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
 use nb::block;
-use p256::NistP256;
 use ufmt::uwriteln;
 
 /// Operations related to updating images with newer ones.

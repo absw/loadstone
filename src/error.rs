@@ -25,6 +25,7 @@ pub enum Error {
     NoImageToRestoreFrom,
     NoRecoverySupport,
     SignatureInvalid,
+    CrcInvalid,
 }
 
 pub trait Convertible {
@@ -108,6 +109,9 @@ impl Error {
             }
             Error::NoRecoverySupport => {
                 uwriteln!(serial, "[Logic Error] -> No image recovery support")
+            }
+            Error::CrcInvalid => {
+                uwriteln!(serial, "[Logic Error] -> Image CRC is invalid")
             }
         }
         .ok()

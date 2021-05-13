@@ -34,10 +34,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
-        let total_size = input_image.size()
-            + SignatureSize::<NistP256>::to_usize()
-            + MAGIC_STRING.len()
-            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
+        let total_size = input_image.total_size();
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
@@ -81,10 +78,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         let mut buffer = [0u8; TRANSFER_BUFFER_SIZE];
         let mut byte_index = 0usize;
 
-        let total_size = input_image.size()
-            + SignatureSize::<NistP256>::to_usize()
-            + MAGIC_STRING.len()
-            + if input_image.is_golden() { GOLDEN_STRING.len() } else { 0 };
+        let total_size = input_image.total_size();
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
