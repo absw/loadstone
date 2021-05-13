@@ -10,8 +10,6 @@ default = [
    "wgm160p",
    "defmt-default",
    "ecdsa-verify",
-   "serial-recovery",
-   "boot-time-metrics",
 ]
 
 # The features below reflect the hierarchy of stm32 families.
