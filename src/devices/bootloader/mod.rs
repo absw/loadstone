@@ -108,6 +108,11 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             "Serial driver found at runtime with a disabled serial feature. \
             This is a mistake in the port layer."
         );
+        #[cfg(feature = "boot-time-metrics")]
+        assert!(
+            self.start_time.is_some(),
+            "Missing initial timestamp for boot metrics calculation."
+        );
     }
 
     /// Makes several sanity checks on the flash bank configuration.
