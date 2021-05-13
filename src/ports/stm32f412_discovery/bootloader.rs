@@ -85,7 +85,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
         #[cfg(not(feature = "serial"))]
         let serial = None;
 
-
         #[cfg(feature = "boot-time-metrics")]
         let start_time = Some(SysTick::now());
         #[cfg(not(feature = "boot-time-metrics"))]
