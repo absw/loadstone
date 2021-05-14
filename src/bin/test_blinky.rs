@@ -10,16 +10,16 @@ use loadstone_lib as _;
 #[entry]
 fn main() -> ! {
     use blue_hal::{
-        drivers::efm32gg11b::flash::{self, Flash},
-        KB,
-    };
-    use blue_hal::{
-        drivers::efm32gg11b::gpio::Gpio,
+        drivers::efm32gg11b::{
+            flash::{self, Flash},
+            gpio::Gpio,
+        },
         efm32pac,
         hal::{
             flash::ReadWrite,
             gpio::{InputPin, OutputPin},
         },
+        KB,
     };
 
     let mut peripherals = efm32pac::Peripherals::take().unwrap();

@@ -7,14 +7,14 @@
 pub mod image_ecdsa;
 
 #[cfg(feature = "ecdsa-verify")]
-pub use image_ecdsa::image_at as image_at;
+pub use image_ecdsa::image_at;
 #[cfg(feature = "ecdsa-verify")]
 use image_ecdsa::*;
 
 #[cfg(not(feature = "ecdsa-verify"))]
 pub mod image_crc;
 #[cfg(not(feature = "ecdsa-verify"))]
-pub use image_crc::image_at as image_at;
+pub use image_crc::image_at;
 
 use blue_hal::utilities::{buffer::CollectSlice, memory::Address};
 

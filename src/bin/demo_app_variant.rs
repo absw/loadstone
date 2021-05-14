@@ -28,4 +28,3 @@ fn main() -> ! {
 
 #[cfg(not(target_arch = "arm"))]
 fn main() {}
-

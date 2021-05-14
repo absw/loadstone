@@ -3,8 +3,11 @@
 use crate::{devices::bootloader::Bootloader, error};
 use crate::devices::image;
 use crate::error::Error;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial::{self, UsartExt}, systick::SysTick}}, hal::time::{self, Now}, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time::{self, Now}, stm32pac::{self, USART6}};
 use super::pin_configuration::*;
+
+#[cfg(feature = "serial")]
+use blue_hal::drivers::stm32f4::serial::UsartExt;
 
 // Flash pins and typedefs
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
@@ -66,7 +69,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
         let gpiof = peripherals.GPIOF.split(&mut peripherals.RCC);
         let clocks = Clocks::hardcoded(peripherals.RCC);
         SysTick::init(cortex_peripherals.SYST, clocks);
-        let start_time = SysTick::now();
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
         let qspi_pins = (gpiob.pb2, gpiog.pg6, gpiof.pf8, gpiof.pf9, gpiof.pf7, gpiof.pf6);
@@ -74,9 +76,20 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
         let qspi = Qspi::from_config(peripherals.QUADSPI, qspi_pins, qspi_config).unwrap();
         let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(5000)).unwrap();
 
-        let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-        let serial_pins = (gpiog.pg14, gpiog.pg9);
-        let serial = peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap();
+        #[cfg(feature = "serial")]
+        let serial = {
+            let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
+            let serial_pins = (gpiog.pg14, gpiog.pg9);
+            Some(peripherals.USART6.constrain(serial_pins, serial_config, clocks).unwrap())
+        };
+        #[cfg(not(feature = "serial"))]
+        let serial = None;
+
+        #[cfg(feature = "boot-time-metrics")]
+        let start_time = Some(SysTick::now());
+        #[cfg(not(feature = "boot-time-metrics"))]
+        let start_time = None;
+
         Bootloader {
             mcu_flash,
             external_banks: &EXTERNAL_BANKS,
@@ -85,7 +98,6 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
             serial,
             boot_metrics: Default::default(),
             start_time,
-            _marker: Default::default(),
         }
     }
 }
