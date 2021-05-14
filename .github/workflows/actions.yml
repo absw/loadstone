@@ -22,15 +22,6 @@ jobs:
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
         run: cargo test --release
-      - name: Documentation
-        run: cargo d
-      - name: Deploy Documentation
-        if: contains(github.ref, 'staging')
-        env:
-          PUBLISH_BRANCH: gh-pages
-          PUBLISH_DIR: ./target/thumbv7em-none-eabi/doc
-          SCRIPT_MODE: true
-        run: bash ./tools/deploy_docs.sh
       - name: Build
         env:
           SCRIPT_MODE: true
