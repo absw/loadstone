@@ -107,7 +107,8 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         )
         .expect("Failed to copy a valid image!");
         duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
-        let image = image::image_at(&mut self.mcu_flash, boot_bank).expect("Failed to verify an image after copy!");
+        let image = image::image_at(&mut self.mcu_flash, boot_bank)
+            .expect("Failed to verify an image after copy!");
         Some(image)
     }
 
@@ -127,7 +128,8 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         )
         .expect("Failed to copy a valid image!");
         duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
-        let image = image::image_at(&mut self.mcu_flash, boot_bank).expect("Failed to verify an image after copy!");
+        let image = image::image_at(&mut self.mcu_flash, boot_bank)
+            .expect("Failed to verify an image after copy!");
         Some(image)
     }
 }

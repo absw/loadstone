@@ -1,17 +1,20 @@
 use crate::error::Error;
 
 use super::*;
-use blue_hal::{hal::flash, utilities::{iterator::UntilSequence, memory::Address}};
+use blue_hal::{
+    hal::flash,
+    utilities::{iterator::UntilSequence, memory::Address},
+};
 
 pub use ::ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
+use core::str::FromStr;
+pub use ecdsa::signature::Signature as EcdsaSignature;
 use nb::block;
 pub use p256::{
     ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
     NistP256,
 };
-pub use ecdsa::signature::Signature as EcdsaSignature;
 pub use sha2::Digest;
-use core::str::FromStr;
 
 fn retrieve_key() -> VerifyingKey {
     VerifyingKey::from_str(include_str!("../assets/test_key.pem"))
@@ -246,4 +249,3 @@ mod tests {
         assert_eq!(Err(Error::SignatureInvalid), image_at(&mut flash, bank));
     }
 }
-
