@@ -1,5 +1,5 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = ".cargo/gdb_wrapper.sh"
+runner = ".cargo/runner-wrapper"
 
 rustflags = [
   # LLD (shipped with the Rust toolchain) is used as the default linker
@@ -20,17 +20,17 @@ rustflags = [
 ]
 
 [alias]
-b = "build --release --target thumbv7em-none-eabi --bin"
-rb = "run --release --target thumbv7em-none-eabi --bin"
-sz = "size --release --bin loadstone --target thumbv7em-none-eabi"
-gen_blinky = "objcopy --bin blinky --release --target thumbv7em-none-eabi -- -O binary blinky.bin"
-gen_demo_app = "objcopy --bin demo_app --release --target thumbv7em-none-eabi -- -O binary demo_app.bin"
-gen_variant_demo_app = 'objcopy --bin demo_app_variant --release --target thumbv7em-none-eabi -- -O binary demo_app_variant.bin'
-gen_loadstone = "objcopy --bin loadstone --release --target thumbv7em-none-eabi -- -O binary loadstone.bin"
-st = "strip --bin loadstone --release --target thumbv7em-none-eabi"
-d = "doc --release --target thumbv7em-none-eabi"
-dop = "doc --release --target thumbv7em-none-eabi --open"
-bl = "bloat --release --bin loadstone --target thumbv7em-none-eabi"
+b = "build --release --target thumbv7em-none-eabihf --bin"
+rb = "run --release --target thumbv7em-none-eabihf --bin"
+sz = "size --release --bin loadstone --target thumbv7em-none-eabihf"
+gen_blinky = "objcopy --bin blinky --release --target thumbv7em-none-eabihf -- -O binary blinky.bin"
+gen_demo_app = "objcopy --bin demo_app --release --target thumbv7em-none-eabihf -- -O binary demo_app.bin"
+gen_variant_demo_app = 'objcopy --bin demo_app_variant --release --target thumbv7em-none-eabihf -- -O binary demo_app_variant.bin'
+gen_loadstone = "objcopy --bin loadstone --release --target thumbv7em-none-eabihf -- -O binary loadstone.bin"
+st = "strip --bin loadstone --release --target thumbv7em-none-eabihf"
+d = "doc --release --target thumbv7em-none-eabihf"
+dop = "doc --release --target thumbv7em-none-eabihf --open"
+bl = "bloat --release --bin loadstone --target thumbv7em-none-eabihf"
 
 [net]
 git-fetch-with-cli = true
