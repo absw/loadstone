@@ -7,7 +7,7 @@ jobs:
       - name: Docker login
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-  build-stm32f412_discovery:
+  stm32f412_discovery:
     needs: docker-login
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
@@ -34,7 +34,7 @@ jobs:
           name: artifacts
           path: artifacts.zip
 
-  build-wgm160p:
+  wgm160p:
     needs: docker-login
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
