@@ -7,7 +7,7 @@ jobs:
       - name: Docker login
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
-  stm32f412_discovery:
+  tests:
     needs: docker-login
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
@@ -21,7 +21,21 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
-        run: cargo test --release --features stm32f412_discovery
+        run: cargo test --release
+
+  stm32f412_discovery:
+    needs: docker-login
+    container: bluefruitpathfinder/loadstone-build:latest
+    runs-on: self-hosted
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: true
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p /home/user/.ssh/
+          echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
+          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
+          chmod 600 /home/user/.ssh/id_rsa
       - name: Build
         env:
           SCRIPT_MODE: true
@@ -47,8 +61,6 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
-      - name: Tests
-        run: cargo test --release --features wgm160p
       - name: Build
         env:
           SCRIPT_MODE: true
