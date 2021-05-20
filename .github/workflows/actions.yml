@@ -10,7 +10,7 @@ jobs:
         run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
   tests:
-    needs: docker-login
+    needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
     env:
@@ -26,7 +26,7 @@ jobs:
         run: cargo test --release
 
   stm32f412_discovery:
-    needs: docker-login
+    needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
     env:
@@ -51,7 +51,7 @@ jobs:
           path: artifacts.zip
 
   wgm160p:
-    needs: docker-login
+    needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: self-hosted
     env:
