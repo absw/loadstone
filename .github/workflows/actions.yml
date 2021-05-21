@@ -24,7 +24,7 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
-        run: cargo test --release
+        run: cargo test --release --features stm32f412_discovery
 
   stm32f412_discovery:
     needs: setup
