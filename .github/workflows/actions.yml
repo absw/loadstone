@@ -43,9 +43,7 @@ jobs:
       - name: Build
         env:
           SCRIPT_MODE: true
-        run: |
-          cargo update
-          bash ./build_artifacts.sh stm32f412_discovery
+        run: bash ./build_artifacts.sh stm32f412_discovery
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -69,9 +67,7 @@ jobs:
       - name: Build
         env:
           SCRIPT_MODE: true
-        run: |
-          cargo update
-          bash ./build_artifacts.sh wgm160p
+        run: bash ./build_artifacts.sh wgm160p
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
