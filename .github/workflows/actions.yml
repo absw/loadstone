@@ -47,7 +47,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: artifacts
+          name: stm32f412_discovery
           path: artifacts.zip
 
   wgm160p:
@@ -71,5 +71,5 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: artifacts
+          name: wgm160p
           path: artifacts.zip
