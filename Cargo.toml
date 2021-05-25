@@ -72,6 +72,9 @@ default-features = false
 features = ["ecdsa", "sha256", "pem"]
 optional = true
 
+[dependencies.loadstone_config]
+path = "loadstone_config"
+
 [dependencies.blue_hal]
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
 #path = "blue_hal"

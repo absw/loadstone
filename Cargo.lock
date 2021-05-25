@@ -84,6 +84,7 @@ dependencies = [
 [[package]]
 name = "blue_hal"
 version = "0.1.0"
+source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#b1e7302f3ef03a5a7c32eb23b1ac41c205c7baff"
 dependencies = [
  "bytemuck",
  "cortex-m 0.6.7",
@@ -419,6 +420,7 @@ dependencies = [
  "defmt-rtt",
  "ecdsa",
  "funty",
+ "loadstone_config",
  "marker-blanket",
  "nb 1.0.0",
  "p256",
@@ -426,6 +428,13 @@ dependencies = [
  "sha2",
  "static_assertions",
  "ufmt",
+]
+
+[[package]]
+name = "loadstone_config"
+version = "0.1.0"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
@@ -605,6 +614,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0bef5b7f9e0df16536d3961cfb6e84331c065b4066afb39768d0e319411f7"
 dependencies = [
  "pest",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.126"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec7505abeacaec74ae4778d9d9328fe5a5d04253220a85c4ee022239fc996d03"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.126"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "963a7dbc9895aeac7ac90e74f34a5d5261828f79df35cbed41e10189d3804d43"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
