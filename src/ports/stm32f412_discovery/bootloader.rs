@@ -3,7 +3,7 @@
 use crate::{devices::bootloader::Bootloader, error};
 use crate::devices::image;
 use crate::error::Error;
-use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time::{self, Now}, stm32pac::{self, USART6}};
+use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::pin_configuration::*;
 
 #[cfg(feature = "serial")]

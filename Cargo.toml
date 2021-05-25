@@ -7,7 +7,6 @@ default-run = "loadstone"
 
 [features]
 default = [
-   "wgm160p",
    "defmt-default",
    "ecdsa-verify",
 ]
