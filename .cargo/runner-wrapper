@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+TARGET_NAME=$(cat .cargo/.runner-target)
+
+if [[ "$TARGET_NAME" = "stm32f412_discovery" ]]; then
+    exec probe-run --chip STM32F412ZGTx $*
+elif [[ "$TARGET_NAME" = "wgm160p" ]]; then
+    exec .cargo/gdb_wrapper.sh $*
+else
+    echo "Failed to determine target platform. Refusing to run."
+    exit 1
+fi

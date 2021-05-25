@@ -5,6 +5,7 @@ Cargo.lock
 target/
 blue_hal/
 *.bin
+memory.x
 
 # editor files
 .vscode/*
