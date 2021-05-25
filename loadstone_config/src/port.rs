@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 
 pub mod family {
     pub static STM32: &'static str = "stm32";
@@ -15,10 +15,10 @@ pub mod board {
     pub static WGM160P: &'static str = "wgm160p";
 }
 
-#[derive(PartialEq, Clone, Debug, Copy, Serialize)]
-pub struct PortLevel(pub Category, pub &'static str, pub &'static [PortLevel]);
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub struct PortLevel(pub Category, pub String, pub Vec<PortLevel>);
 
-#[derive(Default, Debug, Clone, Copy, Serialize)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct Port {
     pub family: Option<PortLevel>,
     pub subfamily: Option<PortLevel>,
@@ -26,21 +26,21 @@ pub struct Port {
 }
 
 impl Port {
-    pub fn family_name(&self) -> &'static str {
-        self.family.as_ref().map(|f| f.name()).unwrap_or("Unknown")
+    pub fn family_name(&self) -> String {
+        self.family.as_ref().map(|f| f.name()).unwrap_or("Unknown").into()
     }
-    pub fn subfamily_name(&self) -> &'static str {
-        self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown")
+    pub fn subfamily_name(&self) -> String {
+        self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown").into()
     }
-    pub fn board_name(&self) -> &'static str {
-        self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown")
+    pub fn board_name(&self) -> String {
+        self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown").into()
     }
 }
 
 impl PortLevel {
     pub fn category(&self) -> Category { self.0 }
-    pub fn name(&self) -> &'static str { self.1 }
-    pub fn children(&self) -> &'static [PortLevel] { self.2 }
+    pub fn name(&self) -> &str { &self.1 }
+    pub fn children(&self) -> &Vec<PortLevel> { &self.2 }
     pub fn contains(&self, descendent: Option<&PortLevel>) -> bool {
         if let Some(descendent) = descendent {
             self.children().iter().any(|c| (c == descendent) || c.contains(Some(descendent)))
@@ -65,20 +65,22 @@ pub mod board_names {
     pub static WGM160P: &'static str = "wgm160p";
 }
 
-pub static PORT_TREE: &[PortLevel] = &[
-    PortLevel(Category::Family, family::STM32, &[PortLevel(
-        Category::Subfamily,
-        subfamily::STM32F4,
-        &[PortLevel(Category::Board, board::STM32F412, &[])],
-    )]),
-    PortLevel(Category::Family, family::EFM32, &[PortLevel(
-        Category::Subfamily,
-        subfamily::EFM32GG11,
-        &[PortLevel(Category::Board, board::WGM160P, &[])],
-    )]),
-];
+pub fn port_tree() -> Vec<PortLevel> {
+    vec![
+        PortLevel(Category::Family, family::STM32.into(), vec![PortLevel(
+            Category::Subfamily,
+            subfamily::STM32F4.into(),
+            vec![PortLevel(Category::Board, board::STM32F412.into(), vec![])],
+        )]),
+        PortLevel(Category::Family, family::EFM32.into(), vec![PortLevel(
+            Category::Subfamily,
+            subfamily::EFM32GG11.into(),
+            vec![PortLevel(Category::Board, board::WGM160P.into(), vec![])],
+        )]),
+    ]
+}
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum Category {
     Family,
     Subfamily,

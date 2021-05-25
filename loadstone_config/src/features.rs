@@ -1,14 +1,13 @@
-use serde::Serialize;
-
+use serde::{Serialize, Deserialize};
 use crate::port::{family, subfamily, Port};
 
-#[derive(Default, Clone, Serialize)]
+#[derive(Default, Clone, Serialize, Deserialize)]
 pub struct FeatureConfiguration {
     pub serial: Serial,
     pub boot_metrics: BootMetrics,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BootMetrics {
     pub enabled: bool,
     pub timing_enabled: bool,
@@ -18,12 +17,12 @@ impl BootMetrics {
     pub fn timing_supported(port: &Port) -> bool { port.family_name() == family::STM32 }
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct Serial {
     pub enabled: bool,
     pub recovery_enabled: bool,
-    pub tx_pin: Option<&'static str>,
-    pub rx_pin: Option<&'static str>,
+    pub tx_pin: Option<String>,
+    pub rx_pin: Option<String>,
 }
 
 impl Serial {
