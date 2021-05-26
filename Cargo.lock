@@ -28,6 +28,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.40"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
+
+[[package]]
 name = "as-slice"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -49,6 +55,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base64"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
 name = "base64ct"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -59,6 +71,12 @@ name = "bitfield"
 version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46afbd2983a5d5a7bd740ccb198caf5b82f45c40c09c0eed36052d91cb92e719"
+
+[[package]]
+name = "bitflags"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf1de2fe8c75bc145a2f577add951f8134889b4795d47466a54a5c846d691693"
 
 [[package]]
 name = "bitvec"
@@ -84,6 +102,7 @@ dependencies = [
 [[package]]
 name = "blue_hal"
 version = "0.1.0"
+source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#b1e7302f3ef03a5a7c32eb23b1ac41c205c7baff"
 dependencies = [
  "bytemuck",
  "cortex-m 0.6.7",
@@ -410,6 +429,7 @@ name = "loadstone"
 version = "0.1.0"
 dependencies = [
  "alloc-cortex-m",
+ "anyhow",
  "blue_hal",
  "cortex-m 0.6.7",
  "cortex-m-rt",
@@ -419,13 +439,26 @@ dependencies = [
  "defmt-rtt",
  "ecdsa",
  "funty",
+ "loadstone_config",
  "marker-blanket",
  "nb 1.0.0",
  "p256",
  "panic-semihosting",
+ "ron",
+ "serde",
  "sha2",
  "static_assertions",
  "ufmt",
+]
+
+[[package]]
+name = "loadstone_config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "quote",
+ "serde",
+ "syn",
 ]
 
 [[package]]
@@ -566,6 +599,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34cf66eb183df1c5876e2dcf6b13d57340741e8dc255b48e40a26de954d06ae7"
 
 [[package]]
+name = "ron"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "064ea8613fb712a19faf920022ec8ddf134984f100090764a4e1d768f3827f1f"
+dependencies = [
+ "base64",
+ "bitflags",
+ "serde",
+]
+
+[[package]]
 name = "rustc_version"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -605,6 +649,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "00b0bef5b7f9e0df16536d3961cfb6e84331c065b4066afb39768d0e319411f7"
 dependencies = [
  "pest",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.126"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec7505abeacaec74ae4778d9d9328fe5a5d04253220a85c4ee022239fc996d03"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.126"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "963a7dbc9895aeac7ac90e74f34a5d5261828f79df35cbed41e10189d3804d43"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

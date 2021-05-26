@@ -1,0 +1,10 @@
+[package]
+name = "loadstone_config"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+syn = { version = "1.0.63", features = ["full", "fold"] }
+quote = "1.0.9"
+anyhow = "*"

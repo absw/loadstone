@@ -2,6 +2,7 @@
 //! provide a method to construct a generic bootloader from
 //! specific parts.
 
+#[allow(unused)]
 use blue_hal::port;
 
 #[cfg(feature = "stm32f412_discovery")]
