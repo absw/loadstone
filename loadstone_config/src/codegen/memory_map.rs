@@ -27,7 +27,7 @@ pub fn generate<P: AsRef<Path>>(
     file.write_all(imports.as_bytes())?;
     file.write_all(mcu_banks.as_bytes())?;
     file.write_all(external_banks.as_bytes())?;
-    prettify_file(filename).unwrap();
+    prettify_file(filename).ok();
     Ok(())
 }
 
