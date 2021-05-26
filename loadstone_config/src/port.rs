@@ -26,14 +26,14 @@ pub struct Port {
 }
 
 impl Port {
-    pub fn family_name(&self) -> String {
-        self.family.as_ref().map(|f| f.name()).unwrap_or("Unknown").into()
+    pub fn family_name(&self) -> &str {
+        self.family.as_ref().map(|f| f.name()).unwrap_or("Unknown")
     }
-    pub fn subfamily_name(&self) -> String {
-        self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown").into()
+    pub fn subfamily_name(&self) -> &str {
+        self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown")
     }
-    pub fn board_name(&self) -> String {
-        self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown").into()
+    pub fn board_name(&self) -> &str {
+        self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown")
     }
 }
 

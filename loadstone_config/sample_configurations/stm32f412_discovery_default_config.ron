@@ -1,0 +1,47 @@
+(
+    port: (
+        family: Some((Family, "stm32", [
+            (Subfamily, "stm32f4", [
+                (Board, "stm32f412", []),
+            ]),
+        ])),
+        subfamily: Some((Subfamily, "stm32f4", [
+            (Board, "stm32f412", []),
+        ])),
+        board: Some((Board, "stm32f412", [])),
+    ),
+    memory_configuration: (
+        internal_memory_map: (
+            bootloader_location: 134217728,
+            bootloader_length_kb: 64,
+            banks: [
+                (
+                    start_address: 134283264,
+                    size_kb: 200,
+                ),
+            ],
+            bootable_index: Some(0),
+        ),
+        external_memory_map: (
+            banks: [],
+        ),
+        external_flash: None,
+        golden_index: None,
+    ),
+    feature_configuration: (
+        serial: (
+            enabled: true,
+            recovery_enabled: false,
+            tx_pin: Some("Pb6"),
+            rx_pin: Some("Pa10"),
+        ),
+        boot_metrics: (
+            enabled: true,
+            timing_enabled: false,
+        ),
+    ),
+    security_configuration: (
+        security_mode: P256ECDSA,
+        verifying_key_raw: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp v7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----",
+    ),
+)

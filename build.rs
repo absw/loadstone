@@ -1,4 +1,6 @@
-use std::fs;
+use std::{fs::{self, File}, io::{BufReader, Read}};
+use loadstone_config::{Configuration, codegen::generate_modules, port::{board, family, subfamily}};
+use anyhow::Result;
 
 fn configure_memory_x(file: &str) {
     let filename = format!("memory/{}", file);
@@ -17,13 +19,15 @@ fn configure_runner(target: &str) {
 }
 
 #[cfg(feature = "wgm160p")]
-fn main() {
+fn main() -> Result<()>{
+    process_configuration_file()?;
     configure_memory_x("wgm160p.x");
     configure_runner("wgm160p");
+    Ok(())
 }
 
 #[cfg(feature = "stm32f412_discovery")]
-fn main() {
+fn main() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_USE_ALT_MEMORY");
 
     let use_alt_memory = match option_env!("LOADSTONE_USE_ALT_MEMORY") {
@@ -41,4 +45,70 @@ fn main() {
 
     configure_memory_x(memory_file);
     configure_runner("stm32f412_discovery");
+    process_configuration_file()?;
+    Ok(())
+}
+
+#[cfg(feature = "stm32f412_discovery")]
+const DEFAULT_CONFIG_FILENAME: &str = "stm32f412_discovery_default_config.ron";
+
+#[cfg(feature = "wgm160p")]
+const DEFAULT_CONFIG_FILENAME: &str = "stm32f412_discovery_config.ron";
+
+#[cfg(not(any(feature = "stm32f412_discovery", feature = "wgm160p")))]
+const DEFAULT_CONFIG_FILENAME: &str = "";
+
+fn process_configuration_file() -> Result<()> {
+    println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
+    println!("cargo:rerun-if-changed=./loadstone_config/sample_configurations/DEFAULT_CONFIG_FILENAME");
+
+    let filename = if let Some(filename) = option_env!("LOADSTONE_CONFIG") {
+        filename.into()
+    } else {
+        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"), DEFAULT_CONFIG_FILENAME)
+    };
+
+    let file = File::open(filename)?;
+    let mut buf_reader = BufReader::new(file);
+    let mut contents = String::new();
+    buf_reader.read_to_string(&mut contents)?;
+    let configuration: Configuration = ron::from_str(&contents)?;
+    validate_feature_flags_against_configuration(&configuration);
+
+    // TEST
+    generate_modules("./", &configuration)?;
+
+    Ok(())
+}
+
+fn validate_feature_flags_against_configuration(configuration: &Configuration) {
+    #[cfg(feature = "stm32_any")]
+    assert_eq!(configuration.port.family_name(), family::STM32,
+        "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
+         configuration.port.family_name(),
+         family::STM32);
+
+    #[cfg(feature = "stm32f412")]
+    assert_eq!(configuration.port.subfamily_name(), subfamily::STM32F4,
+        "Mismatching MCU subfamily in configuration file. Features require {}, configuration requires {}",
+         configuration.port.subfamily_name(),
+         subfamily::STM32F4);
+
+    #[cfg(feature = "wgm160p")]
+    assert_eq!(configuration.port.board_name(), board::WGM160P,
+        "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
+         configuration.port.board_name(),
+         board::WGM160P);
+
+    #[cfg(feature = "serial")]
+    assert!(configuration.feature_configuration.serial.enabled,
+        "Configuration mismatch. Feature flags require `serial`, but it is disabled in the configuration file");
+
+    #[cfg(feature = "serial-recovery")]
+    assert!(configuration.feature_configuration.serial.recovery_enabled,
+        "Configuration mismatch. Feature flags require `serial recovery`, but it is disabled in the configuration file");
+
+    #[cfg(feature = "boot-time-metrics")]
+    assert!(configuration.feature_configuration.boot_metrics.enabled && configuration.feature_configuration.boot_metrics.timing_enabled,
+        "Configuration mismatch. Feature flags require `boot timing`, but it is disabled in the configuration file");
 }

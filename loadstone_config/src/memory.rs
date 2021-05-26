@@ -43,7 +43,7 @@ impl Default for InternalMemoryMap {
     }
 }
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct MemoryConfiguration {
     pub internal_memory_map: InternalMemoryMap,
     pub external_memory_map: ExternalMemoryMap,

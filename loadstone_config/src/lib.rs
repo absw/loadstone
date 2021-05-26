@@ -22,8 +22,9 @@ pub mod pins;
 pub mod memory;
 pub mod features;
 pub mod security;
+pub mod codegen;
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct Configuration {
     pub port: Port,
     pub memory_configuration: MemoryConfiguration,

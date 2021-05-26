@@ -1,0 +1,1 @@
+pub mod example_module { struct MyExampleStruct ; }

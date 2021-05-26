@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use crate::port::{family, subfamily, Port};
 
-#[derive(Default, Clone, Serialize, Deserialize)]
+#[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureConfiguration {
     pub serial: Serial,
     pub boot_metrics: BootMetrics,
