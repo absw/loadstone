@@ -1,0 +1,51 @@
+(
+    port: (
+        family: Some((Family, "efm32", [
+            (Subfamily, "efm32gg11", [
+                (Board, "wgm160p", []),
+            ]),
+        ])),
+        subfamily: Some((Subfamily, "efm32gg11", [
+            (Board, "wgm160p", []),
+        ])),
+        board: Some((Board, "wgm160p", [])),
+    ),
+    memory_configuration: (
+        internal_memory_map: (
+            bootloader_location: 0,
+            bootloader_length_kb: 64,
+            banks: [
+                (
+                    start_address: 65536,
+                    size_kb: 900,
+                ),
+                (
+                    start_address: 987136,
+                    size_kb: 900,
+                ),
+            ],
+            bootable_index: Some(0),
+        ),
+        external_memory_map: (
+            banks: [],
+        ),
+        external_flash: None,
+        golden_index: Some(1),
+    ),
+    feature_configuration: (
+        serial: (
+            enabled: false,
+            recovery_enabled: false,
+            tx_pin: None,
+            rx_pin: None,
+        ),
+        boot_metrics: (
+            enabled: true,
+            timing_enabled: false,
+        ),
+    ),
+    security_configuration: (
+        security_mode: P256ECDSA,
+        verifying_key_raw: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp v7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----",
+    ),
+)

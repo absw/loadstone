@@ -7,7 +7,7 @@ default-run = "loadstone"
 
 [features]
 default = [
-   "stm32f412_discovery", # TODO remove
+   "stm32f412_discovery",
    "defmt-default",
    "ecdsa-verify",
 ]

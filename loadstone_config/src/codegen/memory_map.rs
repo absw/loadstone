@@ -36,12 +36,15 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
         Some(external_flash) if external_flash.name.to_lowercase().contains("n25q128a") => {
             ["blue_hal","drivers","micron","n25q128a_flash","Address"].iter().map(|f| format_ident!("{}", f)).collect()
         }
-        _ => ["blue_hal","hal","null","NullFlash","Address"].iter().map(|f| format_ident!("{}", f)).collect(),
+        _ => ["usize"].iter().map(|f| format_ident!("{}", f)).collect(),
     };
 
     let mcu_address: Vec<_> = match port {
         Port { subfamily: Some(subfamily),..} if subfamily.name() == subfamily::STM32F4 => {
             ["blue_hal", "drivers", "stm32f4", "flash", "Address"].iter().map(|f| format_ident!("{}", f)).collect()
+        },
+        Port { subfamily: Some(subfamily),..} if subfamily.name() == subfamily::EFM32GG11 => {
+            ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"].iter().map(|f| format_ident!("{}", f)).collect()
         },
         _ => panic!("Invalid MCU flash supplied"),
     };

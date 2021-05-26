@@ -1,7 +1,6 @@
 use anyhow::Result;
 use loadstone_config::{
     codegen::generate_modules,
-    port::{family, subfamily},
     Configuration,
 };
 use std::{
@@ -91,22 +90,22 @@ fn process_configuration_file() -> Result<()> {
 
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     #[cfg(feature = "stm32_any")]
-    assert_eq!(configuration.port.family_name(), family::STM32,
+    assert_eq!(configuration.port.family_name(), loadstone_config::port::family::STM32,
         "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
          configuration.port.family_name(),
-         family::STM32);
+         loadstone_config::port::family::STM32);
 
     #[cfg(feature = "stm32f412")]
-    assert_eq!(configuration.port.subfamily_name(), subfamily::STM32F4,
+    assert_eq!(configuration.port.subfamily_name(), loadstone_config::port::subfamily::STM32F4,
         "Mismatching MCU subfamily in configuration file. Features require {}, configuration requires {}",
          configuration.port.subfamily_name(),
-         subfamily::STM32F4);
+         loadstone_config::port::subfamily::STM32F4);
 
     #[cfg(feature = "wgm160p")]
-    assert_eq!(configuration.port.board_name(), board::WGM160P,
+    assert_eq!(configuration.port.board_name(), loadstone_config::port::board::WGM160P,
         "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
          configuration.port.board_name(),
-         board::WGM160P);
+         loadstone_config::port::board::WGM160P);
 
     #[cfg(feature = "serial")]
     assert!(configuration.feature_configuration.serial.enabled,

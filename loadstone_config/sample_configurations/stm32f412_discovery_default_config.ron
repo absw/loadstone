@@ -17,24 +17,24 @@
             banks: [
                 (
                     start_address: 134283264,
-                    size_kb: 510,
-                ),
-                (
-                    start_address: 134805504,
-                    size_kb: 220,
+                    size_kb: 959,
                 ),
             ],
-            bootable_index: Some(1),
+            bootable_index: Some(0),
         ),
         external_memory_map: (
             banks: [
                 (
                     start_address: 0,
-                    size_kb: 4,
+                    size_kb: 480,
                 ),
                 (
-                    start_address: 4096,
-                    size_kb: 4,
+                    start_address: 491520,
+                    size_kb: 480,
+                ),
+                (
+                    start_address: 983040,
+                    size_kb: 480,
                 ),
             ],
         ),
@@ -45,14 +45,14 @@
             end: 16777215,
             region_size: 4096,
         )),
-        golden_index: Some(0),
+        golden_index: Some(3),
     ),
     feature_configuration: (
         serial: (
             enabled: true,
             recovery_enabled: true,
-            tx_pin: Some("Pa9"),
-            rx_pin: Some("Pb7"),
+            tx_pin: Some("Pg14"),
+            rx_pin: Some("Pg9"),
         ),
         boot_metrics: (
             enabled: true,

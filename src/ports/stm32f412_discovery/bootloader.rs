@@ -1,7 +1,6 @@
 //! Concrete bootloader construction and flash bank layout
 //! for the [stm32f412 discovery](../../../../loadstone/hardware/discovery.pdf).
 use crate::{devices::bootloader::Bootloader, error};
-use crate::devices::image;
 use crate::error::Error;
 use blue_hal::{drivers::{micron::n25q128a_flash::{self, MicronN25q128a}, stm32f4::{flash, qspi::{self, QuadSpi, mode}, rcc::Clocks, serial, systick::SysTick}}, hal::time, stm32pac::{self, USART6}};
 use super::pin_configuration::*;
