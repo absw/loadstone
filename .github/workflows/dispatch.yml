@@ -1,0 +1,34 @@
+name: dispatch
+on: [repository_dispatch]
+jobs:
+  setup:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Docker login
+        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+  embedded_build:
+    needs: setup
+    container: bluefruitpathfinder/loadstone-build:latest
+    runs-on: self-hosted
+    env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: true
+      CARGO_TERM_VERBOSE: true
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p /home/user/.ssh/
+          echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
+          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
+          chmod 600 /home/user/.ssh/id_rsa
+      - name: Build
+        env:
+          SCRIPT_MODE: true
+        run: LOADSTONE_CONFIG=${{ github.event.client_payload.config_file }} cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf -- -O binary loadstone.bin
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: loadstone.bin
+          path: loadstone.bin
