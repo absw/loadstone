@@ -3,10 +3,7 @@ use loadstone_config::{
     codegen::generate_modules,
     Configuration,
 };
-use std::{
-    fs::{self, File},
-    io::{BufReader, Read},
-};
+use std::fs;
 
 fn configure_memory_x(file: &str) {
     let filename = format!("memory/{}", file);
@@ -53,37 +50,18 @@ fn main() -> Result<()> {
 }
 
 #[cfg(feature = "stm32f412_discovery")]
-const DEFAULT_CONFIG_FILENAME: &str = "stm32f412_discovery_default_config.ron";
+const DEFAULT_CONFIG: &str = include_str!("loadstone_config/sample_configurations/stm32f412_discovery_default_config.ron");
 
 #[cfg(feature = "wgm160p")]
-const DEFAULT_CONFIG_FILENAME: &str = "wgm160p_default_config.ron";
+const DEFAULT_CONFIG: &str = include_str!("loadstone_config/sample_configurations/wgm160p_default_config.ron");
 
 #[cfg(not(any(feature = "stm32f412_discovery", feature = "wgm160p")))]
-const DEFAULT_CONFIG_FILENAME: &str = "";
+const DEFAULT_CONFIG: &str = "";
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
-    println!(
-        "cargo:rerun-if-changed={}/loadstone_config/sample_configurations/{}",
-        env!("CARGO_MANIFEST_DIR"),
-        DEFAULT_CONFIG_FILENAME
-    );
-
-    let filename = if let Some(filename) = option_env!("LOADSTONE_CONFIG") {
-        filename.into()
-    } else {
-        // This will eventually be removed, as defaults for something
-        // as complex as a bootloader aren't really meaningful.
-        // It's currently useful for testing however.
-        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"), DEFAULT_CONFIG_FILENAME)
-    };
-
-    println!("Parsing options from {}...", filename);
-    let file = File::open(filename)?;
-    let mut buf_reader = BufReader::new(file);
-    let mut contents = String::new();
-    buf_reader.read_to_string(&mut contents)?;
-    let configuration: Configuration = ron::from_str(&contents)?;
+    println!("cargo:rerun-if-changed=loadstone_config/sample_configurations/");
+    let configuration: Configuration = ron::from_str(&DEFAULT_CONFIG)?;
     validate_feature_flags_against_configuration(&configuration);
     generate_modules("./", &configuration)?;
 
