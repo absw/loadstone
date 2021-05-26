@@ -15,7 +15,7 @@ use features::FeatureConfiguration;
 use memory::MemoryConfiguration;
 use port::Port;
 use security::{SecurityConfiguration, SecurityMode};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub mod port;
 pub mod pins;
@@ -105,4 +105,3 @@ impl Display for RequiredConfigurationStep {
         })
     }
 }
-

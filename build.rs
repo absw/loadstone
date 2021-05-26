@@ -1,6 +1,13 @@
-use std::{fs::{self, File}, io::{BufReader, Read}};
-use loadstone_config::{Configuration, codegen::generate_modules, port::{board, family, subfamily}};
 use anyhow::Result;
+use loadstone_config::{
+    codegen::generate_modules,
+    port::{board, family, subfamily},
+    Configuration,
+};
+use std::{
+    fs::{self, File},
+    io::{BufReader, Read},
+};
 
 fn configure_memory_x(file: &str) {
     let filename = format!("memory/{}", file);
@@ -14,12 +21,12 @@ fn configure_memory_x(file: &str) {
 fn configure_runner(target: &str) {
     println!("cargo:rerun-if-changed={}", RUNNER_TARGET_FILE);
 
-    const RUNNER_TARGET_FILE : &str = ".cargo/.runner-target";
+    const RUNNER_TARGET_FILE: &str = ".cargo/.runner-target";
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
 #[cfg(feature = "wgm160p")]
-fn main() -> Result<()>{
+fn main() -> Result<()> {
     process_configuration_file()?;
     configure_memory_x("wgm160p.x");
     configure_runner("wgm160p");
@@ -37,11 +44,8 @@ fn main() -> Result<()> {
         _ => panic!("LOADSTONE_USE_ALT_MEMORY must be 0, 1 or undefined."),
     };
 
-    let memory_file = if use_alt_memory {
-        "stm32f412_discovery.alt.x"
-    } else {
-        "stm32f412_discovery.x"
-    };
+    let memory_file =
+        if use_alt_memory { "stm32f412_discovery.alt.x" } else { "stm32f412_discovery.x" };
 
     configure_memory_x(memory_file);
     configure_runner("stm32f412_discovery");
@@ -60,12 +64,18 @@ const DEFAULT_CONFIG_FILENAME: &str = "";
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
-    println!("cargo:rerun-if-changed=./loadstone_config/sample_configurations/DEFAULT_CONFIG_FILENAME");
+    println!(
+        "cargo:rerun-if-changed=./loadstone_config/sample_configurations/DEFAULT_CONFIG_FILENAME"
+    );
 
     let filename = if let Some(filename) = option_env!("LOADSTONE_CONFIG") {
         filename.into()
     } else {
-        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"), DEFAULT_CONFIG_FILENAME)
+        format!(
+            "{}/loadstone_config/sample_configurations/{}",
+            env!("CARGO_MANIFEST_DIR"),
+            DEFAULT_CONFIG_FILENAME
+        )
     };
 
     let file = File::open(filename)?;

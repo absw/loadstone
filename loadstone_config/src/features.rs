@@ -1,5 +1,5 @@
-use serde::{Serialize, Deserialize};
 use crate::port::{family, subfamily, Port};
+use serde::{Deserialize, Serialize};
 
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureConfiguration {

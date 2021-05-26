@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 pub mod family {
     pub static STM32: &'static str = "stm32";
@@ -32,9 +32,7 @@ impl Port {
     pub fn subfamily_name(&self) -> &str {
         self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown")
     }
-    pub fn board_name(&self) -> &str {
-        self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown")
-    }
+    pub fn board_name(&self) -> &str { self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown") }
 }
 
 impl PortLevel {
