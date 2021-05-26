@@ -63,7 +63,7 @@ fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-changed=loadstone_config/sample_configurations/");
     let configuration: Configuration = ron::from_str(&DEFAULT_CONFIG)?;
     validate_feature_flags_against_configuration(&configuration);
-    generate_modules("./", &configuration)?;
+    generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
 
     Ok(())
 }
