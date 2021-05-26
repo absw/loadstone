@@ -1,5 +1,16 @@
 name: dispatch
-on: [repository_dispatch, workflow_dispatch]
+on:
+   workflow_dispatch:
+      inputs:
+         loadstone_configuration:
+            description: 'Loadstone configuration .ron file (inline)'
+            required: true
+
+         loadstone_features:
+            description: 'Loadstone features (comma separated list)'
+            required: true
+            default: ''
+
 jobs:
   setup:
     runs-on: self-hosted
@@ -26,7 +37,7 @@ jobs:
       - name: Build
         env:
           SCRIPT_MODE: true
-        run: LOADSTONE_CONFIG=${{ github.event.client_payload.config_file }} cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf -- -O binary loadstone.bin
+        run: LOADSTONE_CONFIG=${{ github.event.inputs.loadstone_configuration }} cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary loadstone.bin
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
