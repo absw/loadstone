@@ -64,7 +64,8 @@ const DEFAULT_CONFIG_FILENAME: &str = "";
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
     println!(
-        "cargo:rerun-if-changed=./loadstone_config/sample_configurations/{}",
+        "cargo:rerun-if-changed={}/loadstone_config/sample_configurations/{}",
+        env!("CARGO_MANIFEST_DIR"),
         DEFAULT_CONFIG_FILENAME
     );
 
@@ -74,9 +75,10 @@ fn process_configuration_file() -> Result<()> {
         // This will eventually be removed, as defaults for something
         // as complex as a bootloader aren't really meaningful.
         // It's currently useful for testing however.
-        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"),DEFAULT_CONFIG_FILENAME)
+        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"), DEFAULT_CONFIG_FILENAME)
     };
 
+    println!("Parsing options from {}...", filename);
     let file = File::open(filename)?;
     let mut buf_reader = BufReader::new(file);
     let mut contents = String::new();
