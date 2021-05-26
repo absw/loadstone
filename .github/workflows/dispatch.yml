@@ -37,7 +37,7 @@ jobs:
       - name: Build
         env:
           SCRIPT_MODE: true
-        run: LOADSTONE_CONFIG="'"${{ github.event.inputs.loadstone_configuration }}"'" cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary loadstone.bin
+        run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary loadstone.bin
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
