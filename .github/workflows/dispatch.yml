@@ -1,5 +1,5 @@
 name: dispatch
-on: [repository_dispatch]
+on: [repository_dispatch, workflow_dispatch]
 jobs:
   setup:
     runs-on: self-hosted
