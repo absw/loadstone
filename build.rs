@@ -1,7 +1,7 @@
 use anyhow::Result;
 use loadstone_config::{
     codegen::generate_modules,
-    port::{board, family, subfamily},
+    port::{family, subfamily},
     Configuration,
 };
 use std::{
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
 const DEFAULT_CONFIG_FILENAME: &str = "stm32f412_discovery_default_config.ron";
 
 #[cfg(feature = "wgm160p")]
-const DEFAULT_CONFIG_FILENAME: &str = "stm32f412_discovery_config.ron";
+const DEFAULT_CONFIG_FILENAME: &str = "wgm160p_default_config.ron";
 
 #[cfg(not(any(feature = "stm32f412_discovery", feature = "wgm160p")))]
 const DEFAULT_CONFIG_FILENAME: &str = "";
@@ -65,17 +65,17 @@ const DEFAULT_CONFIG_FILENAME: &str = "";
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
     println!(
-        "cargo:rerun-if-changed=./loadstone_config/sample_configurations/DEFAULT_CONFIG_FILENAME"
+        "cargo:rerun-if-changed=./loadstone_config/sample_configurations/{}",
+        DEFAULT_CONFIG_FILENAME
     );
 
     let filename = if let Some(filename) = option_env!("LOADSTONE_CONFIG") {
         filename.into()
     } else {
-        format!(
-            "{}/loadstone_config/sample_configurations/{}",
-            env!("CARGO_MANIFEST_DIR"),
-            DEFAULT_CONFIG_FILENAME
-        )
+        // This will eventually be removed, as defaults for something
+        // as complex as a bootloader aren't really meaningful.
+        // It's currently useful for testing however.
+        format!("./loadstone_config/sample_configurations/{}", DEFAULT_CONFIG_FILENAME)
     };
 
     let file = File::open(filename)?;
@@ -84,8 +84,6 @@ fn process_configuration_file() -> Result<()> {
     buf_reader.read_to_string(&mut contents)?;
     let configuration: Configuration = ron::from_str(&contents)?;
     validate_feature_flags_against_configuration(&configuration);
-
-    // TEST
     generate_modules("./", &configuration)?;
 
     Ok(())
