@@ -46,9 +46,9 @@ fn main() -> Result<()> {
     let memory_file =
         if use_alt_memory { "stm32f412_discovery.alt.x" } else { "stm32f412_discovery.x" };
 
+    process_configuration_file()?;
     configure_memory_x(memory_file);
     configure_runner("stm32f412_discovery");
-    process_configuration_file()?;
     Ok(())
 }
 
@@ -74,7 +74,7 @@ fn process_configuration_file() -> Result<()> {
         // This will eventually be removed, as defaults for something
         // as complex as a bootloader aren't really meaningful.
         // It's currently useful for testing however.
-        format!("./loadstone_config/sample_configurations/{}", DEFAULT_CONFIG_FILENAME)
+        format!("{}/loadstone_config/sample_configurations/{}", env!("CARGO_MANIFEST_DIR"),DEFAULT_CONFIG_FILENAME)
     };
 
     let file = File::open(filename)?;
