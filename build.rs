@@ -21,16 +21,26 @@ fn configure_runner(target: &str) {
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
-#[cfg(feature = "wgm160p")]
 fn main() -> Result<()> {
+    #[cfg(feature = "wgm160p")]
+    build_wgm160p()?;
+
+    #[cfg(feature = "stm32f412_discovery")]
+    build_stm32f412_discovery()?;
+
+    Ok(())
+}
+
+#[allow(unused)]
+fn build_wgm160p() -> Result<()> {
     process_configuration_file()?;
     configure_memory_x("wgm160p.x");
     configure_runner("wgm160p");
     Ok(())
 }
 
-#[cfg(feature = "stm32f412_discovery")]
-fn main() -> Result<()> {
+#[allow(unused)]
+fn build_stm32f412_discovery() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_USE_ALT_MEMORY");
 
     let use_alt_memory = match option_env!("LOADSTONE_USE_ALT_MEMORY") {
@@ -68,6 +78,7 @@ fn process_configuration_file() -> Result<()> {
     Ok(())
 }
 
+#[allow(unused)]
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     #[cfg(feature = "stm32_any")]
     assert_eq!(configuration.port.family_name(), loadstone_config::port::family::STM32,
