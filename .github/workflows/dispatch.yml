@@ -34,12 +34,21 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
-      - name: Build
+      - name: Build Loadstone
         env:
           SCRIPT_MODE: true
         run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin loadstone --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary loadstone.bin
-      - name: Upload artifacts
+      - name: Build Demo App
+        env:
+          SCRIPT_MODE: true
+        run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin demo_app --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary demo_app.bin
+      - name: Upload Loadstone Artifacts
         uses: actions/upload-artifact@v2
         with:
           name: loadstone.bin
           path: loadstone.bin
+      - name: Upload Demo App Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: demo_app.bin
+          path: demo_app.bin
