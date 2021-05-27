@@ -2,7 +2,7 @@ name: actions
 on: [push, pull_request]
 jobs:
   setup:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -12,7 +12,7 @@ jobs:
   tests:
     needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true
       CARGO_TERM_VERBOSE: true
@@ -29,7 +29,7 @@ jobs:
   stm32f412_discovery:
     needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true
       CARGO_TERM_VERBOSE: true
@@ -53,7 +53,7 @@ jobs:
   wgm160p:
     needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true
       CARGO_TERM_VERBOSE: true
