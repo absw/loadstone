@@ -1,6 +1,6 @@
 #![feature(bool_to_option)]
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use loadstone_config::{codegen::generate_modules, Configuration};
 use std::fs;
 
@@ -85,11 +85,17 @@ fn process_configuration_file() -> Result<()> {
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     let supplied_flags: Vec<_> = std::env::vars()
         .filter_map(|(k, _)| {
-            k.starts_with("CARGO_FEATURE_").then_some(k.strip_prefix("CARGO_FEATURE_")?.to_owned().to_lowercase())
+            k.starts_with("CARGO_FEATURE_")
+                .then_some(k.strip_prefix("CARGO_FEATURE_")?.to_owned().to_lowercase())
         })
         .collect();
 
-    let missing_flags: Vec<_> = configuration.feature_flags.iter().filter(|f| !supplied_flags.contains(f)).cloned().collect();
+    let missing_flags: Vec<_> = configuration
+        .feature_flags
+        .iter()
+        .filter(|f| !supplied_flags.contains(f))
+        .cloned()
+        .collect();
 
     if !missing_flags.is_empty() {
         panic!(

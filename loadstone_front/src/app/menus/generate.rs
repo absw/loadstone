@@ -133,8 +133,6 @@ fn generate_native(ui: &mut Ui, configuration: &Configuration) {
             ui.label("file to be used locally to build Loadstone.");
         });
     });
-
-
 }
 
 fn generate_web(
