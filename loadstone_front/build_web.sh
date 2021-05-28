@@ -13,7 +13,7 @@ CRATE_NAME_SNAKE_CASE="${CRATE_NAME//-/_}" # for those who name crates with-keba
 export RUSTFLAGS=--cfg=web_sys_unstable_apis
 
 # Clear output from old stuff:
-rm -f docs/${CRATE_NAME_SNAKE_CASE}_bg.wasm
+rm -f ../docs/${CRATE_NAME_SNAKE_CASE}_bg.wasm
 
 echo "Building rust…"
 BUILD=release
@@ -22,13 +22,13 @@ cargo build --release -p ${CRATE_NAME} --lib --target wasm32-unknown-unknown
 echo "Generating JS bindings for wasm…"
 TARGET_NAME="${CRATE_NAME_SNAKE_CASE}.wasm"
 wasm-bindgen "target/wasm32-unknown-unknown/${BUILD}/${TARGET_NAME}" \
-  --out-dir docs --no-modules --no-typescript
+  --out-dir ../docs --no-modules --no-typescript
 
 # to get wasm-opt:  apt/brew/dnf install binaryen
 # echo "Optimizing wasm…"
 # wasm-opt docs/${CRATE_NAME_SNAKE_CASE}_bg.wasm -O2 --fast-math -o docs/${CRATE_NAME_SNAKE_CASE}_bg.wasm # add -g to get debug symbols
 
-echo "Finished: docs/${CRATE_NAME_SNAKE_CASE}.wasm"
+echo "Finished: ../docs/${CRATE_NAME_SNAKE_CASE}.wasm"
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   # Linux, ex: Fedora
