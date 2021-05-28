@@ -13,9 +13,11 @@ use std::{array::IntoIter, fmt::Display};
 
 use features::{FeatureConfiguration, Serial};
 use memory::{MemoryConfiguration, external_flash};
-use port::Port;
+use port::{Port, board::STM32F412};
 use security::{SecurityConfiguration, SecurityMode};
 use serde::{Deserialize, Serialize};
+
+use crate::port::board::WGM160P;
 
 pub mod port;
 pub mod pins;
@@ -82,6 +84,12 @@ impl Configuration {
 
         if self.memory_configuration.external_flash.is_none() {
             self.memory_configuration.external_memory_map.banks.clear();
+        }
+
+        match self.port.board_name() {
+            name if name == STM32F412 => {self.feature_flags = vec!["stm34f412_discovery".into()]},
+            name if name == WGM160P => {self.feature_flags = vec!["wgm160p".into()]},
+            _ => {},
         }
     }
 }

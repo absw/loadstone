@@ -1,9 +1,9 @@
 use base64::write::EncoderWriter as Base64Encoder;
 use ron::ser::PrettyConfig;
-use std::{io::Write, sync::Arc};
+use std::{fs::OpenOptions, io::Write, sync::Arc};
 
 use anyhow::Result;
-use loadstone_config::{Configuration, port::board};
+use loadstone_config::Configuration;
 use reqwest_wasm::{Response, StatusCode};
 
 use futures::future::FutureExt;
@@ -24,6 +24,8 @@ const ACTIONS_URL: &str =
 const GITHUB_TOKEN_INSTRUCTIONS: &str = "https://docs.github.com/en/github/\
     authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token";
 
+const LOCAL_OUTPUT_FILENAME: &str = "loadstone_config.ron";
+
 pub fn generate<'a>(
     ui: &mut Ui,
     frame: &mut epi::Frame<'_>,
@@ -32,18 +34,21 @@ pub fn generate<'a>(
     configuration: &Configuration,
 ) {
     if configuration.complete() {
-        ui.group(|ui| {
-            generate_in_ci(
-                ui,
-                personal_access_token_field,
-                configuration,
-                frame,
-                last_request_response,
-            );
-        });
-        ui.group(|ui| {
-            generate_locally(ui, configuration);
-        });
+        if frame.is_web() {
+            ui.group(|ui| {
+                generate_in_ci(
+                    ui,
+                    personal_access_token_field,
+                    configuration,
+                    last_request_response,
+                );
+            });
+            ui.group(|ui| {
+                generate_download(ui, configuration);
+            });
+        } else {
+            generate_native(ui, configuration);
+        }
     } else {
         ui.label("Provide the missing configuration to generate the loadstone binary:");
         for step in configuration.required_configuration_steps() {
@@ -52,7 +57,7 @@ pub fn generate<'a>(
     }
 }
 
-fn generate_locally(ui: &mut Ui, configuration: &Configuration) {
+fn generate_download(ui: &mut Ui, configuration: &Configuration) {
     ui.heading("Option 2: Local");
     ui.horizontal_wrapped(|ui| {
         if ui.button("Download").clicked() {
@@ -70,7 +75,6 @@ fn generate_in_ci(
     ui: &mut Ui,
     personal_access_token_field: &mut String,
     configuration: &Configuration,
-    frame: &epi::Frame<'_>,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 ) {
     ui.heading("Option 1: Github CI");
@@ -84,15 +88,11 @@ fn generate_in_ci(
     ui.horizontal_wrapped(|ui| {
         ui.colored_label(Color32::LIGHT_BLUE, "Personal Access Token:");
         if ui.text_edit_singleline(personal_access_token_field).lost_focus() {
-            let ron = ron::ser::to_string(&configuration)
+            let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
                 .unwrap_or("Invalid Configuration Supplied".into());
 
-            if frame.is_web() {
                 generate_web(&configuration, &personal_access_token_field, &ron, last_request_response)
                     .unwrap();
-            } else {
-                generate_native(ron);
-            }
 
             personal_access_token_field.clear();
         }
@@ -119,7 +119,21 @@ fn generate_in_ci(
     }
 }
 
-fn generate_native(_ron: String) -> () { todo!() }
+fn generate_native(ui: &mut Ui, configuration: &Configuration) {
+    ui.group(|ui| {
+        ui.heading("Local generation");
+        ui.horizontal_wrapped(|ui| {
+            if ui.button("Generate").clicked() {
+                // TODO clean up unwraps
+                let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(LOCAL_OUTPUT_FILENAME).unwrap();
+                file.write_all(ron::ser::to_string_pretty(&configuration, PrettyConfig::default()).unwrap().as_bytes()).unwrap();
+            }
+            ui.label("Generate a");
+            ui.colored_label(Color32::LIGHT_BLUE, LOCAL_OUTPUT_FILENAME);
+            ui.label("file to be used locally to build Loadstone.");
+        });
+    });
+}
 
 fn generate_web(
     configuration: &Configuration,
@@ -138,12 +152,7 @@ fn generate_web(
     let formatted_body =format!(
             "{{\"ref\":\"staging\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
             ron.replace("\"", "\\\""),
-            // TODO parse flags from the ron file itself and remove the need for this field
-            match configuration.port.board_name() {
-               name if name == board::STM32F412  => "stm32f412_discovery",
-               name if name == board::WGM160P  => "wgm160p",
-               _ => "",
-            },
+            configuration.feature_flags.join(","),
         );
 
     wasm_bindgen_futures::spawn_local(
