@@ -9,7 +9,7 @@ use std::{
     process::Command,
 };
 
-use crate::{port::board, Configuration};
+use crate::Configuration;
 use anyhow::Result;
 
 use self::linker_script::generate_linker_script;
