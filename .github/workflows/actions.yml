@@ -23,8 +23,6 @@ jobs:
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
         run: cargo test
-      - name: Loadstone Front Tests
-        run: cd loadstone_front && cargo test
 
   stm32f412_discovery:
     needs: setup
