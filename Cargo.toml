@@ -34,6 +34,10 @@ ecdsa-verify = ["ecdsa", "p256"]
 serial-recovery = ["serial"]
 serial = []
 boot-time-metrics = []
+# Bases the binary address space on the first bootable
+# bank rather than the first valid Flash address of the
+# target board. This is mainly useful for the demo app
+relocate-to-bootable-bank = []
 
 [dependencies]
 cortex-m = "0.6.0"

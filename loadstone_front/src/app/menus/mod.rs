@@ -1,5 +1,8 @@
 use eframe::egui::{self, CollapsingHeader};
-use loadstone_config::{features::BootMetrics, port::{Port, PortLevel}};
+use loadstone_config::{
+    features::BootMetrics,
+    port::{Port, PortLevel},
+};
 
 pub mod serial;
 pub mod memory_map;
@@ -58,19 +61,20 @@ pub fn select_port_level(
 }
 
 pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics, port: &Port) {
-    let mut metrics_box = matches!(boot_metrics, BootMetrics::Enabled {..});
+    let mut metrics_box = matches!(boot_metrics, BootMetrics::Enabled { .. });
     ui.horizontal_wrapped(|ui| {
         ui.checkbox(&mut metrics_box, "Boot Metrics");
         match (metrics_box, &boot_metrics) {
-            (true, BootMetrics::Disabled) => { *boot_metrics = BootMetrics::Enabled { timing: false }},
-            (false, BootMetrics::Enabled{..}) => { *boot_metrics = BootMetrics::Disabled},
-            _ => {},
+            (true, BootMetrics::Disabled) => *boot_metrics = BootMetrics::Enabled { timing: false },
+            (false, BootMetrics::Enabled { .. }) => *boot_metrics = BootMetrics::Disabled,
+            _ => {}
         }
         ui.label("Relay information about the boot process through RAM memory.");
     });
     ui.horizontal_wrapped(|ui| {
         let mut dummy = false;
-        let timing_box = if let BootMetrics::Enabled { timing } = boot_metrics { timing } else { &mut dummy };
+        let timing_box =
+            if let BootMetrics::Enabled { timing } = boot_metrics { timing } else { &mut dummy };
         ui.separator();
         ui.set_enabled(BootMetrics::timing_supported(port) && metrics_box);
         ui.checkbox(timing_box, "Timing Metrics");

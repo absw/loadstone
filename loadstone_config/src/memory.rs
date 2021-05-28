@@ -51,6 +51,17 @@ pub struct MemoryConfiguration {
     pub golden_index: Option<usize>,
 }
 
+impl MemoryConfiguration {
+    pub fn bootable_address(&self) -> Option<u32> {
+        Some(
+            self.internal_memory_map
+                .banks
+                .get(self.internal_memory_map.bootable_index?)?
+                .start_address,
+        )
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct FlashChip {
     pub name: String,

@@ -1,3 +1,4 @@
+use crate::KB;
 use serde::{Deserialize, Serialize};
 
 pub mod family {
@@ -33,6 +34,21 @@ impl Port {
         self.subfamily.as_ref().map(|s| s.name()).unwrap_or("Unknown")
     }
     pub fn board_name(&self) -> &str { self.board.as_ref().map(|b| b.name()).unwrap_or("Unknown") }
+
+    // We might consider making these configurable later, but the need hasn't come up yet.
+    pub fn linker_script_constants(&self) -> Option<LinkerScriptConstants> {
+        match self.board_name() {
+            name if name == board::STM32F412 => Some(LinkerScriptConstants {
+                flash: LinkerArea { origin: 0x08000000, size: KB!(80) },
+                ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
+            }),
+            name if name == board::WGM160P => Some(LinkerScriptConstants {
+                flash: LinkerArea { origin: 0x00000000, size: KB!(1024) },
+                ram: LinkerArea { origin: 0x20000000, size: KB!(128) },
+            }),
+            _ => None,
+        }
+    }
 }
 
 impl PortLevel {
@@ -46,6 +62,16 @@ impl PortLevel {
             false
         }
     }
+}
+
+pub struct LinkerScriptConstants {
+    pub flash: LinkerArea,
+    pub ram: LinkerArea,
+}
+
+pub struct LinkerArea {
+    pub origin: u32,
+    pub size: usize,
 }
 
 pub mod family_names {

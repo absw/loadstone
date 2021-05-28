@@ -7,4 +7,4 @@ GithubActions.
 # Usage
 
 [Click here and follow the
-instructions!](https://absw.github.io/loadstone/loadstloadstone_front/published_app/)
+instructions!](https://absw.github.io/loadstone/loadstone_front/published_app/)
