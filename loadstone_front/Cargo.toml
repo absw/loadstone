@@ -21,8 +21,7 @@ base64 = "*"
 git-version = "*"
 reqwest-wasm = "*"
 futures = "*"
-#loadstone_config = { git = "ssh://git@github.com/absw/loadstone.git", branch = "staging" }
-loadstone_config = { path = "../loadstone/loadstone_config/" }
+loadstone_config = { path = "../loadstone_config/" }
 getrandom = { version = "*", features = ["js"] }
 
 [dependencies.ecdsa]
