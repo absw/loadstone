@@ -22,9 +22,11 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
-        run: cargo test
+        run: bash LOADSTONE_CONFIG="" cargo test
 
-  stm32f412_discovery:
+  # This job launches a few `cargo check` invocations using several config file samples, to exercise
+  # the maximum amount of ports without taking time to compile final artifacts.
+  sample_checks:
     needs: setup
     container: eu.gcr.io/bluefire-ci/loadstone-build:latest
     runs-on: self-hosted
@@ -38,36 +40,11 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
-      - name: Build
+      - name: Check sample WGM160p build
         env:
           SCRIPT_MODE: true
-        run: bash ./build_artifacts.sh stm32f412_discovery
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: stm32f412_discovery
-          path: artifacts.zip
-
-  wgm160p:
-    needs: setup
-    container: eu.gcr.io/bluefire-ci/loadstone-build:latest
-    runs-on: self-hosted
-    env:
-      CARGO_NET_GIT_FETCH_WITH_CLI: true
-      CARGO_TERM_VERBOSE: true
-    steps:
-      - name: Configure SSH
-        run: |
-          mkdir -p /home/user/.ssh/
-          echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
-          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
-          chmod 600 /home/user/.ssh/id_rsa
-      - name: Build
+        run: bash LOADSTONE_CONFIG=`cat loadstone_config/sample_configurations/wgm160p_sample.ron` cargo check --features wgm160p
+      - name: Check sample stm32f412 build
         env:
           SCRIPT_MODE: true
-        run: bash ./build_artifacts.sh wgm160p
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: wgm160p
-          path: artifacts.zip
+        run: bash LOADSTONE_CONFIG=`cat loadstone_config/sample_configurations/stm32f412_discovery_sample.ron` cargo check --features stm32f412_discovery

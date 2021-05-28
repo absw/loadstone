@@ -1,8 +1,7 @@
-use anyhow::Result;
-use loadstone_config::{
-    codegen::generate_modules,
-    Configuration,
-};
+#![feature(bool_to_option)]
+
+use anyhow::{Result, anyhow};
+use loadstone_config::{codegen::generate_modules, Configuration};
 use std::fs;
 
 fn configure_memory_x(file: &str) {
@@ -22,6 +21,8 @@ fn configure_runner(target: &str) {
 }
 
 fn main() -> Result<()> {
+    process_configuration_file()?;
+
     #[cfg(feature = "wgm160p")]
     build_wgm160p()?;
 
@@ -33,7 +34,6 @@ fn main() -> Result<()> {
 
 #[allow(unused)]
 fn build_wgm160p() -> Result<()> {
-    process_configuration_file()?;
     configure_memory_x("wgm160p.x");
     configure_runner("wgm160p");
     Ok(())
@@ -53,25 +53,28 @@ fn build_stm32f412_discovery() -> Result<()> {
     let memory_file =
         if use_alt_memory { "stm32f412_discovery.alt.x" } else { "stm32f412_discovery.x" };
 
-    process_configuration_file()?;
     configure_memory_x(memory_file);
     configure_runner("stm32f412_discovery");
     Ok(())
 }
 
-#[cfg(feature = "stm32f412_discovery")]
-const DEFAULT_CONFIG: &str = include_str!("loadstone_config/sample_configurations/stm32f412_discovery_default_config.ron");
-
-#[cfg(feature = "wgm160p")]
-const DEFAULT_CONFIG: &str = include_str!("loadstone_config/sample_configurations/wgm160p_default_config.ron");
-
-#[cfg(not(any(feature = "stm32f412_discovery", feature = "wgm160p")))]
-const DEFAULT_CONFIG: &str = "";
-
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
     println!("cargo:rerun-if-changed=loadstone_config/sample_configurations/");
-    let configuration: Configuration = ron::from_str(&DEFAULT_CONFIG)?;
+
+    let configuration: Configuration = if let Ok(config) = std::env::var("LOADSTONE_CONFIG") {
+        if config.is_empty() {
+            return Ok(()); // Assuming tests
+        } else {
+            ron::from_str(&config)?
+        }
+    } else {
+        panic!("\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
+                embedded in the `LOADSTONE_CONFIG` environment variable. \r\nTry again with \
+                'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \r\nIf you're just looking \
+                to run unit tests, supply an empty string: 'LOADSTONE_CONFIG=\"\" cargo test`\r\n\r\n")
+    };
+
     validate_feature_flags_against_configuration(&configuration);
     generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
 
@@ -80,33 +83,19 @@ fn process_configuration_file() -> Result<()> {
 
 #[allow(unused)]
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
-    #[cfg(feature = "stm32_any")]
-    assert_eq!(configuration.port.family_name(), loadstone_config::port::family::STM32,
-        "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
-         configuration.port.family_name(),
-         loadstone_config::port::family::STM32);
+    let supplied_flags: Vec<_> = std::env::vars()
+        .filter_map(|(k, _)| {
+            k.starts_with("CARGO_FEATURE_").then_some(k.strip_prefix("CARGO_FEATURE_")?.to_owned().to_lowercase())
+        })
+        .collect();
 
-    #[cfg(feature = "stm32f412")]
-    assert_eq!(configuration.port.subfamily_name(), loadstone_config::port::subfamily::STM32F4,
-        "Mismatching MCU subfamily in configuration file. Features require {}, configuration requires {}",
-         configuration.port.subfamily_name(),
-         loadstone_config::port::subfamily::STM32F4);
+    let missing_flags: Vec<_> = configuration.feature_flags.iter().filter(|f| !supplied_flags.contains(f)).cloned().collect();
 
-    #[cfg(feature = "wgm160p")]
-    assert_eq!(configuration.port.board_name(), loadstone_config::port::board::WGM160P,
-        "Mismatching MCU family in configuration file. Features require {}, configuration requires {}",
-         configuration.port.board_name(),
-         loadstone_config::port::board::WGM160P);
-
-    #[cfg(feature = "serial")]
-    assert!(configuration.feature_configuration.serial.enabled,
-        "Configuration mismatch. Feature flags require `serial`, but it is disabled in the configuration file");
-
-    #[cfg(feature = "serial-recovery")]
-    assert!(configuration.feature_configuration.serial.recovery_enabled,
-        "Configuration mismatch. Feature flags require `serial recovery`, but it is disabled in the configuration file");
-
-    #[cfg(feature = "boot-time-metrics")]
-    assert!(configuration.feature_configuration.boot_metrics.enabled && configuration.feature_configuration.boot_metrics.timing_enabled,
-        "Configuration mismatch. Feature flags require `boot timing`, but it is disabled in the configuration file");
+    if !missing_flags.is_empty() {
+        panic!(
+            "\r\n\r\nThe configuration file supplied requires flags that haven't been supplied. \
+            Please build again with `--features={}`\r\n\r\n",
+            missing_flags.join(","),
+        );
+    }
 }
