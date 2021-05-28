@@ -93,7 +93,7 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
 
     if !missing_flags.is_empty() {
         panic!(
-            "\r\n\r\nThe configuration file supplied requires flags that haven't been supplied. \
+            "\r\n\r\nThe configuration file requires flags that haven't been supplied. \
             Please build again with `--features={}`\r\n\r\n",
             missing_flags.join(","),
         );
