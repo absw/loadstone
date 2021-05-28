@@ -22,7 +22,9 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
       - name: Tests
-        run: bash LOADSTONE_CONFIG="" cargo test
+        env:
+          LOADSTONE_CONFIG: ""
+        run: cargo test
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
@@ -44,9 +46,9 @@ jobs:
         env:
           SCRIPT_MODE: true
           LOADSTONE_CONFIG: '(port:(family:Some((Family,"efm32",[(Subfamily,"efm32gg11",[(Board,"wgm160p",[]),]),])),subfamily:Some((Subfamily,"efm32gg11",[(Board,"wgm160p",[]),])),board:Some((Board,"wgm160p",[])),),memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:64,banks:[(start_address:65536,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
-        run: bash cargo check --features wgm160p
+        run: cargo check --features wgm160p
       - name: Check sample stm32f412 build
         env:
           SCRIPT_MODE: true
           LOADSTONE_CONFIG: '(port:(family:Some((Family,"stm32",[(Subfamily,"stm32f4",[(Board,"stm32f412",[]),]),])),subfamily:Some((Subfamily,"stm32f4",[(Board,"stm32f412",[]),])),board:Some((Board,"stm32f412",[])),),memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
-        run: bash cargo check --features stm32f412_discovery
+        run: cargo check --features stm32f412_discovery
