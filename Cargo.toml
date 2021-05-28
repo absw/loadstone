@@ -36,7 +36,8 @@ serial = []
 boot-time-metrics = []
 # Bases the binary address space on the first bootable
 # bank rather than the first valid Flash address of the
-# target board. This is mainly useful for the demo app
+# target board. This is mainly useful for the demo app,
+# which is generally booted by loadstone.
 relocate-to-bootable-bank = []
 
 [dependencies]
