@@ -11,8 +11,8 @@
 
 use std::{array::IntoIter, fmt::Display};
 
-use features::FeatureConfiguration;
-use memory::MemoryConfiguration;
+use features::{FeatureConfiguration, Serial};
+use memory::{MemoryConfiguration, external_flash};
 use port::Port;
 use security::{SecurityConfiguration, SecurityMode};
 use serde::{Deserialize, Serialize};
@@ -30,17 +30,7 @@ pub struct Configuration {
     pub memory_configuration: MemoryConfiguration,
     pub feature_configuration: FeatureConfiguration,
     pub security_configuration: SecurityConfiguration,
-}
-
-impl Configuration {
-    pub fn new(
-        port: Port,
-        memory_configuration: MemoryConfiguration,
-        feature_configuration: FeatureConfiguration,
-        security_configuration: SecurityConfiguration,
-    ) -> Self {
-        Self { port, memory_configuration, feature_configuration, security_configuration }
-    }
+    pub feature_flags: Vec<String>,
 }
 
 impl Configuration {
@@ -60,14 +50,6 @@ impl Configuration {
             (self.port.subfamily.is_some() && self.port.board.is_none() && memory::internal_flash(&self.port).is_none())
                 .then_some(RequiredConfigurationStep::Board),
 
-            (self.feature_configuration.serial.enabled
-                && self.feature_configuration.serial.tx_pin.is_none())
-                .then_some(RequiredConfigurationStep::SerialTxPin),
-
-            (self.feature_configuration.serial.enabled
-                && self.feature_configuration.serial.rx_pin.is_none())
-                .then_some(RequiredConfigurationStep::SerialRxPin),
-
             self.memory_configuration.internal_memory_map.bootable_index.is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),
 
@@ -77,6 +59,30 @@ impl Configuration {
 
         ])
         .flatten()
+    }
+
+    // Enforces all internal invariants.
+    // TODO replace with typestates / type safety wherever possible, by adjusting the loadstone
+    // front app to match
+    pub fn cleanup(&mut self) {
+        if !self.port.family.as_ref().map_or(false, |f| f.contains(self.port.subfamily.as_ref())) {
+            self.port.subfamily = None;
+        }
+        if !self.port.subfamily.as_ref().map_or(false, |f| f.contains(self.port.board.as_ref())) {
+            self.port.board = None;
+        }
+
+        if !features::Serial::supported(&self.port) {
+            self.feature_configuration.serial = Serial::Disabled;
+        }
+
+        if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash) {
+            self.memory_configuration.external_flash = None;
+        }
+
+        if self.memory_configuration.external_flash.is_none() {
+            self.memory_configuration.external_memory_map.banks.clear();
+        }
     }
 }
 

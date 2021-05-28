@@ -7,22 +7,30 @@ pub struct FeatureConfiguration {
     pub boot_metrics: BootMetrics,
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct BootMetrics {
-    pub enabled: bool,
-    pub timing_enabled: bool,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum BootMetrics {
+    Enabled { timing: bool },
+    Disabled,
+}
+
+impl Default for BootMetrics {
+    fn default() -> Self {
+        Self::Disabled
+    }
 }
 
 impl BootMetrics {
     pub fn timing_supported(port: &Port) -> bool { port.family_name() == family::STM32 }
 }
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct Serial {
-    pub enabled: bool,
-    pub recovery_enabled: bool,
-    pub tx_pin: Option<String>,
-    pub rx_pin: Option<String>,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub enum Serial {
+    Enabled { recovery_enabled: bool, tx_pin: String, rx_pin: String },
+    Disabled,
+}
+
+impl Default for Serial {
+    fn default() -> Self { Self::Disabled }
 }
 
 impl Serial {

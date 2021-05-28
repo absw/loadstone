@@ -2,7 +2,7 @@ use anyhow::Result;
 use quote::{format_ident, quote};
 use std::{fs::OpenOptions, io::Write, path::Path};
 
-use crate::{memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration}, port::{Port, subfamily}};
+use crate::{memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration}, port::{Port, board, subfamily}};
 
 use super::prettify_file;
 
@@ -37,7 +37,12 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
     let external_address: Vec<_> = match &memory_configuration.external_flash {
         Some(external_flash) if external_flash.name.to_lowercase().contains("n25q128a") => {
             ["blue_hal","drivers","micron","n25q128a_flash","Address"].iter().map(|f| format_ident!("{}", f)).collect()
-        }
+        },
+        None if port.board_name() == board::STM32F412 => {
+            // Slight hack to ensure the current bootloader constructor for the Discovery gets the
+            // right type definitions even for an absent external flash.
+            ["blue_hal","drivers","micron","n25q128a_flash","Address"].iter().map(|f| format_ident!("{}", f)).collect()
+        },
         _ => ["usize"].iter().map(|f| format_ident!("{}", f)).collect(),
     };
 
