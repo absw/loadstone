@@ -17,12 +17,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Docker login
-        run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
 
   embedded_build:
     needs: setup
-    container: bluefruitpathfinder/loadstone-build:latest
+    container: eu.gcr.io/bluefire-ci/loadstone-build:latest
     runs-on: self-hosted
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true

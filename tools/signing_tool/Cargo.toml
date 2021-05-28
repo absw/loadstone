@@ -10,7 +10,7 @@ description = "Tool to calculate and append signatures to images."
 [dependencies]
 clap = "2"
 base64 = "0.13"
-crc = "*"
+crc = "1.8.1"
 
 [dependencies.ecdsa]
 version = "*"
