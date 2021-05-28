@@ -15,7 +15,7 @@ pub enum BootMetrics {
 
 impl Default for BootMetrics {
     fn default() -> Self {
-        Self::Disabled,
+        Self::Disabled
     }
 }
 

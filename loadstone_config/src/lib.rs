@@ -76,10 +76,6 @@ impl Configuration {
             self.feature_configuration.serial = Serial::Disabled;
         }
 
-        if !features::BootMetrics::timing_supported(&self.port) {
-            self.feature_configuration.boot_metrics.timing_enabled = false;
-        }
-
         if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash) {
             self.memory_configuration.external_flash = None;
         }
