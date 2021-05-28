@@ -17,50 +17,24 @@
             banks: [
                 (
                     start_address: 134283264,
-                    size_kb: 959,
+                    size_kb: 16,
                 ),
             ],
             bootable_index: Some(0),
         ),
         external_memory_map: (
-            banks: [
-                (
-                    start_address: 0,
-                    size_kb: 480,
-                ),
-                (
-                    start_address: 491520,
-                    size_kb: 480,
-                ),
-                (
-                    start_address: 983040,
-                    size_kb: 480,
-                ),
-            ],
+            banks: [],
         ),
-        external_flash: Some((
-            name: "Micron n25q128a",
-            internal: false,
-            start: 0,
-            end: 16777215,
-            region_size: 4096,
-        )),
-        golden_index: Some(3),
+        external_flash: None,
+        golden_index: None,
     ),
     feature_configuration: (
-        serial: (
-            enabled: true,
-            recovery_enabled: true,
-            tx_pin: Some("Pg14"),
-            rx_pin: Some("Pg9"),
-        ),
-        boot_metrics: (
-            enabled: true,
-            timing_enabled: true,
-        ),
+        serial: Disabled,
+        boot_metrics: Disabled,
     ),
     security_configuration: (
-        security_mode: P256ECDSA,
-        verifying_key_raw: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp v7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----",
+        security_mode: Crc,
+        verifying_key_raw: "",
     ),
+    feature_flags: [],
 )

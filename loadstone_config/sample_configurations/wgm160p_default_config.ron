@@ -17,11 +17,7 @@
             banks: [
                 (
                     start_address: 65536,
-                    size_kb: 900,
-                ),
-                (
-                    start_address: 987136,
-                    size_kb: 900,
+                    size_kb: 4,
                 ),
             ],
             bootable_index: Some(0),
@@ -30,22 +26,15 @@
             banks: [],
         ),
         external_flash: None,
-        golden_index: Some(1),
+        golden_index: None,
     ),
     feature_configuration: (
-        serial: (
-            enabled: false,
-            recovery_enabled: false,
-            tx_pin: None,
-            rx_pin: None,
-        ),
-        boot_metrics: (
-            enabled: true,
-            timing_enabled: false,
-        ),
+        serial: Disabled,
+        boot_metrics: Disabled,
     ),
     security_configuration: (
-        security_mode: P256ECDSA,
-        verifying_key_raw: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp v7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----",
+        security_mode: Crc,
+        verifying_key_raw: "",
     ),
+    feature_flags: [],
 )

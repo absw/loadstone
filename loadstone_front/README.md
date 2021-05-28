@@ -6,4 +6,4 @@ GithubActions.
 
 # Usage
 
-[Click here and follow the instructions!](https://absw.github.io/loadstone-front/)
+[Click here and follow the instructions!](https://absw.github.io/loadstone/)
