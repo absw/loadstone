@@ -1,7 +1,6 @@
 #![feature(bool_to_option)]
-#![allow(unused)]
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use loadstone_config::{codegen::generate_modules, Configuration};
 use std::fs;
 
@@ -12,29 +11,7 @@ fn configure_runner(target: &str) {
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
-fn main() -> Result<()> {
-    process_configuration_file()?;
-
-    #[cfg(feature = "wgm160p")]
-    build_wgm160p()?;
-
-    #[cfg(feature = "stm32f412_discovery")]
-    build_stm32f412_discovery()?;
-
-    Ok(())
-}
-
-#[allow(unused)]
-fn build_wgm160p() -> Result<()> {
-    configure_runner("wgm160p");
-    Ok(())
-}
-
-#[allow(unused)]
-fn build_stm32f412_discovery() -> Result<()> {
-    configure_runner("stm32f412_discovery");
-    Ok(())
-}
+fn main() -> Result<()> { process_configuration_file() }
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
@@ -55,11 +32,11 @@ fn process_configuration_file() -> Result<()> {
 
     validate_feature_flags_against_configuration(&configuration);
     generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
+    configure_runner(configuration.port.board_name());
 
     Ok(())
 }
 
-#[allow(unused)]
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     let supplied_flags: Vec<_> = std::env::vars()
         .filter_map(|(k, _)| {
