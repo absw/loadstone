@@ -1,4 +1,5 @@
 #![feature(bool_to_option)]
+#![allow(unused)]
 
 use anyhow::{anyhow, Result};
 use loadstone_config::{codegen::generate_modules, Configuration};
