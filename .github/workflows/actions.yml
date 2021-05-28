@@ -43,8 +43,10 @@ jobs:
       - name: Check sample WGM160p build
         env:
           SCRIPT_MODE: true
-        run: bash LOADSTONE_CONFIG=`cat loadstone_config/sample_configurations/wgm160p_sample.ron` cargo check --features wgm160p
+          LOADSTONE_CONFIG = '(port:(family:Some((Family,"efm32",[(Subfamily,"efm32gg11",[(Board,"wgm160p",[]),]),])),subfamily:Some((Subfamily,"efm32gg11",[(Board,"wgm160p",[]),])),board:Some((Board,"wgm160p",[])),),memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:64,banks:[(start_address:65536,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
+        run: bash cargo check --features wgm160p
       - name: Check sample stm32f412 build
         env:
           SCRIPT_MODE: true
-        run: bash LOADSTONE_CONFIG=`cat loadstone_config/sample_configurations/stm32f412_discovery_sample.ron` cargo check --features stm32f412_discovery
+          LOADSTONE_CONFIG = '(port:(family:Some((Family,"stm32",[(Subfamily,"stm32f4",[(Board,"stm32f412",[]),]),])),subfamily:Some((Subfamily,"stm32f4",[(Board,"stm32f412",[]),])),board:Some((Board,"stm32f412",[])),),memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
+        run: bash cargo check --features stm32f412_discovery
