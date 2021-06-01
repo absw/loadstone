@@ -2,10 +2,9 @@ use anyhow::Result;
 use quote::{format_ident, quote};
 use std::{fs::OpenOptions, io::Write, path::Path};
 
-use crate::{
-    memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration},
-    port::{board, subfamily, Port},
-};
+use crate::memory::{ExternalMemoryMap, InternalMemoryMap};
+use crate::memory::MemoryConfiguration;
+use crate::port::{Port, Subfamily};
 
 use super::prettify_file;
 
@@ -44,7 +43,7 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
                 .map(|f| format_ident!("{}", f))
                 .collect()
         }
-        None if port.board_name() == board::STM32F412 => {
+        None if *port == Port::Stm32F412 => {
             // Slight hack to ensure the current bootloader constructor for the Discovery gets the
             // right type definitions even for an absent external flash.
             ["blue_hal", "drivers", "micron", "n25q128a_flash", "Address"]
@@ -55,20 +54,19 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
         _ => ["usize"].iter().map(|f| format_ident!("{}", f)).collect(),
     };
 
-    let mcu_address: Vec<_> = match port {
-        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::STM32F4 => {
+    let mcu_address: Vec<_> = match port.subfamily() {
+        Subfamily::Stm32f4 => {
             ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
                 .iter()
                 .map(|f| format_ident!("{}", f))
                 .collect()
         }
-        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::EFM32GG11 => {
+        Subfamily::Efm32Gg11 => {
             ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
                 .iter()
                 .map(|f| format_ident!("{}", f))
                 .collect()
         }
-        _ => panic!("Invalid MCU flash supplied"),
     };
 
     let code = quote! {

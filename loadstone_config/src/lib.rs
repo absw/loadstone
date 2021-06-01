@@ -13,11 +13,9 @@ use std::{array::IntoIter, fmt::Display};
 
 use features::{FeatureConfiguration, Serial};
 use memory::{external_flash, MemoryConfiguration};
-use port::{board::STM32F412, Port};
+use port::Port;
 use security::{SecurityConfiguration, SecurityMode};
 use serde::{Deserialize, Serialize};
-
-use crate::port::board::WGM160P;
 
 pub mod port;
 pub mod pins;
@@ -41,17 +39,6 @@ impl Configuration {
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
         #[rustfmt::skip]
         IntoIter::new([
-            // Family must always be defined
-            self.port.family.is_none().then_some(RequiredConfigurationStep::Family),
-
-            // Subfamily is optional depending on the granularity of the internal flash port
-            (self.port.family.is_some() && self.port.subfamily.is_none() && memory::internal_flash(&self.port).is_none())
-                .then_some(RequiredConfigurationStep::Subfamily),
-
-            // Board is optional depending on the granularity of the internal flash port
-            (self.port.subfamily.is_some() && self.port.board.is_none() && memory::internal_flash(&self.port).is_none())
-                .then_some(RequiredConfigurationStep::Board),
-
             self.memory_configuration.internal_memory_map.bootable_index.is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),
 
@@ -67,13 +54,6 @@ impl Configuration {
     // TODO replace with typestates / type safety wherever possible, by adjusting the loadstone
     // front app to match
     pub fn cleanup(&mut self) {
-        if !self.port.family.as_ref().map_or(false, |f| f.contains(self.port.subfamily.as_ref())) {
-            self.port.subfamily = None;
-        }
-        if !self.port.subfamily.as_ref().map_or(false, |f| f.contains(self.port.board.as_ref())) {
-            self.port.board = None;
-        }
-
         if !features::Serial::supported(&self.port) {
             self.feature_configuration.serial = Serial::Disabled;
         }
@@ -87,18 +67,14 @@ impl Configuration {
             self.memory_configuration.external_memory_map.banks.clear();
         }
 
-        match self.port.board_name() {
-            name if name == STM32F412 => self.feature_flags = vec!["stm34f412_discovery".into()],
-            name if name == WGM160P => self.feature_flags = vec!["wgm160p".into()],
-            _ => {}
+        match self.port {
+            Port::Stm32F412 => self.feature_flags = vec!["stm32f412_discovery".into()],
+            Port::Wgm160P =>  self.feature_flags = vec!["wgm160p".into()],
         }
     }
 }
 
 pub enum RequiredConfigurationStep {
-    Family,
-    Subfamily,
-    Board,
     PublicKey,
     SerialTxPin,
     SerialRxPin,
@@ -111,9 +87,6 @@ impl Display for RequiredConfigurationStep {
             RequiredConfigurationStep::PublicKey => {
                 "[Security] Provide P256 ECDSA public key or enable CRC32 mode"
             }
-            RequiredConfigurationStep::Family => "[Target] Specify target MCU family",
-            RequiredConfigurationStep::Subfamily => "[Target] Specify target MCU subfamily",
-            RequiredConfigurationStep::Board => "[Target] Specify target board",
             RequiredConfigurationStep::SerialTxPin => "[Features] Define Serial Tx pin",
             RequiredConfigurationStep::SerialRxPin => "[Features] Define Serial Rx pin",
             RequiredConfigurationStep::BootableBank => "[Memory Map] Define a bootable bank",

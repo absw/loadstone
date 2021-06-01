@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::port::{board, subfamily, Port};
+use crate::port::Port;
 
 #[macro_export(local_inner_macros)]
 macro_rules! KB {
@@ -73,35 +73,33 @@ pub struct FlashChip {
 }
 
 pub fn internal_flash(port: &Port) -> Option<FlashChip> {
-    if port.board_name() == board::STM32F412 {
-        Some(FlashChip {
+    match port {
+        Port::Stm32F412 => Some(FlashChip {
             name: "STM32F412 MCU Flash".to_owned(),
             internal: true,
             start: 0x0800_0000,
             end: 0x0810_0000,
             region_size: KB!(16),
-        })
-    } else if port.subfamily_name() == subfamily::EFM32GG11 {
-        Some(FlashChip {
+        }),
+        Port::Wgm160P => Some(FlashChip {
             name: "EFM32GG11 MCU Flash".to_owned(),
             internal: true,
             start: 0x0000_0000,
             end: 512 * KB!(4),
             region_size: KB!(4),
-        })
-    } else {
-        None
+        }),
     }
 }
 
 pub fn external_flash(port: &Port) -> impl Iterator<Item = FlashChip> {
-    (port.subfamily_name() == subfamily::STM32F4)
-        .then_some(FlashChip {
+    match port {
+        Port::Stm32F412 => Some(FlashChip {
             name: "Micron n25q128a".to_owned(),
             internal: false,
             start: 0x0000_0000,
             end: 0x00FF_FFFF,
             region_size: KB!(4),
-        })
-        .into_iter()
+        }).into_iter(),
+        Port::Wgm160P => None.into_iter(),
+    }
 }

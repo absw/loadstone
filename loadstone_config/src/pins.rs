@@ -1,22 +1,49 @@
-use crate::port::{board_names, Port};
+use crate::port::Port;
 
-static STM32F412_SERIAL_TX_PINS: &'static [&'static str] =
-    &["Pa9", "Pb6", "Pa2", "Pd5", "Pa15", "Pc7", "Pa11", "Pg14"];
-static STM32F412_SERIAL_RX_PINS: &'static [&'static str] =
-    &["Pb3", "Pb7", "Pa10", "Pa3", "Pd6", "Pc7", "Pa12", "Pg9"];
+#[derive(Copy, Clone, Debug)]
+pub struct Pin {
+    pub peripheral: usize,
+    pub bank: char,
+    pub index: usize,
+}
 
-pub fn serial_tx(port: &Port) -> impl Iterator<Item = &'static str> {
-    if port.board_name() == board_names::STM32F412 {
-        STM32F412_SERIAL_TX_PINS.iter().cloned()
-    } else {
-        [].iter().cloned()
+impl Pin {
+    const fn new(peripheral: usize, bank: char, index: usize) -> Self {
+        Self { peripheral, bank, index }
     }
 }
 
-pub fn serial_rx(port: &Port) -> impl Iterator<Item = &'static str> {
-    if port.board_name() == board_names::STM32F412 {
-        STM32F412_SERIAL_RX_PINS.iter().cloned()
-    } else {
-        [].iter().cloned()
+static STM32F4_SERIAL_TX_PINS: &'static [Pin] = &[
+    Pin::new(1, 'a', 9),
+    Pin::new(1, 'b', 6),
+    Pin::new(2, 'a', 2),
+    Pin::new(2, 'd', 5),
+    Pin::new(1, 'a', 15),
+    Pin::new(6, 'c', 7),
+    Pin::new(6, 'a', 11),
+    Pin::new(6, 'g', 14),
+];
+static STM32F4_SERIAL_RX_PINS: &'static [Pin] = &[
+    Pin::new(1, 'b', 3),
+    Pin::new(1, 'b', 7),
+    Pin::new(1, 'a', 10),
+    Pin::new(2, 'a', 3),
+    Pin::new(2, 'd', 6),
+    Pin::new(6, 'c', 7),
+    Pin::new(6, 'a', 12),
+    Pin::new(6, 'g', 9),
+];
+
+pub fn serial_tx(port: &Port) -> impl Iterator {
+    match port {
+        Port::Stm32F412 => STM32F4_SERIAL_TX_PINS.iter().cloned(),
+        Port::Wgm160P => [].iter().cloned(),
+    }
+}
+
+pub fn serial_rx(port: &Port) -> impl Iterator {
+    match port {
+        Port::Stm32F412 => STM32F4_SERIAL_RX_PINS.iter().cloned(),
+        Port::Wgm160P => [].iter().cloned(),
     }
 }
