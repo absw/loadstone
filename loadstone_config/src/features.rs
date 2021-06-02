@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::port::Port;
+use crate::{pins::Pin, port::Port};
 
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureConfiguration {
@@ -29,7 +29,7 @@ impl BootMetrics {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Serial {
-    Enabled { recovery_enabled: bool, tx_pin: String, rx_pin: String },
+    Enabled { recovery_enabled: bool, tx_pin: Pin, rx_pin: Pin },
     Disabled,
 }
 

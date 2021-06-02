@@ -22,6 +22,8 @@ git-version = "*"
 reqwest-wasm = "*"
 futures = "*"
 loadstone_config = { path = "../loadstone_config/" }
+atomic_refcell = "*"
+enum-iterator = "*"
 getrandom = { version = "*", features = ["js"] }
 
 [dependencies.ecdsa]

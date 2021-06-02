@@ -102,10 +102,9 @@ dependencies = [
 [[package]]
 name = "blue_hal"
 version = "0.1.0"
-source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#b1e7302f3ef03a5a7c32eb23b1ac41c205c7baff"
 dependencies = [
  "bytemuck",
- "cortex-m 0.6.7",
+ "cortex-m 0.7.2",
  "cortex-m-rt",
  "cortex-m-semihosting",
  "crc",
@@ -347,6 +346,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "enum-iterator"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c79a6321a1197d7730510c7e3f6cb80432dfefecb32426de8cea0aa19b4bb8d7"
+dependencies = [
+ "enum-iterator-derive",
+]
+
+[[package]]
+name = "enum-iterator-derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e94aa31f7c0dc764f57896dc615ddd76fc13b0d5dca7eb6cc5e018a5a09ec06"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "ff"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -456,9 +475,11 @@ name = "loadstone_config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "enum-iterator",
  "quote",
  "serde",
  "syn",
+ "tightness",
 ]
 
 [[package]]
@@ -749,6 +770,36 @@ name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
+name = "thiserror"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa6f76457f59514c7eeb4e59d891395fab0b2fd1d40723ae737d64153392e9c6"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "1.0.25"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a36768c0fbf1bb15eca10defa29526bda730a2376c2ab4393ccfa16fb1a318d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "tightness"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f40a70c25682cb49884e83a22dcaaf7c6574b3111948f645663a3ebbe7c6f366"
+dependencies = [
+ "paste",
+ "thiserror",
+]
 
 [[package]]
 name = "typenum"

@@ -9,3 +9,4 @@ syn = { version = "1.0.63", features = ["full", "fold"] }
 quote = "1.0.9"
 anyhow = "*"
 tightness = "*"
+enum-iterator = "*"

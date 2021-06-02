@@ -1,7 +1,10 @@
+use std::fmt::Display;
+
 use crate::KB;
 use serde::{Deserialize, Serialize};
+use enum_iterator::IntoEnumIterator;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, IntoEnumIterator)]
 pub enum Port {
     Stm32F412,
     Wgm160P
@@ -25,6 +28,32 @@ pub enum Subfamily {
     Efm32Gg11
 }
 
+impl Display for Port {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Port::Stm32F412 => "stm32f412",
+            Port::Wgm160P => "wgm160p",
+        })
+    }
+}
+
+impl Display for Family {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Family::Stm32 => "stm32",
+            Family::Efm32 => "efm32",
+        })
+    }
+}
+
+impl Display for Subfamily {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Subfamily::Stm32f4 => "f4",
+            Subfamily::Efm32Gg11 => "gg11",
+        })
+    }
+}
 
 impl Port {
     pub fn family(&self) -> Family {
