@@ -51,6 +51,7 @@ pub fn configure_memory_map(
         ui.label("Bootloader:");
         select_bootloader_location(ui, internal_memory_map, &internal_flash);
         select_bootloader_length(ui, internal_memory_map, &internal_flash);
+        ui.label("Demo App:");
         ui.label("Banks:");
         ui.separator();
         configure_internal_banks(ui, internal_memory_map, &internal_flash, golden_index);

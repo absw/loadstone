@@ -2,7 +2,10 @@ use anyhow::Result;
 use quote::{format_ident, quote};
 use std::{fs::OpenOptions, io::Write, path::Path};
 
-use crate::{memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration}, port::{Port, board, subfamily}};
+use crate::{
+    memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration},
+    port::{board, subfamily, Port},
+};
 
 use super::prettify_file;
 
@@ -36,23 +39,35 @@ pub fn generate<P: AsRef<Path>>(
 fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> Result<String> {
     let external_address: Vec<_> = match &memory_configuration.external_flash {
         Some(external_flash) if external_flash.name.to_lowercase().contains("n25q128a") => {
-            ["blue_hal","drivers","micron","n25q128a_flash","Address"].iter().map(|f| format_ident!("{}", f)).collect()
-        },
+            ["blue_hal", "drivers", "micron", "n25q128a_flash", "Address"]
+                .iter()
+                .map(|f| format_ident!("{}", f))
+                .collect()
+        }
         None if port.board_name() == board::STM32F412 => {
             // Slight hack to ensure the current bootloader constructor for the Discovery gets the
             // right type definitions even for an absent external flash.
-            ["blue_hal","drivers","micron","n25q128a_flash","Address"].iter().map(|f| format_ident!("{}", f)).collect()
-        },
+            ["blue_hal", "drivers", "micron", "n25q128a_flash", "Address"]
+                .iter()
+                .map(|f| format_ident!("{}", f))
+                .collect()
+        }
         _ => ["usize"].iter().map(|f| format_ident!("{}", f)).collect(),
     };
 
     let mcu_address: Vec<_> = match port {
-        Port { subfamily: Some(subfamily),..} if subfamily.name() == subfamily::STM32F4 => {
-            ["blue_hal", "drivers", "stm32f4", "flash", "Address"].iter().map(|f| format_ident!("{}", f)).collect()
-        },
-        Port { subfamily: Some(subfamily),..} if subfamily.name() == subfamily::EFM32GG11 => {
-            ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"].iter().map(|f| format_ident!("{}", f)).collect()
-        },
+        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::STM32F4 => {
+            ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
+                .iter()
+                .map(|f| format_ident!("{}", f))
+                .collect()
+        }
+        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::EFM32GG11 => {
+            ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
+                .iter()
+                .map(|f| format_ident!("{}", f))
+                .collect()
+        }
         _ => panic!("Invalid MCU flash supplied"),
     };
 
@@ -73,7 +88,8 @@ fn generate_external_banks(
     golden_index: Option<usize>,
 ) -> Result<String> {
     let number_of_external_banks = map.banks.len();
-    let index: Vec<u8> = map.banks.iter().enumerate().map(|(i, _)| (i + base_index) as u8).collect();
+    let index: Vec<u8> =
+        map.banks.iter().enumerate().map(|(i, _)| (i + base_index) as u8).collect();
     let bootable = vec![false; number_of_external_banks];
     let location: Vec<u32> = map.banks.iter().map(|b| b.start_address).collect();
     let size: Vec<usize> = map.banks.iter().map(|b| (b.size_kb * 1024) as usize).collect();
@@ -101,7 +117,8 @@ fn generate_mcu_banks(
     golden_index: Option<usize>,
 ) -> Result<String> {
     let number_of_mcu_banks = map.banks.len();
-    let index: Vec<u8> = map.banks.iter().enumerate().map(|(i, _)| (i + base_index) as u8).collect();
+    let index: Vec<u8> =
+        map.banks.iter().enumerate().map(|(i, _)| (i + base_index) as u8).collect();
     let bootable: Vec<bool> =
         (0..number_of_mcu_banks).map(|i| Some(i) == map.bootable_index).collect();
     let location: Vec<u32> = map.banks.iter().map(|b| b.start_address).collect();

@@ -39,7 +39,7 @@ jobs:
       - name: Build Demo App
         env:
           SCRIPT_MODE: true
-        run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin demo_app --release --target thumbv7em-none-eabihf --features ${{ github.event.inputs.loadstone_features }} -- -O binary demo_app.bin
+        run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin demo_app --release --target thumbv7em-none-eabihf --features relocate-to-bootable-bank,${{ github.event.inputs.loadstone_features }} -- -O binary demo_app.bin
       - name: Upload Loadstone Artifacts
         uses: actions/upload-artifact@v2
         with:

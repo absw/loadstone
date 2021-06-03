@@ -1,18 +1,8 @@
 #![feature(bool_to_option)]
-#![allow(unused)]
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use loadstone_config::{codegen::generate_modules, Configuration};
 use std::fs;
-
-fn configure_memory_x(file: &str) {
-    let filename = format!("memory/{}", file);
-
-    println!("cargo:rerun-if-changed=memory.x");
-    println!("cargo:rerun-if-changed={}", &filename);
-
-    fs::copy(&filename, "memory.x").unwrap();
-}
 
 fn configure_runner(target: &str) {
     println!("cargo:rerun-if-changed={}", RUNNER_TARGET_FILE);
@@ -21,43 +11,7 @@ fn configure_runner(target: &str) {
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
-fn main() -> Result<()> {
-    process_configuration_file()?;
-
-    #[cfg(feature = "wgm160p")]
-    build_wgm160p()?;
-
-    #[cfg(feature = "stm32f412_discovery")]
-    build_stm32f412_discovery()?;
-
-    Ok(())
-}
-
-#[allow(unused)]
-fn build_wgm160p() -> Result<()> {
-    configure_memory_x("wgm160p.x");
-    configure_runner("wgm160p");
-    Ok(())
-}
-
-#[allow(unused)]
-fn build_stm32f412_discovery() -> Result<()> {
-    println!("cargo:rerun-if-env-changed=LOADSTONE_USE_ALT_MEMORY");
-
-    let use_alt_memory = match option_env!("LOADSTONE_USE_ALT_MEMORY") {
-        None => false,
-        Some("0") => false,
-        Some("1") => true,
-        _ => panic!("LOADSTONE_USE_ALT_MEMORY must be 0, 1 or undefined."),
-    };
-
-    let memory_file =
-        if use_alt_memory { "stm32f412_discovery.alt.x" } else { "stm32f412_discovery.x" };
-
-    configure_memory_x(memory_file);
-    configure_runner("stm32f412_discovery");
-    Ok(())
-}
+fn main() -> Result<()> { process_configuration_file() }
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
@@ -78,11 +32,11 @@ fn process_configuration_file() -> Result<()> {
 
     validate_feature_flags_against_configuration(&configuration);
     generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
+    configure_runner(configuration.port.board_name());
 
     Ok(())
 }
 
-#[allow(unused)]
 fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     let supplied_flags: Vec<_> = std::env::vars()
         .filter_map(|(k, _)| {

@@ -18,8 +18,7 @@ use crate::app::utilities::download_file;
 const REST_API_ENDPOINT: &str =
     "https://api.github.com/repos/absw/loadstone/actions/workflows/dispatch.yml/dispatches";
 
-const ACTIONS_URL: &str =
-    "https://github.com/absw/loadstone/actions";
+const ACTIONS_URL: &str = "https://github.com/absw/loadstone/actions";
 
 const GITHUB_TOKEN_INSTRUCTIONS: &str = "https://docs.github.com/en/github/\
     authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token";
@@ -91,31 +90,42 @@ fn generate_in_ci(
             let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
                 .unwrap_or("Invalid Configuration Supplied".into());
 
-                generate_web(&configuration, &personal_access_token_field, &ron, last_request_response)
-                    .unwrap();
+            generate_web(&configuration, &personal_access_token_field, &ron, last_request_response)
+                .unwrap();
 
             personal_access_token_field.clear();
         }
     });
 
     match &*last_request_response.lock() {
-        Some(Ok(response)) if response.status() == StatusCode::NO_CONTENT || response.status() == StatusCode::ACCEPTED => {
+        Some(Ok(response))
+            if response.status() == StatusCode::NO_CONTENT
+                || response.status() == StatusCode::ACCEPTED =>
+        {
             ui.horizontal_wrapped(|ui| {
                 ui.colored_label(Color32::GREEN, "Request accepted!");
                 ui.label("Go to");
                 ui.hyperlink_to("Loadstone's Github Actions", ACTIONS_URL);
                 ui.label("to monitor your build's progress.");
             });
-        },
+        }
         Some(Ok(response)) if response.status() == StatusCode::NOT_FOUND => {
             ui.colored_label(Color32::RED, "Repository not found. This likely means your Github PAT doesn't have enough rights.");
-        },
+        }
         Some(Ok(response)) if response.status() == StatusCode::BAD_REQUEST => {
-            ui.colored_label(Color32::RED, "Bad request. Somehow your .ron file has broken the json parser. Please download \
-                             it and submit it as a bug report.");
-        },
-        Some(_) => { ui.colored_label(Color32::RED, "Github Actions is not responding. Are you sure Github is up?"); },
-        None => {},
+            ui.colored_label(
+                Color32::RED,
+                "Bad request. Somehow your .ron file has broken the json parser. Please download \
+                             it and submit it as a bug report.",
+            );
+        }
+        Some(_) => {
+            ui.colored_label(
+                Color32::RED,
+                "Github Actions is not responding. Are you sure Github is up?",
+            );
+        }
+        None => {}
     }
 }
 
@@ -125,8 +135,18 @@ fn generate_native(ui: &mut Ui, configuration: &Configuration) {
         ui.horizontal_wrapped(|ui| {
             if ui.button("Generate").clicked() {
                 // TODO clean up unwraps
-                let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(LOCAL_OUTPUT_FILENAME).unwrap();
-                file.write_all(ron::ser::to_string_pretty(&configuration, PrettyConfig::default()).unwrap().as_bytes()).unwrap();
+                let mut file = OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(LOCAL_OUTPUT_FILENAME)
+                    .unwrap();
+                file.write_all(
+                    ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
+                        .unwrap()
+                        .as_bytes(),
+                )
+                .unwrap();
             }
             ui.label("Generate a");
             ui.colored_label(Color32::LIGHT_BLUE, LOCAL_OUTPUT_FILENAME);

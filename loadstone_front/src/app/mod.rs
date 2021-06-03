@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use self::menus::{
-    configure_boot_metrics, memory_map::configure_memory_map,
-    security::configure_security, select_port,
+    configure_boot_metrics, memory_map::configure_memory_map, security::configure_security,
+    select_port,
 };
 use crate::app::menus::{generate, serial::configure_serial};
 use eframe::{
@@ -88,10 +88,18 @@ impl epi::App for LoadstoneApp {
                                 && pins::serial_tx(&mut configuration.port).count() > 0
                                 && pins::serial_rx(&mut configuration.port).count() > 0,
                         );
-                        configure_serial(ui, &mut &mut configuration.feature_configuration.serial, &mut configuration.port);
+                        configure_serial(
+                            ui,
+                            &mut &mut configuration.feature_configuration.serial,
+                            &mut configuration.port,
+                        );
                     });
                     ui.group(|ui| {
-                        configure_boot_metrics(ui, &mut configuration.feature_configuration.boot_metrics, &mut configuration.port);
+                        configure_boot_metrics(
+                            ui,
+                            &mut configuration.feature_configuration.boot_metrics,
+                            &mut configuration.port,
+                        );
                     });
                 });
                 ui.separator();

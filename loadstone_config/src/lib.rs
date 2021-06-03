@@ -12,8 +12,8 @@
 use std::{array::IntoIter, fmt::Display};
 
 use features::{FeatureConfiguration, Serial};
-use memory::{MemoryConfiguration, external_flash};
-use port::{Port, board::STM32F412};
+use memory::{external_flash, MemoryConfiguration};
+use port::{board::STM32F412, Port};
 use security::{SecurityConfiguration, SecurityMode};
 use serde::{Deserialize, Serialize};
 
@@ -78,7 +78,8 @@ impl Configuration {
             self.feature_configuration.serial = Serial::Disabled;
         }
 
-        if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash) {
+        if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash)
+        {
             self.memory_configuration.external_flash = None;
         }
 
@@ -87,9 +88,9 @@ impl Configuration {
         }
 
         match self.port.board_name() {
-            name if name == STM32F412 => {self.feature_flags = vec!["stm34f412_discovery".into()]},
-            name if name == WGM160P => {self.feature_flags = vec!["wgm160p".into()]},
-            _ => {},
+            name if name == STM32F412 => self.feature_flags = vec!["stm34f412_discovery".into()],
+            name if name == WGM160P => self.feature_flags = vec!["wgm160p".into()],
+            _ => {}
         }
     }
 }
