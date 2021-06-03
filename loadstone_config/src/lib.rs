@@ -74,7 +74,7 @@ impl Configuration {
 
         match &self.feature_configuration.serial {
             Serial::Enabled { recovery_enabled, .. } if *recovery_enabled => {
-                self.feature_flags.append(&mut vec!["serial".into(), "serial_recovery".into()])
+                self.feature_flags.append(&mut vec!["serial".into(), "serial-recovery".into()])
             }
             Serial::Enabled { .. } => self.feature_flags.push("serial".into()),
             _ => (),

@@ -1,58 +1,34 @@
 (
-    port: Stm32F412,
+    port: Wgm160P,
     memory_configuration: (
         internal_memory_map: (
-            bootloader_location: 134217728,
-            bootloader_length_kb: 64,
+            bootloader_location: 0,
+            bootloader_length_kb: 42,
             banks: [
                 (
-                    start_address: 134283264,
-                    size_kb: 16,
+                    start_address: 45056,
+                    size_kb: 250,
                 ),
             ],
             bootable_index: Some(0),
         ),
         external_memory_map: (
-            banks: [
-                (
-                    start_address: 0,
-                    size_kb: 4000,
-                ),
-            ],
+            banks: [],
         ),
-        external_flash: Some((
-            name: "Micron n25q128a",
-            internal: false,
-            start: 0,
-            end: 16777215,
-            region_size: 4096,
-        )),
-        golden_index: Some(1),
+        external_flash: None,
+        golden_index: Some(3),
     ),
     feature_configuration: (
-        serial: Enabled(
-            recovery_enabled: false,
-            tx_pin: (
-                peripheral: "USART1",
-                bank: 'b',
-                index: 6,
-                af_index: 7,
-            ),
-            rx_pin: (
-                peripheral: "USART1",
-                bank: 'a',
-                index: 10,
-                af_index: 7,
-            ),
+        serial: Disabled,
+        boot_metrics: Enabled(
+            timing: false,
         ),
-        boot_metrics: Disabled,
     ),
     security_configuration: (
         security_mode: Crc,
         verifying_key_raw: "",
     ),
     feature_flags: [
-        "stm32f412_discovery",
-        "serial",
+        "wgm160p",
     ],
 )

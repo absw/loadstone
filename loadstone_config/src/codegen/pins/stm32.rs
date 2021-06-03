@@ -143,8 +143,9 @@ fn generate_imports_and_types(
             pub type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
             pub type Qspi = QuadSpi<QspiPins, mode::Single>;
             pub type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
-            use blue_hal::drivers::stm32f4::qspi::{
-                mode, QuadSpi,
+            #[allow(unused_imports)]
+            pub use blue_hal::drivers::stm32f4::qspi::{
+                self, mode, QuadSpi,
                 ClkPin as QspiClk,
                 Bk1CsPin as QspiChipSelect,
                 Bk1Io0Pin as QspiOutput,
@@ -152,12 +153,13 @@ fn generate_imports_and_types(
                 Bk1Io2Pin as QspiSecondaryOutput,
                 Bk1Io3Pin as QspiSecondaryInput,
             };
-
             enable_gpio!();
         });
     } else {
         code.append_all(quote! {
+            pub type ExternalFlash = blue_hal::hal::null::NullFlash;
             pub type QspiPins = ();
+            enable_gpio!();
         });
     }
 }

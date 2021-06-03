@@ -12,6 +12,36 @@ pub fn generate<P: AsRef<Path>>(
     let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(&filename)?;
     let mut code = quote!{};
 
+    generate_serial(configuration, &mut code)?;
+    generate_flash(configuration, &mut code)?;
+
+    file.write_all(format!("{}", code).as_bytes())?;
+    prettify_file(filename).ok();
+    Ok(())
+}
+
+fn generate_flash(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()>{
+    if configuration.memory_configuration.external_flash.is_some() {
+        code.append_all(quote!{
+            use super::pin_configuration::*;
+            pub fn construct_flash(qspi_pins: QspiPins, qspi: stm32pac::QUADSPI) -> Option<ExternalFlash> {
+                let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
+                let qspi = Qspi::from_config(qspi, qspi_pins, qspi_config).unwrap();
+                let external_flash = ExternalFlash::with_timeout(qspi, time::Milliseconds(5000)).unwrap();
+                Some(external_flash)
+            }
+        })
+    } else {
+        code.append_all(quote!{
+            use super::pin_configuration::*;
+            #[allow(unused)]
+            pub fn construct_flash(qspi_pins: QspiPins, qspi: stm32pac::QUADSPI) -> Option<ExternalFlash> { None }
+        })
+    }
+    Ok(())
+}
+
+fn generate_serial(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()> {
     if let Serial::Enabled { tx_pin,.. } = &configuration.feature_configuration.serial {
         let peripheral = format_ident!("{}", tx_pin.peripheral.to_lowercase());
         code.append_all(quote!{
@@ -33,9 +63,6 @@ pub fn generate<P: AsRef<Path>>(
             }
         });
     }
-
-    file.write_all(format!("{}", code).as_bytes())?;
-    prettify_file(filename).ok();
     Ok(())
 }
 

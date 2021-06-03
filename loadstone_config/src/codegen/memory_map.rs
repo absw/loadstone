@@ -45,9 +45,7 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
                 .collect()
         }
         None if *port == Port::Stm32F412 => {
-            // Slight hack to ensure the current bootloader constructor for the Discovery gets the
-            // right type definitions even for an absent external flash.
-            ["blue_hal", "drivers", "micron", "n25q128a_flash", "Address"]
+            ["blue_hal", "hal", "null", "NullAddress"]
                 .iter()
                 .map(|f| format_ident!("{}", f))
                 .collect()
@@ -71,8 +69,10 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
         //! in the next project build. Generation logic for this module is defined in
         //! `loadstone_config/src/codegen/memory_map.rs`
         use crate::devices::image as image;
-        use #(#external_address)::* as ExternalAddress;
+        #[allow(unused_imports)]
+        use super::pin_configuration::ExternalFlash;
         use #(#mcu_address)::* as McuAddress;
+        use #(#external_address)::* as ExternalAddress;
     };
     Ok(format!("{}", code))
 }

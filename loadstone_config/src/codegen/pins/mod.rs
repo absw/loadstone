@@ -23,4 +23,7 @@ pub fn generate<P: AsRef<Path>>(
     Ok(())
 }
 
-fn generate_efm32gg(_configuration: &Configuration, _file: &mut File) -> Result<()> { todo!() }
+fn generate_efm32gg(_configuration: &Configuration, _file: &mut File) -> Result<()> {
+    // Nothing to do, as the current efm32gg port does not support any pins.
+    Ok(())
+}
