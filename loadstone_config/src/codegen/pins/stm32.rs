@@ -102,7 +102,8 @@ pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> 
 
         code.append_all(quote! {
             use blue_hal::drivers::stm32f4::serial::{TxPin, RxPin};
-            use blue_hal::stm32pac::#peripheral;
+            #[allow(unused_imports)]
+            use blue_hal::stm32pac::{USART1, USART2, USART6};
             pub type UsartPins = (#tx_pin<#tx_af>, #rx_pin<#rx_af>);
             pub type Serial = blue_hal::drivers::stm32f4::serial::Serial<#peripheral, UsartPins>;
         });
@@ -110,7 +111,13 @@ pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> 
 
     if let Some(_) = &configuration.memory_configuration.external_flash {
         code.append_all(quote! {
+            use blue_hal::drivers::micron::n25q128a_flash::MicronN25q128a;
+            use blue_hal::drivers::stm32f4::systick::SysTick;
+            pub type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
+            pub type Qspi = QuadSpi<QspiPins, mode::Single>;
+            pub type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
             use blue_hal::drivers::stm32f4::qspi::{
+                self, mode, QuadSpi,
                 ClkPin as QspiClk,
                 Bk1CsPin as QspiChipSelect,
                 Bk1Io0Pin as QspiOutput,
