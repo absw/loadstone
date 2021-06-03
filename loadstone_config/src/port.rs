@@ -80,7 +80,6 @@ impl Port {
                 flash: LinkerArea { origin: 0x00000000, size: KB!(1024) },
                 ram: LinkerArea { origin: 0x20000000, size: KB!(128) },
             }),
-            _ => None,
         }
     }
 }

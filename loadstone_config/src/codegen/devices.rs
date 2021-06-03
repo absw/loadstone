@@ -13,16 +13,23 @@ pub fn generate<P: AsRef<Path>>(
     let mut code = quote!{};
 
     if let Serial::Enabled { tx_pin,.. } = &configuration.feature_configuration.serial {
-        let peripheral = format_ident!("{}", tx_pin.peripheral);
+        let peripheral = format_ident!("{}", tx_pin.peripheral.to_lowercase());
         code.append_all(quote!{
             use super::pin_configuration::{UsartPins, Serial};
             use blue_hal::stm32pac;
             use blue_hal::hal::time;
             use blue_hal::drivers::stm32f4::rcc::Clocks;
             use blue_hal::drivers::stm32f4::serial::{self, UsartExt};
-            pub fn construct_serial(serial_pins: UsartPins, peripherals: &mut stm32pac::Peripherals, clocks: Clocks) -> Serial {
+            #[allow(unused)]
+            pub fn construct_serial(
+                serial_pins: UsartPins,
+                clocks: Clocks,
+                usart1: stm32pac::USART1,
+                usart2: stm32pac::USART2,
+                usart6: stm32pac::USART6
+            ) -> Serial {
                 let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-                peripherals.#peripheral.constrain(serial_pins, serial_config, clocks).unwrap()
+                #peripheral.constrain(serial_pins, serial_config, clocks).unwrap()
             }
         });
     }

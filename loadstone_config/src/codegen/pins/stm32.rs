@@ -28,34 +28,25 @@ struct QspiFlashPinTokens {
 pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> Result<()> {
     let mut code = quote! {
         use blue_hal::{enable_gpio, gpio, gpio_inner, alternate_functions, enable_qspi, enable_spi, enable_serial, pin_rows};
-        use blue_hal::paste;
         use blue_hal::drivers::stm32f4::gpio::*;
     };
 
     generate_imports_and_types(configuration, &mut code);
-
-    let mut gpio_banks = input_tokens(configuration)
-        .map(|t| t.bank)
-        .chain(serial_tokens(configuration).map(|t| t.bank))
-        .chain(qspi_flash_pin_tokens(configuration).map(|t| t.bank))
-        .collect_vec();
-    gpio_banks.sort();
-    gpio_banks.dedup();
-    generate_gpio_macros(&gpio_banks, configuration, &mut code);
-    generate_pin_constructor(&gpio_banks, configuration, &mut code);
+    generate_gpio_macros(configuration, &mut code);
+    generate_pin_constructor(configuration, &mut code);
 
     file.write_all(format!("{}", code).as_bytes())?;
     Ok(())
 }
 
 fn generate_pin_constructor(
-    gpio_banks: &Vec<char>,
     configuration: &Configuration,
     code: &mut quote::__private::TokenStream,
 ) -> () {
-    let gpio_fields = gpio_banks.iter().map(|b| format_ident!("gpio{}", b));
+    let banks = 'a'..='h';
+    let gpio_fields = banks.clone().map(|b| format_ident!("gpio{}", b)).collect_vec();
     let pac_gpio_fields =
-        gpio_banks.iter().map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
+        banks.map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
 
     let serial_pin_structs: Box<dyn Iterator<Item = Ident>> =
         if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial
@@ -109,12 +100,15 @@ fn generate_pin_constructor(
         };
 
     code.append_all(quote! {
-        pub fn pins(peripherals: &mut stm32pac::Peripherals) -> (UsartPins, QspiPins) {
-            #(let #gpio_fields = peripherals.#pac_gpio_fields.split(&mut peripherals.RCC);)*
+        #[allow(unused)]
+        pub fn pins(#(#gpio_fields: stm32pac::#pac_gpio_fields),*, rcc: &mut stm32pac::RCC) -> (UsartPins, QspiPins) {
+
+            #(let #gpio_fields = #gpio_fields.split(rcc);)*
             (
                 (#(#serial_pin_structs.#serial_pin_fields),*),
                 (#(#qspi_pin_structs.#qspi_pin_fields),*)
             )
+
         }
     });
 }
@@ -150,7 +144,7 @@ fn generate_imports_and_types(
             pub type Qspi = QuadSpi<QspiPins, mode::Single>;
             pub type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
             use blue_hal::drivers::stm32f4::qspi::{
-                self, mode, QuadSpi,
+                mode, QuadSpi,
                 ClkPin as QspiClk,
                 Bk1CsPin as QspiChipSelect,
                 Bk1Io0Pin as QspiOutput,
@@ -169,15 +163,14 @@ fn generate_imports_and_types(
 }
 
 fn generate_gpio_macros(
-    gpio_banks: &Vec<char>,
     configuration: &Configuration,
     code: &mut quote::__private::TokenStream,
 ) {
-    for bank in gpio_banks {
-        let input_tokens = input_tokens(configuration).filter(|t| t.bank == *bank).collect_vec();
-        let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == *bank).collect_vec();
+    for bank in 'a'..='h' {
+        let input_tokens = input_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
+        let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
         let qspi_flash_pin_tokens =
-            qspi_flash_pin_tokens(configuration).filter(|t| t.bank == *bank).collect_vec();
+            qspi_flash_pin_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
 
         let input_index = input_tokens.iter().map(|t| &t.index);
         let input_mode = input_tokens.iter().map(|t| &t.mode);
