@@ -1,13 +1,13 @@
 use std::fmt::Display;
 
 use crate::KB;
-use serde::{Deserialize, Serialize};
 use enum_iterator::IntoEnumIterator;
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, IntoEnumIterator)]
 pub enum Port {
     Stm32F412,
-    Wgm160P
+    Wgm160P,
 }
 
 impl Default for Port {
@@ -25,7 +25,7 @@ pub enum Family {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Subfamily {
     Stm32f4,
-    Efm32Gg11
+    Efm32Gg11,
 }
 
 impl Display for Port {
@@ -94,4 +94,3 @@ pub struct LinkerArea {
     pub origin: u32,
     pub size: usize,
 }
-

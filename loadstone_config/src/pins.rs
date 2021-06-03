@@ -1,5 +1,5 @@
-use std::{array::IntoIter, borrow::Cow, fmt::Display};
 use serde::{Deserialize, Serialize};
+use std::{array::IntoIter, borrow::Cow, fmt::Display};
 
 use crate::port::Port;
 
@@ -27,7 +27,7 @@ impl Display for Pin {
     }
 }
 
-pub fn serial_tx(port: &Port) -> Box<dyn Iterator<Item=Pin>> {
+pub fn serial_tx(port: &Port) -> Box<dyn Iterator<Item = Pin>> {
     match port {
         Port::Stm32F412 => Box::new(IntoIter::new([
             Pin::new(Cow::from("USART1"), 'a', 9, 7),
@@ -43,7 +43,7 @@ pub fn serial_tx(port: &Port) -> Box<dyn Iterator<Item=Pin>> {
     }
 }
 
-pub fn serial_rx(port: &Port) -> Box<dyn Iterator<Item=Pin>> {
+pub fn serial_rx(port: &Port) -> Box<dyn Iterator<Item = Pin>> {
     match port {
         Port::Stm32F412 => Box::new(IntoIter::new([
             Pin::new(Cow::from("USART1"), 'b', 3, 7),

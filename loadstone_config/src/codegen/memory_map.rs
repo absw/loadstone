@@ -2,9 +2,10 @@ use anyhow::Result;
 use quote::{format_ident, quote};
 use std::{fs::OpenOptions, io::Write, path::Path};
 
-use crate::memory::{ExternalMemoryMap, InternalMemoryMap};
-use crate::memory::MemoryConfiguration;
-use crate::port::{Port, Subfamily};
+use crate::{
+    memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration},
+    port::{Port, Subfamily},
+};
 
 use super::prettify_file;
 
@@ -55,18 +56,14 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
     };
 
     let mcu_address: Vec<_> = match port.subfamily() {
-        Subfamily::Stm32f4 => {
-            ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
-                .iter()
-                .map(|f| format_ident!("{}", f))
-                .collect()
-        }
-        Subfamily::Efm32Gg11 => {
-            ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
-                .iter()
-                .map(|f| format_ident!("{}", f))
-                .collect()
-        }
+        Subfamily::Stm32f4 => ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
+        Subfamily::Efm32Gg11 => ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
     };
 
     let code = quote! {

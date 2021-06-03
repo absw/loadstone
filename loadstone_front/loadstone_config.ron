@@ -53,5 +53,6 @@
     ),
     feature_flags: [
         "stm32f412_discovery",
+        "serial",
     ],
 )

@@ -44,5 +44,5 @@ impl Serial {
             Port::Wgm160P => false,
         }
     }
-    pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled {..}) }
+    pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
 }

@@ -1,6 +1,9 @@
-use std::{fs::{File, OpenOptions}, path::Path};
+use crate::{port, Configuration};
 use anyhow::Result;
-use crate::{Configuration, port};
+use std::{
+    fs::{File, OpenOptions},
+    path::Path,
+};
 
 use super::prettify_file;
 mod stm32;
@@ -20,7 +23,4 @@ pub fn generate<P: AsRef<Path>>(
     Ok(())
 }
 
-fn generate_efm32gg(_configuration: &Configuration, _file: &mut File) -> Result<()> {
-    todo!()
-}
-
+fn generate_efm32gg(_configuration: &Configuration, _file: &mut File) -> Result<()> { todo!() }

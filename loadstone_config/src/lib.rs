@@ -69,7 +69,15 @@ impl Configuration {
 
         match self.port {
             Port::Stm32F412 => self.feature_flags = vec!["stm32f412_discovery".into()],
-            Port::Wgm160P =>  self.feature_flags = vec!["wgm160p".into()],
+            Port::Wgm160P => self.feature_flags = vec!["wgm160p".into()],
+        }
+
+        match &self.feature_configuration.serial {
+            Serial::Enabled { recovery_enabled, .. } if *recovery_enabled => {
+                self.feature_flags.append(&mut vec!["serial".into(), "serial_recovery".into()])
+            }
+            Serial::Enabled { .. } => self.feature_flags.push("serial".into()),
+            _ => (),
         }
     }
 }

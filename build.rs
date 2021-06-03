@@ -48,7 +48,7 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
     let missing_flags: Vec<_> = configuration
         .feature_flags
         .iter()
-        .filter(|f| !supplied_flags.contains(f))
+        .filter(|f| !&supplied_flags.contains(f))
         .cloned()
         .collect();
 
