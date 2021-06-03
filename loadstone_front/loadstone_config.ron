@@ -1,0 +1,46 @@
+(
+    port: Stm32F412,
+    memory_configuration: (
+        internal_memory_map: (
+            bootloader_location: 134217728,
+            bootloader_length_kb: 64,
+            banks: [
+                (
+                    start_address: 134283264,
+                    size_kb: 16,
+                ),
+            ],
+            bootable_index: Some(0),
+        ),
+        external_memory_map: (
+            banks: [],
+        ),
+        external_flash: None,
+        golden_index: None,
+    ),
+    feature_configuration: (
+        serial: Enabled(
+            recovery_enabled: false,
+            tx_pin: (
+                peripheral: "USART1",
+                bank: 'a',
+                index: 9,
+                af_index: 7,
+            ),
+            rx_pin: (
+                peripheral: "USART1",
+                bank: 'b',
+                index: 3,
+                af_index: 7,
+            ),
+        ),
+        boot_metrics: Disabled,
+    ),
+    security_configuration: (
+        security_mode: Crc,
+        verifying_key_raw: "",
+    ),
+    feature_flags: [
+        "stm32f412_discovery",
+    ],
+)

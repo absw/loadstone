@@ -107,7 +107,7 @@ dependencies = [
  "cortex-m 0.7.2",
  "cortex-m-rt",
  "cortex-m-semihosting",
- "crc",
+ "crc 1.8.1",
  "defmt",
  "defmt-rtt",
  "efm32gg11b",
@@ -183,9 +183,9 @@ dependencies = [
 
 [[package]]
 name = "cortex-m-rt"
-version = "0.6.13"
+version = "0.6.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "980c9d0233a909f355ed297ef122f257942de5e0a2cb1c39f60684b65bcb90fb"
+checksum = "b6d8353767db816419630a76d5f1ad5b09610d22b67ceb59647df6a8abc667f8"
 dependencies = [
  "cortex-m-rt-macros",
  "r0",
@@ -213,9 +213,9 @@ dependencies = [
 
 [[package]]
 name = "cpufeatures"
-version = "0.1.1"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dec1028182c380cc45a2e2c5ec841134f2dfd0f8f5f0a5bcd68004f81b5efdf4"
+checksum = "ed00c67cb5d0a7d64a44f6ad2668db7e7530311dd53ea79bcd4fb022c64911c8"
 dependencies = [
  "libc",
 ]
@@ -230,6 +230,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc"
+version = "2.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10c2722795460108a7872e1cd933a85d6ec38abc4baecad51028f702da28889f"
+dependencies = [
+ "crc-catalog",
+]
+
+[[package]]
+name = "crc-catalog"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccaeedb56da03b09f598226e25e80088cb4cd25f316e6e4df7d695f0feeb1403"
+
+[[package]]
 name = "crypto-mac"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -241,9 +256,9 @@ dependencies = [
 
 [[package]]
 name = "defmt"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "735ffd58278b045498da4ca9c5057a52faa6e18472cd63568b059ae592ca7602"
+checksum = "7aba21ce228b4769b8b5b6d2e2ee28c5dcfbe60c46f76b63d88b3a6677c8dc5b"
 dependencies = [
  "defmt-macros",
  "semver 0.11.0",
@@ -251,9 +266,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-macros"
-version = "0.2.0"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d35887971a66a572654b37f2dd6a82e17a9dadf65935402fc910cf422955e994"
+checksum = "b101f3d11ecbbd6046cabd76e2c5b6b20eb493de5a83fea4c0704864b886dfd6"
 dependencies = [
  "defmt-parser",
  "proc-macro2",
@@ -263,9 +278,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c816f778ec2147f95990a606795fe9dcc82781bcd98e222675c4103c2d250ea1"
+checksum = "fc63e313e87db4666440753288012024f117065b52e9b9f4d0d869e9fada6404"
 
 [[package]]
 name = "defmt-rtt"
@@ -279,9 +294,9 @@ dependencies = [
 
 [[package]]
 name = "der"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83dc83d0b59f92103d8e661e60526338ad3aeb0c15fa4a29a14b6a9b1ac8a43c"
+checksum = "2eeb9d92785d1facb50567852ce75d0858630630e7eabea59cf7eb7474051087"
 dependencies = [
  "const-oid",
  "typenum",
@@ -298,9 +313,9 @@ dependencies = [
 
 [[package]]
 name = "ecdsa"
-version = "0.11.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b568b5e72165dd8913ac2aad6a60cb9cb297287615544c523c37f9247b58fc8"
+checksum = "34d33b390ab82f2e1481e331dbd0530895640179d2128ef9a79cc690b78d1eba"
 dependencies = [
  "der",
  "elliptic-curve",
@@ -321,9 +336,9 @@ dependencies = [
 
 [[package]]
 name = "elliptic-curve"
-version = "0.9.11"
+version = "0.9.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee681bf25de1aad7cd02ccc7525d7b4bfab7be2493dbe3ee18d93f86eb3dcf3e"
+checksum = "c13e9b0c3c4170dcc2a12783746c4205d98e18957f57854251eea3f9750fe005"
 dependencies = [
  "bitvec",
  "ff",
@@ -433,9 +448,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.94"
+version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18794a8ad5b29321f790b55d93dfba91e125cb1a9edbd4f8e3150acc771c1a5e"
+checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
 
 [[package]]
 name = "linked_list_allocator"
@@ -453,7 +468,7 @@ dependencies = [
  "cortex-m 0.6.7",
  "cortex-m-rt",
  "cortex-m-semihosting",
- "crc",
+ "crc 2.0.0",
  "defmt",
  "defmt-rtt",
  "ecdsa",
@@ -567,9 +582,9 @@ dependencies = [
 
 [[package]]
 name = "pkcs8"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b813f58dc6e5d1820868a3c3df3a7ae7852aa2d3d18e98f0d6b20ddd01fe25d7"
+checksum = "c9c2f795bc591cb3384cb64082a578b89207ac92bb89c9d98c1ea2ace7cd8110"
 dependencies = [
  "base64ct",
  "der",
@@ -585,9 +600,9 @@ checksum = "dbf0c48bc1d91375ae5c3cd81e3722dff1abcf81a30960240640d223f59fe0e5"
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.26"
+version = "1.0.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a152013215dca273577e18d2bf00fa862b89b24169fb78c4c95aeb07992c9cec"
+checksum = "f0d8caf72986c1a598726adc988bb5984792ef84f5ee5aa50209145ee8077038"
 dependencies = [
  "unicode-xid",
 ]
