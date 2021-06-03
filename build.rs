@@ -32,7 +32,7 @@ fn process_configuration_file() -> Result<()> {
 
     validate_feature_flags_against_configuration(&configuration);
     generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
-    configure_runner(configuration.port.board_name());
+    configure_runner(&configuration.port.to_string());
 
     Ok(())
 }

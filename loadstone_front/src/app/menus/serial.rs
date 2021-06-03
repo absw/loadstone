@@ -15,7 +15,7 @@ pub fn configure_serial(ui: &mut egui::Ui, serial: &mut Serial, port: &Port) {
     };
 
     let first_valid_rx_pin = || {
-        pins::serial_tx(port)
+        pins::serial_rx(port)
             .find_map(|p| (p.peripheral == available_peripherals[0]).then_some(p))
             .unwrap()
     };
