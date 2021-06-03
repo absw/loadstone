@@ -1,6 +1,6 @@
 //! Concrete bootloader construction and flash bank layout for the wgm160p
 
-use blue_hal::{drivers::efm32gg11b::{clocks, flash::{self, Flash}}, efm32pac, hal::null::{NullFlash, NullSerial, NullSystick}};
+use blue_hal::{drivers::efm32gg11b::{clocks, flash::{self, Flash}}, efm32pac, hal::null::{NullError, NullFlash, NullSerial, NullSystick}};
 
 use crate::{devices::{bootloader::Bootloader}, error::{self, Error}};
 
@@ -41,6 +41,6 @@ impl error::Convertible for flash::Error {
     }
 }
 
-impl error::Convertible for ! {
-    fn into(self) -> Error { unimplemented!() }
+impl error::Convertible for NullError {
+    fn into(self) -> Error { panic!("This error should never happen!") }
 }

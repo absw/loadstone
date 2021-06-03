@@ -1,9 +1,7 @@
 use crate::{port, Configuration};
 use anyhow::Result;
-use std::{
-    fs::{File, OpenOptions},
-    path::Path,
-};
+use quote::quote;
+use std::{fs::{File, OpenOptions}, io::Write, path::Path};
 
 use super::prettify_file;
 mod stm32;
@@ -23,7 +21,10 @@ pub fn generate<P: AsRef<Path>>(
     Ok(())
 }
 
-fn generate_efm32gg(_configuration: &Configuration, _file: &mut File) -> Result<()> {
-    // Nothing to do, as the current efm32gg port does not support any pins.
+fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<()> {
+    let code = quote! {
+        pub use blue_hal::hal::null::NullFlash as ExternalFlash;
+    };
+    file.write_all(format!("{}", code).as_bytes())?;
     Ok(())
 }

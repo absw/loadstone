@@ -7,9 +7,6 @@ default-run = "loadstone"
 
 [features]
 default = [
-   "stm32f412_discovery",
-   "serial",
-   "serial-recovery",
    "defmt-default",
    "ecdsa-verify",
 ]

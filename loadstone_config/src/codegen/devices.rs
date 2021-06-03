@@ -12,15 +12,20 @@ pub fn generate<P: AsRef<Path>>(
     let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(&filename)?;
     let mut code = quote!{};
 
-    generate_serial(configuration, &mut code)?;
-    generate_flash(configuration, &mut code)?;
+    match configuration.port {
+        crate::port::Port::Stm32F412 => {
+            generate_serial_stm32(configuration, &mut code)?;
+            generate_flash_stm32(configuration, &mut code)?;
+        }
+        crate::port::Port::Wgm160P => {},
+    }
 
     file.write_all(format!("{}", code).as_bytes())?;
     prettify_file(filename).ok();
     Ok(())
 }
 
-fn generate_flash(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()>{
+fn generate_flash_stm32(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()>{
     if configuration.memory_configuration.external_flash.is_some() {
         code.append_all(quote!{
             use super::pin_configuration::*;
@@ -41,7 +46,7 @@ fn generate_flash(configuration: &Configuration, code: &mut quote::__private::To
     Ok(())
 }
 
-fn generate_serial(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()> {
+fn generate_serial_stm32(configuration: &Configuration, code: &mut quote::__private::TokenStream) -> Result<()> {
     if let Serial::Enabled { tx_pin,.. } = &configuration.feature_configuration.serial {
         let peripheral = format_ident!("{}", tx_pin.peripheral.to_lowercase());
         code.append_all(quote!{
