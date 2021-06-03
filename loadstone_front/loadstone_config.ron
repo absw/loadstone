@@ -13,24 +13,35 @@
             bootable_index: Some(0),
         ),
         external_memory_map: (
-            banks: [],
+            banks: [
+                (
+                    start_address: 0,
+                    size_kb: 4000,
+                ),
+            ],
         ),
-        external_flash: None,
-        golden_index: None,
+        external_flash: Some((
+            name: "Micron n25q128a",
+            internal: false,
+            start: 0,
+            end: 16777215,
+            region_size: 4096,
+        )),
+        golden_index: Some(1),
     ),
     feature_configuration: (
         serial: Enabled(
             recovery_enabled: false,
             tx_pin: (
                 peripheral: "USART1",
-                bank: 'a',
-                index: 9,
+                bank: 'b',
+                index: 6,
                 af_index: 7,
             ),
             rx_pin: (
                 peripheral: "USART1",
-                bank: 'b',
-                index: 3,
+                bank: 'a',
+                index: 10,
                 af_index: 7,
             ),
         ),

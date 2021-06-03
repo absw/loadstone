@@ -16,8 +16,6 @@ use blue_hal::drivers::stm32f4::serial::UsartExt;
 type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
 type Qspi = QuadSpi<QspiPins, mode::Single>;
 type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
-type UsartPins = (Pg14<AF8>, Pg9<AF8>);
-type Serial = serial::Serial<USART6, UsartPins>;
 
 impl Default for Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
     fn default() -> Self { Self::new() }
