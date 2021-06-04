@@ -132,7 +132,11 @@ fn generate_imports_and_types(
         });
     } else {
         code.append_all(quote! {
+            use blue_hal::drivers::stm32f4::serial::{TxPin, RxPin};
+            #[allow(unused_imports)]
+            use blue_hal::stm32pac::{self, USART1, USART2, USART6};
             pub type UsartPins = ();
+            pub type Serial = blue_hal::hal::null::NullSerial;
         });
     }
     if let Some(_) = &configuration.memory_configuration.external_flash {

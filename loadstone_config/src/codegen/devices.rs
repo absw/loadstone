@@ -77,9 +77,7 @@ fn generate_serial_stm32(
         code.append_all(quote! {
             use super::pin_configuration::{UsartPins, Serial};
             use blue_hal::stm32pac;
-            use blue_hal::hal::time;
             use blue_hal::drivers::stm32f4::rcc::Clocks;
-            use blue_hal::drivers::stm32f4::serial::{self, UsartExt};
             #[allow(unused)]
             pub fn construct_serial(
                 _serial_pins: UsartPins,

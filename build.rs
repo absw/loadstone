@@ -27,7 +27,9 @@ fn process_configuration_file() -> Result<()> {
         panic!("\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
                 embedded in the `LOADSTONE_CONFIG` environment variable. \r\nTry again with \
                 'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \r\nIf you're just looking \
-                to run unit tests, supply an empty string: 'LOADSTONE_CONFIG=\"\" cargo test`\r\n\r\n")
+                to run unit tests, or to build a port that does not require any code \
+                generation (manual port), supply an empty string:
+                'LOADSTONE_CONFIG=\"\" cargo...`\r\n\r\n")
     };
 
     validate_feature_flags_against_configuration(&configuration);
