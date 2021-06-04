@@ -27,7 +27,6 @@ mod update;
 mod copy;
 /// Operations related to restoring an image when there's no current one to boot.
 mod restore;
-#[cfg(feature = "serial-recovery")]
 /// Operations related to serial recovery when there's no fallback to restore to.
 mod recover;
 
@@ -41,6 +40,7 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) serial: Option<SRL>,
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
+    pub(crate) recovery_enabled: bool,
 }
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
@@ -61,7 +61,6 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     /// * If golden image not available or invalid, proceed to recovery mode.
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
-        self.verify_feature_availability();
         duprintln!(self.serial, "");
         duprintln!(self.serial, "-- Loadstone Initialised --");
         if let Some(image) = self.latest_bootable_image() {
@@ -85,36 +84,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
 
-                #[cfg(feature = "serial-recovery")]
-                self.recover();
-
-                #[cfg(not(feature = "serial-recovery"))]
-                panic!("FATAL: Failed to boot, and serial recovery is not supported.");
+                if self.recovery_enabled {
+                    self.recover();
+                } else {
+                    panic!("FATAL: Failed to boot, and serial recovery is not supported.");
+                }
             }
         }
     }
-
-    /// Makes several sanity checks on port drivers available for the current features
-    pub fn verify_feature_availability(&self) {
-        #[cfg(feature = "serial")]
-        assert!(
-            self.serial.is_some(),
-            "Missing serial driver at runtime. \
-                Consider disabling the \"serial\" feature if unsupported by your port."
-        );
-        #[cfg(not(feature = "serial"))]
-        assert!(
-            self.serial.is_none(),
-            "Serial driver found at runtime with a disabled serial feature. \
-            This is a mistake in the port layer."
-        );
-        #[cfg(feature = "boot-time-metrics")]
-        assert!(
-            self.start_time.is_some(),
-            "Missing initial timestamp for boot metrics calculation."
-        );
-    }
-
     /// Makes several sanity checks on the flash bank configuration.
     pub fn verify_bank_correctness(&self) {
         // There is at most one golden bank between internal and external flash

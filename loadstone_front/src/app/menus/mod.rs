@@ -1,62 +1,25 @@
-use eframe::egui::{self, CollapsingHeader};
-use loadstone_config::{
-    features::BootMetrics,
-    port::{Port, PortLevel},
-};
+use eframe::egui;
+use enum_iterator::IntoEnumIterator;
+use loadstone_config::{features::BootMetrics, port::Port};
 
 pub mod serial;
 pub mod memory_map;
 pub mod security;
 pub mod generate;
 
-pub fn select_port(ui: &mut egui::Ui, port: &mut Port, port_tree: &Vec<PortLevel>) {
-    // Displays the most expressive target as label (board before subfamily before family)
-    let target_label = format!(
-        "Target{}",
-        port.board
-            .as_ref()
-            .or(port.subfamily.as_ref())
-            .or(port.family.as_ref())
-            .map_or("".to_owned(), |t| format!(" ({})", t.name()))
-    );
-    CollapsingHeader::new(target_label).default_open(true).show(ui, |ui| {
-        select_port_level(ui, &mut port.family, "Select an MCU family", port_tree);
-        match &port.family {
-            Some(family) if !family.children().is_empty() => {
-                select_port_level(ui, &mut port.subfamily, "Select a subfamily", family.children())
-            }
-            _ => (),
-        }
-        match &port.subfamily {
-            Some(subfamily) if !subfamily.children().is_empty() => {
-                select_port_level(ui, &mut port.board, "Select a board", subfamily.children())
-            }
-            _ => (),
-        }
-    });
-}
-
-pub fn select_port_level(
-    ui: &mut egui::Ui,
-    selected_port_level: &mut Option<PortLevel>,
-    text: &str,
-    port_levels: &Vec<PortLevel>,
-) {
+pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {
     ui.horizontal_wrapped(|ui| {
-        egui::ComboBox::from_label(text)
-            .selected_text(match selected_port_level {
-                Some(port_level) => port_level.name(),
-                None => "None".into(),
-            })
-            .show_ui(ui, |ui| {
-                for port_level in port_levels.iter() {
-                    ui.selectable_value(
-                        selected_port_level,
-                        Some(port_level.clone()),
-                        port_level.name(),
-                    );
-                }
-            });
+        egui::ComboBox::from_label(format!(
+            "Family [{}] - Subfamily [{}]",
+            port.family(),
+            port.subfamily()
+        ))
+        .selected_text(port.to_string())
+        .show_ui(ui, |ui| {
+            for port_choice in Port::into_enum_iter() {
+                ui.selectable_value(port, port_choice, port_choice.to_string());
+            }
+        });
     });
 }
 

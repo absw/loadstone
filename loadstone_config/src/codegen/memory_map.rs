@@ -4,7 +4,7 @@ use std::{fs::OpenOptions, io::Write, path::Path};
 
 use crate::{
     memory::{ExternalMemoryMap, InternalMemoryMap, MemoryConfiguration},
-    port::{board, subfamily, Port},
+    port::{Port, Subfamily},
 };
 
 use super::prettify_file;
@@ -44,31 +44,22 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
                 .map(|f| format_ident!("{}", f))
                 .collect()
         }
-        None if port.board_name() == board::STM32F412 => {
-            // Slight hack to ensure the current bootloader constructor for the Discovery gets the
-            // right type definitions even for an absent external flash.
-            ["blue_hal", "drivers", "micron", "n25q128a_flash", "Address"]
-                .iter()
-                .map(|f| format_ident!("{}", f))
-                .collect()
-        }
+        None if *port == Port::Stm32F412 => ["blue_hal", "hal", "null", "NullAddress"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
         _ => ["usize"].iter().map(|f| format_ident!("{}", f)).collect(),
     };
 
-    let mcu_address: Vec<_> = match port {
-        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::STM32F4 => {
-            ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
-                .iter()
-                .map(|f| format_ident!("{}", f))
-                .collect()
-        }
-        Port { subfamily: Some(subfamily), .. } if subfamily.name() == subfamily::EFM32GG11 => {
-            ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
-                .iter()
-                .map(|f| format_ident!("{}", f))
-                .collect()
-        }
-        _ => panic!("Invalid MCU flash supplied"),
+    let mcu_address: Vec<_> = match port.subfamily() {
+        Subfamily::Stm32f4 => ["blue_hal", "drivers", "stm32f4", "flash", "Address"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
+        Subfamily::Efm32Gg11 => ["blue_hal", "drivers", "efm32gg11b", "flash", "Address"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
     };
 
     let code = quote! {
@@ -76,8 +67,10 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
         //! in the next project build. Generation logic for this module is defined in
         //! `loadstone_config/src/codegen/memory_map.rs`
         use crate::devices::image as image;
-        use #(#external_address)::* as ExternalAddress;
+        #[allow(unused_imports)]
+        use super::pin_configuration::ExternalFlash;
         use #(#mcu_address)::* as McuAddress;
+        use #(#external_address)::* as ExternalAddress;
     };
     Ok(format!("{}", code))
 }

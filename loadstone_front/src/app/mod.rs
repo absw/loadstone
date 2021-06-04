@@ -11,12 +11,7 @@ use eframe::{
 };
 const GIT_VERSION: &str = git_version::git_version!();
 
-use loadstone_config::{
-    features::Serial,
-    pins,
-    port::{port_tree, PortLevel},
-    Configuration,
-};
+use loadstone_config::{features::Serial, pins, Configuration};
 use reqwest_wasm::Response;
 
 mod menus;
@@ -26,7 +21,6 @@ mod utilities;
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 pub struct LoadstoneApp {
     configuration: Configuration,
-    port_tree: Vec<PortLevel>,
     verifying_key_text_field: String,
     personal_access_token_field: String,
     last_request_response: Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
@@ -35,7 +29,6 @@ pub struct LoadstoneApp {
 impl Default for LoadstoneApp {
     fn default() -> Self {
         Self {
-            port_tree: port_tree(),
             configuration: Default::default(),
             verifying_key_text_field: Default::default(),
             personal_access_token_field: Default::default(),
@@ -63,7 +56,6 @@ impl epi::App for LoadstoneApp {
     fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
         let LoadstoneApp {
             configuration,
-            port_tree,
             verifying_key_text_field,
             personal_access_token_field,
             last_request_response,
@@ -78,7 +70,7 @@ impl epi::App for LoadstoneApp {
                     GIT_VERSION
                 ));
                 ui.separator();
-                select_port(ui, &mut configuration.port, &port_tree);
+                select_port(ui, &mut configuration.port);
                 ui.separator();
                 ui.collapsing("Features", |ui| {
                     ui.label("Greyed out features are unsupported in the current configuration.");

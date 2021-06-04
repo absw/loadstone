@@ -27,12 +27,14 @@ fn process_configuration_file() -> Result<()> {
         panic!("\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
                 embedded in the `LOADSTONE_CONFIG` environment variable. \r\nTry again with \
                 'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \r\nIf you're just looking \
-                to run unit tests, supply an empty string: 'LOADSTONE_CONFIG=\"\" cargo test`\r\n\r\n")
+                to run unit tests, or to build a port that does not require any code \
+                generation (manual port), supply an empty string:
+                'LOADSTONE_CONFIG=\"\" cargo...`\r\n\r\n")
     };
 
     validate_feature_flags_against_configuration(&configuration);
     generate_modules(env!("CARGO_MANIFEST_DIR"), &configuration)?;
-    configure_runner(configuration.port.board_name());
+    configure_runner(&configuration.port.to_string());
 
     Ok(())
 }
@@ -46,10 +48,8 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
         .collect();
 
     let missing_flags: Vec<_> = configuration
-        .feature_flags
-        .iter()
-        .filter(|f| !supplied_flags.contains(f))
-        .cloned()
+        .required_feature_flags()
+        .filter(|f| !&supplied_flags.contains(&(*f).to_owned()))
         .collect();
 
     if !missing_flags.is_empty() {

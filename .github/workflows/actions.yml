@@ -42,13 +42,18 @@ jobs:
           echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
           echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
           chmod 600 /home/user/.ssh/id_rsa
-      - name: Check sample WGM160p build
+      - name: Check sample stm32f4 build with external flash
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: '(port:(family:Some((Family,"efm32",[(Subfamily,"efm32gg11",[(Board,"wgm160p",[]),]),])),subfamily:Some((Subfamily,"efm32gg11",[(Board,"wgm160p",[]),])),board:Some((Board,"wgm160p",[])),),memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:64,banks:[(start_address:65536,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
-        run: cargo check --features wgm160p --target thumbv7em-none-eabihf
-      - name: Check sample stm32f412 build
+          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),],bootable_index:Some(0),),external_memory_map:(banks:[(start_address:0,size_kb:7500,),],),external_flash:Some((name:\"Micronn25q128a\",internal:false,start:0,end:16777215,region_size:4096,)),golden_index:Some(2),),feature_configuration:(serial:Enabled(recovery_enabled:true,tx_pin:(peripheral:\"USART1\",bank:'a',index:15,af_index:6,),rx_pin:(peripheral:\"USART1\",bank:'b',index:3,af_index:7,),),boot_metrics:Enabled(timing:true,),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
+        run: cargo check --features 'stm32f412' --target thumbv7em-none-eabihf
+      - name: Check sample stm32f4 build without external flash
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: '(port:(family:Some((Family,"stm32",[(Subfamily,"stm32f4",[(Board,"stm32f412",[]),]),])),subfamily:Some((Subfamily,"stm32f4",[(Board,"stm32f412",[]),])),board:Some((Board,"stm32f412",[])),),memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Disabled,boot_metrics:Disabled,),security_configuration:(security_mode:Crc,verifying_key_raw:"",),feature_flags:[],)'
-        run: cargo check --features stm32f412_discovery --target thumbv7em-none-eabihf
+          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),(start_address:135170048,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(2),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:true,),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
+        run: cargo check --features 'stm32f412' --target thumbv7em-none-eabihf
+      - name: Check sample wgm160p build
+        env:
+          SCRIPT_MODE: true
+          LOADSTONE_CONFIG: "(port:Wgm160P,memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:1,banks:[(start_address:4096,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(3),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:false,),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
+        run: cargo check --features 'wgm160p' --target thumbv7em-none-eabihf
