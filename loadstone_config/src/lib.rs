@@ -36,13 +36,17 @@ impl Configuration {
     pub fn complete(&self) -> bool { self.required_configuration_steps().count() == 0 }
 
     pub fn required_feature_flags(&self) -> impl Iterator<Item = &'static str> {
-        #[rustfmt::skip]
-        IntoIter::new([
-            match self.port {
-                Port::Stm32F412 => "stm32f412",
-                Port::Wgm160P => "wgm160p",
-            },
-        ])
+        let mut flags = vec![];
+        match self.port {
+            Port::Stm32F412 => flags.push("stm32f412"),
+            Port::Wgm160P => flags.push("wgm160p"),
+        };
+
+        if self.security_configuration.security_mode == SecurityMode::P256ECDSA {
+            flags.push("ecdsa-verify");
+        };
+
+        flags.into_iter()
     }
 
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
