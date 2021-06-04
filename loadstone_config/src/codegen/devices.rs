@@ -62,9 +62,27 @@ fn generate_serial_stm32(configuration: &Configuration, code: &mut quote::__priv
                 usart1: stm32pac::USART1,
                 usart2: stm32pac::USART2,
                 usart6: stm32pac::USART6
-            ) -> Serial {
+            ) -> Option<Serial> {
                 let serial_config = serial::config::Config::default().baudrate(time::Bps(115200));
-                #peripheral.constrain(serial_pins, serial_config, clocks).unwrap()
+                Some(#peripheral.constrain(serial_pins, serial_config, clocks).unwrap())
+            }
+        });
+    } else {
+        code.append_all(quote!{
+            use super::pin_configuration::{UsartPins, Serial};
+            use blue_hal::stm32pac;
+            use blue_hal::hal::time;
+            use blue_hal::drivers::stm32f4::rcc::Clocks;
+            use blue_hal::drivers::stm32f4::serial::{self, UsartExt};
+            #[allow(unused)]
+            pub fn construct_serial(
+                _serial_pins: UsartPins,
+                _clocks: Clocks,
+                _usart1: stm32pac::USART1,
+                _usart2: stm32pac::USART2,
+                _usart6: stm32pac::USART6
+            ) -> Option<Serial> {
+                None
             }
         });
     }

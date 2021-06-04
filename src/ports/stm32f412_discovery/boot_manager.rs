@@ -31,7 +31,13 @@ impl BootManager<flash::McuFlash, ExternalFlash, Serial> {
         SysTick::init(cortex_peripherals.SYST, clocks);
         SysTick::wait(time::Seconds(1)); // Gives time for the flash chip to stabilize after powerup
 
-        let serial = devices::construct_serial(serial_pins, clocks, peripherals.USART1, peripherals.USART2, peripherals.USART6);
+        let serial = devices::construct_serial(
+            serial_pins,
+            clocks,
+            peripherals.USART1,
+            peripherals.USART2,
+            peripherals.USART6)
+            .expect("Demo app can't function without serial!");
         let cli = Cli::new(serial).unwrap();
         let external_flash = devices::construct_flash(qspi_pins, peripherals.QUADSPI);
 
