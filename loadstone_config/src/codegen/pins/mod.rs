@@ -1,7 +1,11 @@
 use crate::{port, Configuration};
 use anyhow::Result;
 use quote::quote;
-use std::{fs::{File, OpenOptions}, io::Write, path::Path};
+use std::{
+    fs::{File, OpenOptions},
+    io::Write,
+    path::Path,
+};
 
 use super::prettify_file;
 mod stm32;

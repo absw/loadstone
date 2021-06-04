@@ -45,8 +45,7 @@ fn generate_pin_constructor(
 ) -> () {
     let banks = 'a'..='h';
     let gpio_fields = banks.clone().map(|b| format_ident!("gpio{}", b)).collect_vec();
-    let pac_gpio_fields =
-        banks.map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
+    let pac_gpio_fields = banks.map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
 
     let serial_pin_structs: Box<dyn Iterator<Item = Ident>> =
         if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial
@@ -164,10 +163,7 @@ fn generate_imports_and_types(
     }
 }
 
-fn generate_gpio_macros(
-    configuration: &Configuration,
-    code: &mut quote::__private::TokenStream,
-) {
+fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__private::TokenStream) {
     for bank in 'a'..='h' {
         let input_tokens = input_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
         let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == bank).collect_vec();

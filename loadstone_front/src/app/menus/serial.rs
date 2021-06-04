@@ -1,6 +1,10 @@
 use eframe::egui;
 use itertools::Itertools;
-use loadstone_config::{features::{self, Serial}, pins::{self, Peripheral, Pin}, port::Port};
+use loadstone_config::{
+    features::{self, Serial},
+    pins::{self, Peripheral, Pin},
+    port::Port,
+};
 
 pub fn configure_serial(ui: &mut egui::Ui, serial: &mut Serial, port: &Port) {
     let mut available_peripherals =
@@ -84,10 +88,12 @@ fn select_peripheral(
             });
     });
 
-    let first_valid_tx =
-        |peripheral| pins::serial_tx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap();
-    let first_valid_rx =
-        |peripheral| pins::serial_rx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap();
+    let first_valid_tx = |peripheral| {
+        pins::serial_tx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap()
+    };
+    let first_valid_rx = |peripheral| {
+        pins::serial_rx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap()
+    };
 
     if tx_pin.peripheral != inferred_peripheral {
         *tx_pin = first_valid_tx(&inferred_peripheral);

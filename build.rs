@@ -46,10 +46,8 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
         .collect();
 
     let missing_flags: Vec<_> = configuration
-        .feature_flags
-        .iter()
-        .filter(|f| !&supplied_flags.contains(f))
-        .cloned()
+        .required_feature_flags()
+        .filter(|f| !&supplied_flags.contains(&(*f).to_owned()))
         .collect();
 
     if !missing_flags.is_empty() {

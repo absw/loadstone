@@ -1,5 +1,4 @@
-//! Concrete bootloader construction and flash bank layout
-//! for the [stm32f412 discovery](../../../../loadstone/hardware/discovery.pdf).
+//! Concrete bootloader construction and flash bank layout for stm32f412
 use crate::{devices::bootloader::Bootloader, error};
 use crate::error::Error;
 use blue_hal::hal::null::NullError;

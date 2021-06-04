@@ -30,11 +30,20 @@ pub struct Configuration {
     pub memory_configuration: MemoryConfiguration,
     pub feature_configuration: FeatureConfiguration,
     pub security_configuration: SecurityConfiguration,
-    pub feature_flags: Vec<String>,
 }
 
 impl Configuration {
     pub fn complete(&self) -> bool { self.required_configuration_steps().count() == 0 }
+
+    pub fn required_feature_flags(&self) -> impl Iterator<Item = &'static str> {
+        #[rustfmt::skip]
+        IntoIter::new([
+            match self.port {
+                Port::Stm32F412 => "stm32f412",
+                Port::Wgm160P => "wgm160p",
+            },
+        ])
+    }
 
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
         #[rustfmt::skip]
@@ -65,11 +74,6 @@ impl Configuration {
 
         if self.memory_configuration.external_flash.is_none() {
             self.memory_configuration.external_memory_map.banks.clear();
-        }
-
-        match self.port {
-            Port::Stm32F412 => self.feature_flags = vec!["stm32f412_discovery".into()],
-            Port::Wgm160P => self.feature_flags = vec!["wgm160p".into()],
         }
     }
 }

@@ -1,4 +1,5 @@
 use base64::write::EncoderWriter as Base64Encoder;
+use itertools::Itertools;
 use ron::ser::PrettyConfig;
 use std::{fs::OpenOptions, io::Write, sync::Arc};
 
@@ -172,7 +173,7 @@ fn generate_web(
     let formatted_body =format!(
             "{{\"ref\":\"staging\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
             ron.replace("\"", "\\\""),
-            configuration.feature_flags.join(","),
+            configuration.required_feature_flags().collect_vec().join(","),
         );
 
     wasm_bindgen_futures::spawn_local(
