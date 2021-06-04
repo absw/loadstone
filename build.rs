@@ -1,7 +1,8 @@
 #![feature(bool_to_option)]
 
 use anyhow::Result;
-use loadstone_config::{codegen::generate_modules, Configuration};
+use loadstone_config::{Configuration, codegen::generate_modules};
+use loadstone_config::security::SecurityMode;
 use std::fs;
 
 fn configure_runner(target: &str) {
@@ -49,8 +50,15 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
 
     let missing_flags: Vec<_> = configuration
         .required_feature_flags()
+        .map(|s| s.replace("-","_"))
         .filter(|f| !&supplied_flags.contains(&(*f).to_owned()))
         .collect();
+
+    if configuration.security_configuration.security_mode != SecurityMode::P256ECDSA &&
+        supplied_flags.contains(&"ecdsa_verify".to_owned()) {
+            panic!("Configuration mismatch. Configuration file does not specify ECDSA security mode, \
+                but the `ecdsa-verify` flag was supplied. Try again without `ecdsa-verify` for CRC mode.");
+        }
 
     if !missing_flags.is_empty() {
         panic!(

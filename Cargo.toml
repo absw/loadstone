@@ -8,7 +8,6 @@ default-run = "loadstone"
 [features]
 default = [
    "defmt-default",
-   "ecdsa-verify",
 ]
 
 # The features below reflect the hierarchy of stm32 families.
@@ -53,7 +52,7 @@ version = "=1.1.0"
 default-features = false
 
 [dependencies.crc]
-version = "*"
+version = "1.8.1"
 default-features = false
 
 [dependencies.ecdsa]
