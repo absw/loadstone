@@ -102,6 +102,7 @@ dependencies = [
 [[package]]
 name = "blue_hal"
 version = "0.1.0"
+source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#a5301989e126768693638b589a73d930ae206618"
 dependencies = [
  "bytemuck",
  "cortex-m 0.7.2",
