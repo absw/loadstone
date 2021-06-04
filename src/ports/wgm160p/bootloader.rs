@@ -17,6 +17,7 @@ impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
             serial: None,
             boot_metrics: Default::default(),
             start_time: None,
+            recovery_enabled: false,
         }
     }
 }
