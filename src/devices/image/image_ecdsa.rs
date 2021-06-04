@@ -17,8 +17,13 @@ pub use p256::{
 pub use sha2::Digest;
 
 fn retrieve_key() -> VerifyingKey {
-    VerifyingKey::from_str(include_str!("../assets/test_key.pem"))
-        .expect("Invalic public key supplied on compilation")
+    #[cfg(test)]
+    return VerifyingKey::from_str(include_str!("../assets/test_key.pem"))
+        .expect("Invalic public key supplied on compilation");
+
+    #[cfg(not(test))]
+    return VerifyingKey::from_str(include_str!("../assets/key.pem"))
+        .expect("Invalic public key supplied on compilation");
 }
 
 /// Scans a bank to determine the presence of a valid, signed firmware image. If
@@ -86,7 +91,6 @@ where
 #[cfg(test)]
 mod tests {
     use std::convert::TryInto;
-
     use super::*;
     use blue_hal::hal::{
         doubles::{
