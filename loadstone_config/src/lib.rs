@@ -11,7 +11,7 @@
 
 use std::{array::IntoIter, fmt::Display};
 
-use features::{FeatureConfiguration, Serial};
+use features::{BootMetrics, FeatureConfiguration, Serial};
 use memory::{external_flash, MemoryConfiguration};
 use port::Port;
 use security::{SecurityConfiguration, SecurityMode};
@@ -65,6 +65,12 @@ impl Configuration {
     pub fn cleanup(&mut self) {
         if !features::Serial::supported(&self.port) {
             self.feature_configuration.serial = Serial::Disabled;
+        }
+
+        if !features::BootMetrics::timing_supported(&self.port) {
+            if let BootMetrics::Enabled{timing} = &mut self.feature_configuration.boot_metrics {
+                *timing = false
+            }
         }
 
         if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash)

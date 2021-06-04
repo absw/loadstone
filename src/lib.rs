@@ -41,7 +41,7 @@ pub mod ports;
 compile_error!(
     "Loadstone can't be built for `arm` without further target specification \
                Either run tests with `cargo test` natively, or define a target through the \
-               appropriate configuration and feature flags."
+               appropriate configuration and/or feature flags."
 );
 
 /// Generated dynamically by build.rs from a .ron config file
