@@ -491,10 +491,13 @@ name = "loadstone_config"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ecdsa",
  "enum-iterator",
  "itertools",
+ "p256",
  "quote",
  "serde",
+ "sha2",
  "syn",
  "tightness",
 ]
