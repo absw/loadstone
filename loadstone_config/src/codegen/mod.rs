@@ -1,6 +1,8 @@
 //! Generates code from parsed .ron configuration. This is where
 //! concrete Loadstone modules are constructed from user configuration
 //! gathered from the web app GUI.
+use p256::ecdsa::VerifyingKey;
+use std::str::FromStr;
 use quote::{__private::Span, quote};
 use std::{
     fs::{self, OpenOptions},
@@ -48,11 +50,14 @@ fn generate_key<P: AsRef<Path>>(loadstone_path: P, configuration: &Configuration
         "Configuration mismatch: Config file requires ECDSA verification, but feature is disabled");
 
     let key_path = loadstone_path.as_ref().join(
-        "src/devices/assets/key.pem"
+        "src/devices/assets/key.sec1"
     );
 
+    let key = VerifyingKey::from_str(&configuration.security_configuration.verifying_key_raw)
+        .expect("Supplied public key is not valid");
+
     let mut file = OpenOptions::new().write(true).create(true).truncate(true).open(&key_path)?;
-    file.write_all(configuration.security_configuration.verifying_key_raw.as_bytes())?;
+    file.write_all(key.to_encoded_point(false).as_bytes())?;
     Ok(())
 }
 

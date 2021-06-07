@@ -7,7 +7,7 @@ use blue_hal::{
 };
 
 pub use ::ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
-use core::str::FromStr;
+use p256::EncodedPoint;
 pub use ecdsa::signature::Signature as EcdsaSignature;
 use nb::block;
 pub use p256::{
@@ -22,8 +22,10 @@ fn retrieve_key() -> VerifyingKey {
         .expect("Invalic public key supplied on compilation");
 
     #[cfg(not(test))]
-    return VerifyingKey::from_str(include_str!("../assets/key.pem"))
-        .expect("Invalic public key supplied on compilation");
+    return VerifyingKey::from_encoded_point(
+        &EncodedPoint::from_bytes(include_bytes!("../assets/key.sec1"))
+            .expect("Invalic public key supplied on compilation"))
+            .expect("Invalic public key supplied on compilation");
 }
 
 /// Scans a bank to determine the presence of a valid, signed firmware image. If

@@ -11,3 +11,17 @@ anyhow = "*"
 tightness = "*"
 enum-iterator = "*"
 itertools = "*"
+
+[dependencies.ecdsa]
+version = "0.11"
+default-features = false
+features = ["pem"]
+
+[dependencies.sha2]
+version = "*"
+default-features = false
+
+[dependencies.p256]
+version = "*"
+default-features = false
+features = ["ecdsa", "sha256", "pem"]
