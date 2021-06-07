@@ -73,7 +73,7 @@ impl Port {
     pub fn linker_script_constants(&self) -> Option<LinkerScriptConstants> {
         match self {
             Port::Stm32F412 => Some(LinkerScriptConstants {
-                flash: LinkerArea { origin: 0x08000000, size: KB!(80) },
+                flash: LinkerArea { origin: 0x08000000, size: KB!(896) },
                 ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
             }),
             Port::Wgm160P => Some(LinkerScriptConstants {
