@@ -209,14 +209,14 @@ fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = Seria
     if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial {
         Box::new(IntoIter::new([
             SerialPinTokens {
-                bank: tx_pin.bank,
+                bank: tx_pin.bank.chars().nth(0).unwrap(),
                 index: (tx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", tx_pin.af_index),
                 direction: format_ident!("TxPin"),
                 peripheral: format_ident!("{}", tx_pin.peripheral),
             },
             SerialPinTokens {
-                bank: rx_pin.bank,
+                bank: rx_pin.bank.chars().nth(0).unwrap(),
                 index: (rx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", rx_pin.af_index),
                 direction: format_ident!("RxPin"),
