@@ -172,7 +172,7 @@ fn generate_web(
 
     let formatted_body =format!(
             "{{\"ref\":\"staging\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
-            ron.replace("\"", "\\\""),
+            ron.replace("\"", "\\\"").replace("\n",""),
             configuration.required_feature_flags().collect_vec().join(","),
         );
 
