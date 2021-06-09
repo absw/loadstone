@@ -46,7 +46,7 @@ impl From<ApplicationError> for Error {
 }
 
 pub const DEFAULT_GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+    "--=Loadstone demo app CLI + Boot Manager=--";
 
 /// Command line interface struct, generic over a serial driver. Offers a collection of commands
 /// to interact with the MCU and external flash chips and retrieve Loadstone boot metrics.
@@ -182,6 +182,7 @@ impl<SRL: Serial> Cli<SRL> {
         if !self.greeted {
             uprintln!(self.serial, "");
             uprintln!(self.serial, "{}", greeting);
+            uprintln!(self.serial, "Type `help` for a list of commands");
             self.greeted = true;
         }
         if self.needs_prompt {
