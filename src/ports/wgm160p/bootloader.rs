@@ -18,6 +18,7 @@ impl Bootloader<NullFlash, Flash, NullSerial, NullSystick> {
             boot_metrics: Default::default(),
             start_time: None,
             recovery_enabled: false,
+            greeting: "-- Loadstone Initialised --",
         }
     }
 }

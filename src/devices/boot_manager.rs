@@ -14,12 +14,7 @@
 //! product that needs to interact with Loadstone can use this module as
 //! a starting point.
 
-use super::{
-    boot_metrics::{boot_metrics, BootMetrics},
-    cli::Cli,
-    image,
-    traits::{Flash, Serial},
-};
+use super::{boot_metrics::{boot_metrics, BootMetrics}, cli::{Cli, DEFAULT_GREETING}, image, traits::{Flash, Serial}};
 use crate::error::Error;
 use blue_hal::hal::flash;
 use cortex_m::peripheral::SCB;
@@ -34,6 +29,7 @@ pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial> {
     pub(crate) external_flash: Option<EXTF>,
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
+    pub(crate) greeting: Option<&'static str>,
 }
 
 impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
@@ -93,7 +89,7 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
 
     /// Gathers metrics left over in memory by Loadstone, if available, and launches
     /// the command line interface.
-    pub fn run(mut self, greeting: &'static str) -> ! {
+    pub fn run(mut self) -> ! {
         self.boot_metrics = {
             let metrics = unsafe { boot_metrics().clone() };
             if metrics.is_valid() {
@@ -103,8 +99,9 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
             }
         };
         let mut cli = self.cli.take().unwrap();
+        let greeting = self.greeting.take();
         loop {
-            cli.run(&mut self, greeting)
+            cli.run(&mut self, greeting.unwrap_or(DEFAULT_GREETING));
         }
     }
 }

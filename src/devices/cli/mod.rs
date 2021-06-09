@@ -45,6 +45,9 @@ impl From<ApplicationError> for Error {
     fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
 }
 
+pub const DEFAULT_GREETING: &str =
+    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
+
 /// Command line interface struct, generic over a serial driver. Offers a collection of commands
 /// to interact with the MCU and external flash chips and retrieve Loadstone boot metrics.
 pub struct Cli<S: serial::ReadWrite> {

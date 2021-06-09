@@ -41,6 +41,7 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
+    pub(crate) greeting: &'static str,
 }
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
@@ -62,7 +63,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
         duprintln!(self.serial, "");
-        duprintln!(self.serial, "-- Loadstone Initialised --");
+        duprintln!(self.serial, "{}", self.greeting);
         if let Some(image) = self.latest_bootable_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {

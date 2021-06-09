@@ -53,6 +53,7 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick> {
             boot_metrics: Default::default(),
             start_time,
             recovery_enabled: RECOVERY_ENABLED,
+            greeting: "-- Loadstone Initialised --",
         }
     }
 }

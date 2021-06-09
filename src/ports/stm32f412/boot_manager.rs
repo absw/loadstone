@@ -48,7 +48,8 @@ impl BootManager<flash::McuFlash, ExternalFlash, Serial> {
             external_banks: &EXTERNAL_BANKS,
             mcu_banks: &MCU_BANKS,
             cli: Some(cli),
-            boot_metrics: None
+            boot_metrics: None,
+            greeting: None,
         }
     }
 }
