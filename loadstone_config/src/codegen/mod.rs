@@ -10,9 +10,9 @@ use std::{
     path::Path,
     process::Command,
 };
-use syn::LitBool;
+use syn::{LitBool, LitStr};
 
-use crate::{Configuration, features::{BootMetrics, Serial}, security::SecurityMode};
+use crate::{Configuration, features::{BootMetrics, Greetings, Serial}, security::SecurityMode};
 use anyhow::Result;
 
 use self::linker_script::generate_linker_script;
@@ -73,7 +73,7 @@ fn generate_top_level_module<P: AsRef<Path>>(
     {
         if !Serial::supported(&configuration.port) {
             panic!(
-                "Serial features enabled for a port that doesn't suppor them: {:?}",
+                "Serial features enabled for a port that doesn't support them: {:?}",
                 configuration.port
             );
         }
@@ -87,13 +87,22 @@ fn generate_top_level_module<P: AsRef<Path>>(
     {
         if !BootMetrics::timing_supported(&configuration.port) {
             panic!(
-                "Timing features enabled for a port that doesn't suppor them: {:?}",
+                "Timing features enabled for a port that doesn't support them: {:?}",
                 configuration.port
             );
         }
         LitBool::new(true, Span::call_site())
     } else {
         LitBool::new(false, Span::call_site())
+    };
+
+    let loadstone_greeting = match &configuration.feature_configuration.greetings {
+        Greetings::Default => LitStr::new("-- Loadstone --", Span::call_site()),
+        Greetings::Custom { loadstone,..} => LitStr::new(&loadstone, Span::call_site()),
+    };
+    let demo_app_greeting = match &configuration.feature_configuration.greetings {
+        Greetings::Default => LitStr::new("-- Loadstone Demo App --", Span::call_site()),
+        Greetings::Custom { demo,..} => LitStr::new(&demo, Span::call_site()),
     };
 
     let code = quote! {
@@ -109,6 +118,10 @@ fn generate_top_level_module<P: AsRef<Path>>(
         pub const RECOVERY_ENABLED: bool = #recovery_enabled;
         #[allow(unused)]
         pub const BOOT_TIME_METRICS_ENABLED: bool = #boot_time_metrics_enabled;
+        #[allow(unused)]
+        pub const LOADSTONE_GREETING: &str = #loadstone_greeting;
+        #[allow(unused)]
+        pub const DEMO_APP_GREETING: &str = #demo_app_greeting;
     };
 
     file.write_all(format!("{}", code).as_bytes())?;
