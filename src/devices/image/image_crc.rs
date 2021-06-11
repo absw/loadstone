@@ -78,10 +78,6 @@ mod tests {
         flash::ReadWrite,
     };
 
-    impl From<FakeError> for Error {
-        fn from(_: FakeError) -> Self { Error::DeviceError("Something fake happened") }
-    }
-
     #[rustfmt::skip]
     const TEST_IMAGE_WITH_CORRECT_CRC: &[u8] = &[
         // Image

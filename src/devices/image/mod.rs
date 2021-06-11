@@ -7,8 +7,6 @@
 pub mod image_ecdsa;
 
 #[cfg(feature = "ecdsa-verify")]
-pub use image_ecdsa::image_at;
-#[cfg(feature = "ecdsa-verify")]
 use image_ecdsa::*;
 
 #[cfg(not(feature = "ecdsa-verify"))]
@@ -16,7 +14,9 @@ pub mod image_crc;
 #[cfg(not(feature = "ecdsa-verify"))]
 pub use image_crc::image_at;
 
-use blue_hal::utilities::{buffer::CollectSlice, memory::Address};
+use blue_hal::{hal::flash, utilities::{buffer::CollectSlice, memory::Address}};
+
+use crate::error;
 
 /// This string precedes the CRC/Signature for golden images only
 pub const GOLDEN_STRING: &str = "XPIcbOUrpG";
@@ -63,6 +63,19 @@ pub struct Bank<A: Address> {
     pub is_golden: bool,
 }
 
+impl<A: Address> Bank<A> {
+    pub fn golden(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: false, is_golden: true }
+    }
+    pub fn bootable(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: true, is_golden: false }
+    }
+    pub fn regular(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: false, is_golden: false }
+    }
+}
+
+
 /// Image descriptor.
 ///
 /// An image descriptor can only be constructed by scanning the flash and finding
@@ -78,6 +91,13 @@ pub struct Image<A: Address> {
     #[cfg(not(feature = "ecdsa-verify"))]
     crc: u32,
 }
+
+
+pub trait Reader {
+    fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
+    where A: Address, F: flash::ReadWrite<Address = A>, error::Error: From<F::Error>;
+}
+
 
 impl<A: Address> Image<A> {
     /// Address of the start of the firmware image. Will generally coincide
@@ -113,4 +133,19 @@ impl<A: Address> Image<A> {
     /// Firmware image CRC. This is also used as an unique
     /// identifier for the firmware image for the purposes of updating.
     pub fn identifier(&self) -> u32 { self.crc }
+}
+
+
+#[cfg(test)]
+#[doc(hidden)]
+pub mod double {
+    use super::*;
+
+    pub struct FakeReader;
+    impl Reader for FakeReader {
+        fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
+            where A: Address, F: flash::ReadWrite<Address = A>, error::Error: From<F::Error> {
+            todo!()
+        }
+    }
 }

@@ -15,10 +15,7 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
-use super::{
-    boot_manager::BootManager,
-    traits::{Flash, Serial},
-};
+use super::{boot_manager::BootManager, image, traits::{Flash, Serial}};
 
 pub mod file_transfer;
 
@@ -174,9 +171,9 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<MCUF: Flash, EXTF: Flash>(
+    pub fn run<MCUF: Flash, EXTF: Flash, R: image::Reader>(
         &mut self,
-        boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
+        boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
         greeting: &'static str,
     ) {
         if !self.greeted {
@@ -349,9 +346,9 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial>(
+        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
+            $boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         {
             match name {

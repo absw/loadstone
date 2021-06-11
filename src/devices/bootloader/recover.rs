@@ -2,7 +2,7 @@ use crate::devices::cli::file_transfer::FileTransfer;
 
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader> Bootloader<EXTF, MCUF, SRL, T, R> {
     /// Enters recovery mode, which requests a golden image to be transferred via serial through
     /// the XMODEM protocol, then reboot. If Loadstone has no golden image support, recovery
     /// mode will allow flashing the bootable bank directly.
@@ -109,7 +109,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 );
                 panic!();
             }
-            match image::image_at(&mut self.mcu_flash, *bank) {
+            match R::image_at(&mut self.mcu_flash, *bank) {
                 Ok(image) if golden && !image.is_golden() => {
                     duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)
@@ -148,7 +148,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                 );
                 panic!();
             }
-            match image::image_at(self.external_flash.as_mut().unwrap(), *bank) {
+            match R::image_at(self.external_flash.as_mut().unwrap(), *bank) {
                 Ok(image) if golden && !image.is_golden() => {
                     duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)
