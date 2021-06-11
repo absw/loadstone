@@ -111,11 +111,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
             current
         });
 
-        // Either there's no external flash and no external flash banks, or there
-        // is external flash and there is at least one external bank.
+        // Either there's external flash, or there's no external flash and no banks.
         assert!(
-            self.external_flash.is_some() && self.external_banks().count() > 0
-                || self.external_flash.is_none() && self.external_banks().count() == 0,
+            self.external_flash.is_some() ||
+            (self.external_flash.is_none() && self.external_banks().count() == 0),
             "Incorrect external flash configuration"
         );
     }
