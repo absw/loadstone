@@ -30,6 +30,7 @@ pub fn generate<'a>(
     ui: &mut Ui,
     frame: &mut epi::Frame<'_>,
     personal_access_token_field: &mut String,
+    git_ref_field: &mut String,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
     configuration: &Configuration,
 ) {
@@ -39,6 +40,7 @@ pub fn generate<'a>(
                 generate_in_ci(
                     ui,
                     personal_access_token_field,
+                    git_ref_field,
                     configuration,
                     last_request_response,
                 );
@@ -74,6 +76,7 @@ fn generate_download(ui: &mut Ui, configuration: &Configuration) {
 fn generate_in_ci(
     ui: &mut Ui,
     personal_access_token_field: &mut String,
+    git_ref_field: &mut String,
     configuration: &Configuration,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 ) {
@@ -86,14 +89,20 @@ fn generate_in_ci(
         ui.hyperlink_to("visit this link.", GITHUB_TOKEN_INSTRUCTIONS);
     });
     ui.horizontal_wrapped(|ui| {
-        ui.colored_label(Color32::LIGHT_BLUE, "Personal Access Token:");
-        if ui.text_edit_singleline(personal_access_token_field).lost_focus() {
+        ui.text_edit_singleline(personal_access_token_field);
+        ui.colored_label(Color32::LIGHT_BLUE, "Personal Access Token");
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.text_edit_singleline(git_ref_field);
+        ui.colored_label(Color32::LIGHT_BLUE, "Github Ref (Branch, tag or commit hash)");
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.set_enabled(!personal_access_token_field.is_empty());
+        if ui.button("Trigger Build").clicked() {
             let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
                 .unwrap_or("Invalid Configuration Supplied".into());
-
-            generate_web(&configuration, &personal_access_token_field, &ron, last_request_response)
+            generate_web(&configuration, &personal_access_token_field, &git_ref_field, &ron, last_request_response)
                 .unwrap();
-
             personal_access_token_field.clear();
         }
     });
@@ -159,6 +168,7 @@ fn generate_native(ui: &mut Ui, configuration: &Configuration) {
 fn generate_web(
     configuration: &Configuration,
     token: &str,
+    git_ref: &str,
     ron: &str,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 ) -> Result<()> {
@@ -171,7 +181,8 @@ fn generate_web(
     drop(encoder);
 
     let formatted_body =format!(
-            "{{\"ref\":\"staging\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
+            "{{\"ref\":\"{}\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
+            git_ref,
             ron.replace("\"", "\\\"").replace("\n",""),
             configuration.required_feature_flags().collect_vec().join(","),
         );
