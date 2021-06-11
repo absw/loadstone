@@ -13,6 +13,9 @@ pub use image_crc::CrcImageReader;
 #[cfg(feature = "ecdsa-verify")]
 pub use image_ecdsa::EcdsaImageReader;
 
+#[cfg(feature="ecdsa-verify")]
+use ecdsa::elliptic_curve::generic_array::typenum::Unsigned;
+
 use blue_hal::{
     hal::flash,
     utilities::{buffer::CollectSlice, memory::Address},
@@ -111,7 +114,7 @@ impl<A: Address> Image<A> {
     #[cfg(feature = "ecdsa-verify")]
     pub fn total_size(&self) -> usize {
         self.size()
-            + SignatureSize::<NistP256>::to_usize()
+            + image_ecdsa::SignatureSize::<image_ecdsa::NistP256>::to_usize()
             + MAGIC_STRING.len()
             + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
     }
