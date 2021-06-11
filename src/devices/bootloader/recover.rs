@@ -66,23 +66,6 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
             }
         }
 
-        if no_golden_bank_support && external_golden_bank_exists {
-            duprintln!(self.serial, "Attempting image recovery to external flash...");
-            match self.recover_external(false) {
-                Ok(_) => {
-                    duprintln!(self.serial, "Finished flashing image.");
-                    self.reboot();
-                }
-                Err(e) => {
-                    duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    if let Some(serial) = self.serial.as_mut() {
-                        e.report(serial);
-                    }
-                    self.reboot();
-                }
-            }
-        }
-
         self.reboot();
     }
 
