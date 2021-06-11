@@ -1,6 +1,8 @@
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader> Bootloader<EXTF, MCUF, SRL, T, R> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
+    Bootloader<EXTF, MCUF, SRL, T, R>
+{
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.
     pub fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {

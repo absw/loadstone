@@ -7,15 +7,14 @@ use blue_hal::{
 };
 
 pub use ::ecdsa::{elliptic_curve::generic_array::typenum::Unsigned, SignatureSize};
-use p256::EncodedPoint;
 pub use ecdsa::signature::Signature as EcdsaSignature;
 use nb::block;
+use p256::EncodedPoint;
 pub use p256::{
     ecdsa::{signature::DigestVerifier, Signature, VerifyingKey},
     NistP256,
 };
 pub use sha2::Digest;
-
 
 fn retrieve_key() -> VerifyingKey {
     #[allow(unused)]
@@ -28,16 +27,21 @@ fn retrieve_key() -> VerifyingKey {
     #[cfg(not(test))]
     return VerifyingKey::from_encoded_point(
         &EncodedPoint::from_bytes(include_bytes!("../assets/key.sec1"))
-            .expect("Invalic public key supplied on compilation"))
-            .expect("Invalic public key supplied on compilation");
+            .expect("Invalic public key supplied on compilation"),
+    )
+    .expect("Invalic public key supplied on compilation");
 }
 
-pub struct EcdsaReader;
+pub struct EcdsaImageReader;
 
-impl Reader for EcdsaReader {
+impl Reader for EcdsaImageReader {
     fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
-    where A: Address, F: flash::ReadWrite<Address = A>, error::Error: From<F::Error> {
-         // Development build shorcut: We're checking that the image does *not* start with 0xFF. This
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        error::Error: From<F::Error>,
+    {
+        // Development build shorcut: We're checking that the image does *not* start with 0xFF. This
         // will not be part of the final Loadstone release build, but it helps speed up the
         // verification for invalid images during development.
         if flash.bytes(bank.location).next().ok_or(Error::BankInvalid)? == 0xFF {
@@ -70,7 +74,8 @@ impl Reader for EcdsaReader {
         let signature_bytes = &mut buffer[0..SignatureSize::<NistP256>::to_usize()];
         block!(flash.read(signature_position, signature_bytes))?;
 
-        let signature = Signature::from_bytes(signature_bytes).map_err(|_| Error::SignatureInvalid)?;
+        let signature =
+            Signature::from_bytes(signature_bytes).map_err(|_| Error::SignatureInvalid)?;
         key.verify_digest(digest, &signature).map_err(|_| Error::SignatureInvalid)?;
 
         let golden_string_position = bank.location + image_size.saturating_sub(GOLDEN_STRING.len());
@@ -94,7 +99,6 @@ impl Reader for EcdsaReader {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryInto;
     use super::*;
     use blue_hal::hal::{
         doubles::{
@@ -103,6 +107,7 @@ mod tests {
         },
         flash::ReadWrite,
     };
+    use std::convert::TryInto;
 
     #[rustfmt::skip]
     const TEST_SIGNED_IMAGE: &[u8] = &[
@@ -197,7 +202,7 @@ mod tests {
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         flash.write(Address(0), &TEST_SIGNED_IMAGE).unwrap();
 
-        let image = EcdsaReader::image_at(&mut flash, bank).unwrap();
+        let image = EcdsaImageReader::image_at(&mut flash, bank).unwrap();
         assert_eq!(image.size, 2usize);
         assert_eq!(image.location, bank.location);
         assert_eq!(image.bootable, false);
@@ -211,7 +216,7 @@ mod tests {
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         flash.write(Address(0), &TEST_SIGNED_GOLDEN_IMAGE).unwrap();
 
-        let image = EcdsaReader::image_at(&mut flash, bank).unwrap();
+        let image = EcdsaImageReader::image_at(&mut flash, bank).unwrap();
         assert_eq!(image.size, 2usize);
         assert_eq!(image.location, bank.location);
         assert_eq!(image.bootable, false);
@@ -225,10 +230,10 @@ mod tests {
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
 
         flash.write(Address(0), &TEST_IMAGE_SIGNED_BY_ANOTHER_KEY).unwrap();
-        assert_eq!(Err(Error::SignatureInvalid), EcdsaReader::image_at(&mut flash, bank));
+        assert_eq!(Err(Error::SignatureInvalid), EcdsaImageReader::image_at(&mut flash, bank));
 
         flash.write(Address(0), &TEST_GOLDEN_IMAGE_SIGNED_BY_ANOTHER_KEY).unwrap();
-        assert_eq!(Err(Error::SignatureInvalid), EcdsaReader::image_at(&mut flash, bank));
+        assert_eq!(Err(Error::SignatureInvalid), EcdsaImageReader::image_at(&mut flash, bank));
     }
 
     #[test]
@@ -240,16 +245,16 @@ mod tests {
         let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
         image[0] = 0xCC; // Corrupted image body;
         flash.write(Address(0), &image).unwrap();
-        assert_eq!(Err(Error::SignatureInvalid), EcdsaReader::image_at(&mut flash, bank));
+        assert_eq!(Err(Error::SignatureInvalid), EcdsaImageReader::image_at(&mut flash, bank));
 
         let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
         image[3] = 0xCC; // Corrupted magic string
         flash.write(Address(0), &image).unwrap();
-        assert_eq!(Err(Error::BankEmpty), EcdsaReader::image_at(&mut flash, bank));
+        assert_eq!(Err(Error::BankEmpty), EcdsaImageReader::image_at(&mut flash, bank));
 
         let mut image: [u8; 98] = TEST_SIGNED_IMAGE.try_into().unwrap();
         image[96] = 0xCC; // Corrupted signature
         flash.write(Address(0), &image).unwrap();
-        assert_eq!(Err(Error::SignatureInvalid), EcdsaReader::image_at(&mut flash, bank));
+        assert_eq!(Err(Error::SignatureInvalid), EcdsaImageReader::image_at(&mut flash, bank));
     }
 }

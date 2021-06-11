@@ -7,7 +7,9 @@ enum UpdateResult<MCUF: Flash> {
     UpdateError,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader> Bootloader<EXTF, MCUF, SRL, T, R> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
+    Bootloader<EXTF, MCUF, SRL, T, R>
+{
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
     /// is repeated for all non-golden banks. Returns the current
@@ -158,7 +160,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader> Boot
 
 #[cfg(test)]
 mod tests {
-    use blue_hal::{KB, hal::doubles::flash::Address};
+    use blue_hal::{hal::doubles::flash::Address, KB};
     use doubles::BootloaderDouble;
 
     use crate::devices::{bootloader::doubles, image::Bank};

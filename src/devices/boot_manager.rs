@@ -16,7 +16,12 @@
 
 use core::marker::PhantomData;
 
-use super::{boot_metrics::{boot_metrics, BootMetrics}, cli::{Cli, DEFAULT_GREETING}, image, traits::{Flash, Serial}};
+use super::{
+    boot_metrics::{boot_metrics, BootMetrics},
+    cli::{Cli, DEFAULT_GREETING},
+    image,
+    traits::{Flash, Serial},
+};
 use crate::error::Error;
 use blue_hal::hal::flash;
 use cortex_m::peripheral::SCB;
@@ -32,7 +37,7 @@ pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> 
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
     pub(crate) greeting: Option<&'static str>,
-    pub(crate) marker: PhantomData<R>,
+    pub(crate) _marker: PhantomData<R>,
 }
 
 impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> BootManager<MCUF, EXTF, SRL, R> {

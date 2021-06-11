@@ -9,60 +9,65 @@ use blue_hal::{
 use crc::{crc32, Hasher32};
 use nb::block;
 
-/// Scans a bank to determine the presence of a valid, crc-verified firmware image. If
-/// successful, returns the [descriptor](`Image<A>`) for that image.
-pub fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, Error>
-where
-    A: Address,
-    F: flash::ReadWrite<Address = A>,
-    Error: From<F::Error>,
-{
-    // Generic buffer to hold temporary slices read from flash memory.
-    const BUFFER_SIZE: usize = 256;
-    let mut buffer = [0u8; BUFFER_SIZE];
+pub struct CrcImageReader;
 
-    let (mut digest, mut image_size) = flash
-        .bytes(bank.location)
-        .take(bank.size)
-        .until_sequence(&magic_string_inverted())
-        .fold((crc32::Digest::new(crc32::IEEE), 0usize), |(mut digest, mut byte_count), byte| {
-            digest.write(&[byte]);
-            byte_count += 1;
-            (digest, byte_count)
-        });
+impl super::Reader for CrcImageReader {
+    fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        error::Error: From<F::Error>,
+    {
+        // Generic buffer to hold temporary slices read from flash memory.
+        const BUFFER_SIZE: usize = 256;
+        let mut buffer = [0u8; BUFFER_SIZE];
 
-    if image_size == bank.size {
-        return Err(Error::BankEmpty);
+        let (mut digest, mut image_size) = flash
+            .bytes(bank.location)
+            .take(bank.size)
+            .until_sequence(&magic_string_inverted())
+            .fold(
+                (crc32::Digest::new(crc32::IEEE), 0usize),
+                |(mut digest, mut byte_count), byte| {
+                    digest.write(&[byte]);
+                    byte_count += 1;
+                    (digest, byte_count)
+                },
+            );
+
+        if image_size == bank.size {
+            return Err(Error::BankEmpty);
+        }
+
+        // Magic string is part of the digest
+        digest.write(&magic_string_inverted());
+        let digest_position = bank.location + image_size + MAGIC_STRING.len();
+        let mut digest_bytes = [0; size_of::<u32>()];
+        block!(flash.read(digest_position, &mut digest_bytes))?;
+
+        let retrieved_crc = u32::from_le_bytes(digest_bytes);
+        let calculated_crc = digest.sum32();
+        if retrieved_crc != calculated_crc {
+            return Err(Error::CrcInvalid);
+        }
+
+        let golden_string_position = bank.location + image_size.saturating_sub(GOLDEN_STRING.len());
+        let golden_bytes = &mut buffer[0..GOLDEN_STRING.len()];
+        block!(flash.read(golden_string_position, golden_bytes))?;
+        let golden = golden_bytes == GOLDEN_STRING.as_bytes();
+
+        if golden {
+            image_size = image_size.saturating_sub(GOLDEN_STRING.len());
+        }
+
+        Ok(Image {
+            size: image_size,
+            location: bank.location,
+            bootable: bank.bootable,
+            golden,
+            crc: calculated_crc,
+        })
     }
-
-    // Magic string is part of the digest
-    digest.write(&magic_string_inverted());
-    let digest_position = bank.location + image_size + MAGIC_STRING.len();
-    let mut digest_bytes = [0; size_of::<u32>()];
-    block!(flash.read(digest_position, &mut digest_bytes))?;
-
-    let retrieved_crc = u32::from_le_bytes(digest_bytes);
-    let calculated_crc = digest.sum32();
-    if retrieved_crc != calculated_crc {
-        return Err(Error::CrcInvalid);
-    }
-
-    let golden_string_position = bank.location + image_size.saturating_sub(GOLDEN_STRING.len());
-    let golden_bytes = &mut buffer[0..GOLDEN_STRING.len()];
-    block!(flash.read(golden_string_position, golden_bytes))?;
-    let golden = golden_bytes == GOLDEN_STRING.as_bytes();
-
-    if golden {
-        image_size = image_size.saturating_sub(GOLDEN_STRING.len());
-    }
-
-    Ok(Image {
-        size: image_size,
-        location: bank.location,
-        bootable: bank.bootable,
-        golden,
-        crc: calculated_crc,
-    })
 }
 
 #[cfg(test)]
@@ -111,7 +116,7 @@ mod tests {
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
         flash.write(Address(0), &TEST_IMAGE_WITH_CORRECT_CRC).unwrap();
 
-        let image = image_at(&mut flash, bank).unwrap();
+        let image = CrcImageReader::image_at(&mut flash, bank).unwrap();
         assert_eq!(image.size, 12usize);
         assert_eq!(image.location, bank.location);
         assert_eq!(image.bootable, false);
@@ -125,6 +130,6 @@ mod tests {
             Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
 
         flash.write(Address(0), &TEST_IMAGE_WITH_BAD_CRC).unwrap();
-        assert_eq!(Err(Error::CrcInvalid), image_at(&mut flash, bank));
+        assert_eq!(Err(Error::CrcInvalid), CrcImageReader::image_at(&mut flash, bank));
     }
 }

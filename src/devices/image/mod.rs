@@ -3,18 +3,20 @@
 //! This module offers tools to partition flash memory spaces
 //! into image banks and scan those banks for valid images.
 
+#[cfg(not(feature = "ecdsa-verify"))]
+pub mod image_crc;
 #[cfg(feature = "ecdsa-verify")]
 pub mod image_ecdsa;
 
+#[cfg(not(feature = "ecdsa-verify"))]
+pub use image_crc::CrcImageReader;
 #[cfg(feature = "ecdsa-verify")]
-use image_ecdsa::*;
+pub use image_ecdsa::EcdsaImageReader;
 
-#[cfg(not(feature = "ecdsa-verify"))]
-pub mod image_crc;
-#[cfg(not(feature = "ecdsa-verify"))]
-pub use image_crc::image_at;
-
-use blue_hal::{hal::flash, utilities::{buffer::CollectSlice, memory::Address}};
+use blue_hal::{
+    hal::flash,
+    utilities::{buffer::CollectSlice, memory::Address},
+};
 
 use crate::error;
 
@@ -75,7 +77,6 @@ impl<A: Address> Bank<A> {
     }
 }
 
-
 /// Image descriptor.
 ///
 /// An image descriptor can only be constructed by scanning the flash and finding
@@ -92,12 +93,13 @@ pub struct Image<A: Address> {
     crc: u32,
 }
 
-
 pub trait Reader {
     fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
-    where A: Address, F: flash::ReadWrite<Address = A>, error::Error: From<F::Error>;
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        error::Error: From<F::Error>;
 }
-
 
 impl<A: Address> Image<A> {
     /// Address of the start of the firmware image. Will generally coincide
@@ -135,7 +137,6 @@ impl<A: Address> Image<A> {
     pub fn identifier(&self) -> u32 { self.crc }
 }
 
-
 #[cfg(test)]
 #[doc(hidden)]
 pub mod double {
@@ -144,7 +145,11 @@ pub mod double {
     pub struct FakeReader;
     impl Reader for FakeReader {
         fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
-            where A: Address, F: flash::ReadWrite<Address = A>, error::Error: From<F::Error> {
+        where
+            A: Address,
+            F: flash::ReadWrite<Address = A>,
+            error::Error: From<F::Error>,
+        {
             todo!()
         }
     }

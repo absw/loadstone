@@ -15,7 +15,11 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
-use super::{boot_manager::BootManager, image, traits::{Flash, Serial}};
+use super::{
+    boot_manager::BootManager,
+    image,
+    traits::{Flash, Serial},
+};
 
 pub mod file_transfer;
 
@@ -42,8 +46,7 @@ impl From<ApplicationError> for Error {
     fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
 }
 
-pub const DEFAULT_GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--";
+pub const DEFAULT_GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--";
 
 /// Command line interface struct, generic over a serial driver. Offers a collection of commands
 /// to interact with the MCU and external flash chips and retrieve Loadstone boot metrics.

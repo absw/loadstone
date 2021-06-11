@@ -1,0 +1,30 @@
+(
+    port: Wgm160P,
+    memory_configuration: (
+        internal_memory_map: (
+            bootloader_location: 1966080,
+            bootloader_length_kb: 1,
+            banks: [
+                (
+                    start_address: 1970176,
+                    size_kb: 4,
+                ),
+            ],
+            bootable_index: Some(0),
+        ),
+        external_memory_map: (
+            banks: [],
+        ),
+        external_flash: None,
+        golden_index: None,
+    ),
+    feature_configuration: (
+        serial: Disabled,
+        boot_metrics: Disabled,
+        greetings: Default,
+    ),
+    security_configuration: (
+        security_mode: Crc,
+        verifying_key_raw: "",
+    ),
+)
