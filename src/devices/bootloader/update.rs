@@ -157,22 +157,3 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
         Some(image)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use blue_hal::{hal::doubles::flash::Address, KB};
-    use doubles::BootloaderDouble;
-
-    use crate::devices::{bootloader::doubles, image::Bank};
-
-    //#[test]
-    //fn update_logic() {
-    //    let bootloader = BootloaderDouble::new()
-    //        .with_mcu_banks(&[
-    //            Bank::regular(0, KB!(16), Address(0)),
-    //            Bank::regular(0, KB!(16), Address(0)),
-    //            Bank::regular(0, KB!(16), Address(0)),
-    //        ])
-
-    //}
-}

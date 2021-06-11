@@ -13,7 +13,7 @@ pub use image_crc::CrcImageReader;
 #[cfg(feature = "ecdsa-verify")]
 pub use image_ecdsa::EcdsaImageReader;
 
-#[cfg(feature="ecdsa-verify")]
+#[cfg(feature = "ecdsa-verify")]
 use ecdsa::elliptic_curve::generic_array::typenum::Unsigned;
 
 use blue_hal::{
