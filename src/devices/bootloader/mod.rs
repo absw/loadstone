@@ -177,6 +177,18 @@ pub mod doubles {
         utilities::memory::doubles::FakeAddress,
     };
 
+    pub struct FakeReader;
+
+    impl Reader for FakeReader {
+        fn image_at<A, F>(_flash: &mut F, _bank: Bank<A>) -> Result<Image<A>, error::Error>
+    where
+        A: blue_hal::utilities::memory::Address,
+        F: blue_hal::hal::flash::ReadWrite<Address = A>,
+        error::Error: From<F::Error> {
+            unimplemented!()
+        }
+    }
+
     pub type BootloaderDouble =
         super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader>;
 
@@ -205,13 +217,7 @@ pub mod doubles {
         }
     }
 
-    use crate::{
-        devices::{
-            boot_metrics::BootMetrics,
-            image::{double::FakeReader, Bank},
-        },
-        error,
-    };
+    use crate::{devices::{boot_metrics::BootMetrics, image::{Bank, Image, Reader}}, error};
     impl error::Convertible for FakeError {
         fn into(self) -> error::Error {
             error::Error::DeviceError("Something fake happened (test error)")

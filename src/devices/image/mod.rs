@@ -136,21 +136,3 @@ impl<A: Address> Image<A> {
     /// identifier for the firmware image for the purposes of updating.
     pub fn identifier(&self) -> u32 { self.crc }
 }
-
-#[cfg(test)]
-#[doc(hidden)]
-pub mod double {
-    use super::*;
-
-    pub struct FakeReader;
-    impl Reader for FakeReader {
-        fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
-        where
-            A: Address,
-            F: flash::ReadWrite<Address = A>,
-            error::Error: From<F::Error>,
-        {
-            todo!()
-        }
-    }
-}
