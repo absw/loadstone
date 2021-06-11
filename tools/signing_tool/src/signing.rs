@@ -49,7 +49,6 @@ pub fn calculate_and_append_crc(image_filename: &str) -> Result<usize, Error> {
 
     let mut digest = crc32::Digest::new(crc32::IEEE);
     digest.write(&plaintext);
-    println!("{:x?}", plaintext);
 
     let bytes_written =
         file.write(&digest.sum32().to_le_bytes()).map_err(|_| Error::FileWriteFailed(error::File::Image))?;

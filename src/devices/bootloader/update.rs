@@ -1,12 +1,15 @@
 use super::*;
 
 enum UpdateResult<MCUF: Flash> {
+    AlreadyUpToDate(Image<MCUF::Address>),
     NotUpdated(Image<MCUF::Address>),
     UpdatedTo(Image<MCUF::Address>),
     UpdateError,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
+    Bootloader<EXTF, MCUF, SRL, T, R>
+{
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
     /// is repeated for all non-golden banks. Returns the current
@@ -14,7 +17,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
     pub fn latest_bootable_image(&mut self) -> Option<Image<MCUF::Address>> {
         duprintln!(self.serial, "Checking for image updates...");
         let boot_bank = self.boot_bank();
-        let current_image = if let Ok(image) = image::image_at(&mut self.mcu_flash, boot_bank) {
+        let current_image = if let Ok(image) = R::image_at(&mut self.mcu_flash, boot_bank) {
             image
         } else {
             duprintln!(self.serial, "No current image.");
@@ -23,12 +26,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
 
         let current_image = match self.update_internal(boot_bank, current_image) {
             UpdateResult::NotUpdated(current_image) => current_image,
+            UpdateResult::AlreadyUpToDate(current_image) => return Some(current_image),
             UpdateResult::UpdatedTo(new_image) => return Some(new_image),
             UpdateResult::UpdateError => return None,
         };
 
         match self.update_external(boot_bank, current_image) {
             UpdateResult::NotUpdated(current_image) => Some(current_image),
+            UpdateResult::AlreadyUpToDate(current_image) => Some(current_image),
             UpdateResult::UpdatedTo(new_image) => Some(new_image),
             UpdateResult::UpdateError => None,
         }
@@ -39,14 +44,24 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         boot_bank: Bank<MCUF::Address>,
         current_image: Image<MCUF::Address>,
     ) -> UpdateResult<MCUF> {
-        for bank in self.mcu_banks().filter(|b| !b.is_golden && b.index != boot_bank.index) {
+        for bank in self.mcu_banks().filter(|b| b.index != boot_bank.index) {
+            if bank.is_golden {
+                duprintln!(
+                    self.serial,
+                    "[{}] Skipping golden bank {:?} (Golden banks can't be updated from)...",
+                    MCUF::label(),
+                    bank.index
+                );
+                continue;
+            }
+
             duprintln!(
                 self.serial,
                 "[{}] Scanning bank {:?} for a newer image...",
                 MCUF::label(),
                 bank.index
             );
-            match image::image_at(&mut self.mcu_flash, bank) {
+            match R::image_at(&mut self.mcu_flash, bank) {
                 Ok(image) if image.identifier() != current_image.identifier() => {
                     if let Some(updated_image) = self.replace_image_internal(bank, boot_bank) {
                         self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
@@ -55,7 +70,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                         return UpdateResult::UpdateError;
                     }
                 }
-                Ok(_image) => return UpdateResult::NotUpdated(current_image),
+                Ok(_image) => return UpdateResult::AlreadyUpToDate(current_image),
                 _ => (),
             }
         }
@@ -68,14 +83,23 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         current_image: Image<MCUF::Address>,
     ) -> UpdateResult<MCUF> {
         if self.external_flash.is_some() {
-            for bank in self.external_banks().filter(|b| !b.is_golden) {
+            for bank in self.external_banks() {
+                if bank.is_golden {
+                    duprintln!(
+                        self.serial,
+                        "[{}] Skipping golden bank {:?} (Golden banks can't be updated from)...",
+                        MCUF::label(),
+                        bank.index
+                    );
+                    continue;
+                }
                 duprintln!(
                     self.serial,
                     "[{}] Scanning bank {:?} for a newer image...",
                     EXTF::label(),
                     bank.index
                 );
-                match image::image_at(self.external_flash.as_mut().unwrap(), bank) {
+                match R::image_at(self.external_flash.as_mut().unwrap(), bank) {
                     Ok(image) if image.identifier() != current_image.identifier() => {
                         if let Some(updated_image) = self.replace_image_external(bank, boot_bank) {
                             self.boot_metrics.boot_path = BootPath::Updated { bank: bank.index };
@@ -84,7 +108,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
                             return UpdateResult::UpdateError;
                         }
                     }
-                    Ok(_image) => return UpdateResult::NotUpdated(current_image),
+                    Ok(_image) => return UpdateResult::AlreadyUpToDate(current_image),
                     _ => (),
                 }
             }
@@ -107,7 +131,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         )
         .expect("Failed to copy a valid image!");
         duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
-        let image = image::image_at(&mut self.mcu_flash, boot_bank)
+        let image = R::image_at(&mut self.mcu_flash, boot_bank)
             .expect("Failed to verify an image after copy!");
         Some(image)
     }
@@ -128,7 +152,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF,
         )
         .expect("Failed to copy a valid image!");
         duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
-        let image = image::image_at(&mut self.mcu_flash, boot_bank)
+        let image = R::image_at(&mut self.mcu_flash, boot_bank)
             .expect("Failed to verify an image after copy!");
         Some(image)
     }

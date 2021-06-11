@@ -3,20 +3,25 @@
 //! This module offers tools to partition flash memory spaces
 //! into image banks and scan those banks for valid images.
 
+#[cfg(not(feature = "ecdsa-verify"))]
+pub mod image_crc;
 #[cfg(feature = "ecdsa-verify")]
 pub mod image_ecdsa;
 
-#[cfg(feature = "ecdsa-verify")]
-pub use image_ecdsa::image_at;
-#[cfg(feature = "ecdsa-verify")]
-use image_ecdsa::*;
-
 #[cfg(not(feature = "ecdsa-verify"))]
-pub mod image_crc;
-#[cfg(not(feature = "ecdsa-verify"))]
-pub use image_crc::image_at;
+pub use image_crc::CrcImageReader;
+#[cfg(feature = "ecdsa-verify")]
+pub use image_ecdsa::EcdsaImageReader;
 
-use blue_hal::utilities::{buffer::CollectSlice, memory::Address};
+#[cfg(feature = "ecdsa-verify")]
+use ecdsa::elliptic_curve::generic_array::typenum::Unsigned;
+
+use blue_hal::{
+    hal::flash,
+    utilities::{buffer::CollectSlice, memory::Address},
+};
+
+use crate::error;
 
 /// This string precedes the CRC/Signature for golden images only
 pub const GOLDEN_STRING: &str = "XPIcbOUrpG";
@@ -63,6 +68,18 @@ pub struct Bank<A: Address> {
     pub is_golden: bool,
 }
 
+impl<A: Address> Bank<A> {
+    pub fn golden(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: false, is_golden: true }
+    }
+    pub fn bootable(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: true, is_golden: false }
+    }
+    pub fn regular(index: u8, size: usize, location: A) -> Self {
+        Self { index, size, location, bootable: false, is_golden: false }
+    }
+}
+
 /// Image descriptor.
 ///
 /// An image descriptor can only be constructed by scanning the flash and finding
@@ -79,6 +96,14 @@ pub struct Image<A: Address> {
     crc: u32,
 }
 
+pub trait Reader {
+    fn image_at<A, F>(flash: &mut F, bank: Bank<A>) -> Result<Image<A>, error::Error>
+    where
+        A: Address,
+        F: flash::ReadWrite<Address = A>,
+        error::Error: From<F::Error>;
+}
+
 impl<A: Address> Image<A> {
     /// Address of the start of the firmware image. Will generally coincide
     /// with the start of its associated image bank.
@@ -89,7 +114,7 @@ impl<A: Address> Image<A> {
     #[cfg(feature = "ecdsa-verify")]
     pub fn total_size(&self) -> usize {
         self.size()
-            + SignatureSize::<NistP256>::to_usize()
+            + image_ecdsa::SignatureSize::<image_ecdsa::NistP256>::to_usize()
             + MAGIC_STRING.len()
             + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
     }

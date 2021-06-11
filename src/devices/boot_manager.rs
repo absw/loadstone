@@ -14,7 +14,14 @@
 //! product that needs to interact with Loadstone can use this module as
 //! a starting point.
 
-use super::{boot_metrics::{boot_metrics, BootMetrics}, cli::{Cli, DEFAULT_GREETING}, image, traits::{Flash, Serial}};
+use core::marker::PhantomData;
+
+use super::{
+    boot_metrics::{boot_metrics, BootMetrics},
+    cli::{Cli, DEFAULT_GREETING},
+    image,
+    traits::{Flash, Serial},
+};
 use crate::error::Error;
 use blue_hal::hal::flash;
 use cortex_m::peripheral::SCB;
@@ -22,7 +29,7 @@ use cortex_m::peripheral::SCB;
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
 /// [ports module](`crate::ports`) provides constructors for specific chips.
-pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial> {
+pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) mcu_flash: MCUF,
@@ -30,9 +37,10 @@ pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial> {
     pub(crate) cli: Option<Cli<SRL>>,
     pub(crate) boot_metrics: Option<BootMetrics>,
     pub(crate) greeting: Option<&'static str>,
+    pub(crate) _marker: PhantomData<R>,
 }
 
-impl<MCUF: Flash, EXTF: Flash, SRL: Serial> BootManager<MCUF, EXTF, SRL> {
+impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> BootManager<MCUF, EXTF, SRL, R> {
     /// Provides an iterator over all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()

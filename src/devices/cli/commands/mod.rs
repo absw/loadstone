@@ -42,7 +42,7 @@ commands!( cli, boot_manager, names, helpstrings [
     images ["Displays image information (WARNING: Slow)"] (){
         uprintln!(cli.serial, "[{}] Images:", MCUF::label());
         for bank in boot_manager.mcu_banks() {
-            if let Ok(image) = image::image_at(&mut boot_manager.mcu_flash, bank) {
+            if let Ok(image) = R::image_at(&mut boot_manager.mcu_flash, bank) {
                 uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - {}",
                     bank.index,
                     image.size(),
@@ -52,7 +52,7 @@ commands!( cli, boot_manager, names, helpstrings [
         if let Some(ref mut external_flash) = boot_manager.external_flash {
             uprintln!(cli.serial, "[{}] Images:", EXTF::label());
             for bank in boot_manager.external_banks.iter().cloned() {
-                if let Ok(image) = image::image_at(external_flash, bank) {
+                if let Ok(image) = R::image_at(external_flash, bank) {
                     uwriteln!(cli.serial, "Bank {} - [IMAGE] - Size: {}b - {}",
                         bank.index,
                         image.size(),
@@ -94,7 +94,7 @@ commands!( cli, boot_manager, names, helpstrings [
 
         if let Some(ref mut external_flash) = boot_manager.external_flash {
             if let Some(bank) = boot_manager.external_banks.iter().cloned().find(|b| b.index == bank) {
-                let image = image::image_at(external_flash, bank)
+                let image = R::image_at(external_flash, bank)
                     .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
                 let signature_location = image.location() + image.size() + MAGIC_STRING.len();
                 let mut signature_bytes = [0u8; 64usize];
@@ -108,7 +108,7 @@ commands!( cli, boot_manager, names, helpstrings [
         } else if let Some(bank) = boot_manager.mcu_banks().find(|b| b.index == bank) {
             uprintln!(cli.serial, "Warning: Corrupting a signature in the MCU flash should work, but it might cause");
             uprintln!(cli.serial, "the application to crash.");
-            let image = image::image_at(&mut boot_manager.mcu_flash, bank)
+            let image = R::image_at(&mut boot_manager.mcu_flash, bank)
                 .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
             let signature_location = image.location() + image.size() + MAGIC_STRING.len();
             let mut signature_bytes = [0u8; 64usize];
@@ -138,7 +138,7 @@ commands!( cli, boot_manager, names, helpstrings [
             return Ok(());
         };
 
-        let image = image::image_at(external_flash, bank)
+        let image = R::image_at(external_flash, bank)
             .map_err(|_| Error::ApplicationError(ApplicationError::BankEmpty))?;
 
         let byte_location = image.location() + 1;
