@@ -175,7 +175,7 @@ fn configure_internal_bank(
             .clamp_to_range(true)
             .suffix("KB"),
         );
-        ui.label(format!("Bank {}", i));
+        ui.label(format!("Bank {}", i + 1));
         ui.add(
             Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
                 .text_color(Color32::LIGHT_BLUE),
@@ -277,7 +277,7 @@ fn configure_external_bank(
             .clamp_to_range(true)
             .suffix("KB"),
         );
-        ui.label(format!("Bank {}", global_index));
+        ui.label(format!("Bank {}", global_index + 1));
         ui.add(
             Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
                 .text_color(Color32::LIGHT_BLUE),
