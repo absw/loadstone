@@ -48,7 +48,7 @@ impl Serial {
     pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum UpdateSignal {
     Disabled,
     Enabled,
