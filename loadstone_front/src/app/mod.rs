@@ -4,7 +4,10 @@ use self::menus::{
     configure_boot_metrics, memory_map::configure_memory_map, security::configure_security,
     select_port,
 };
-use crate::app::menus::{generate, serial::configure_serial};
+use crate::app::menus::{
+    generate, update_signal::configure_update_signal,
+    serial::configure_serial
+};
 use eframe::{
     egui::{self, mutex::Mutex, ScrollArea},
     epi,
@@ -91,6 +94,12 @@ impl epi::App for LoadstoneApp {
                             ui,
                             &mut configuration.feature_configuration.boot_metrics,
                             &mut configuration.port,
+                        );
+                    });
+                    ui.group(|ui| {
+                        configure_update_signal(
+                            ui,
+                            &mut configuration.feature_configuration.update_signal,
                         );
                     });
                 });

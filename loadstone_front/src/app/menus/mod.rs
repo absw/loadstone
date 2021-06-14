@@ -6,6 +6,7 @@ pub mod serial;
 pub mod memory_map;
 pub mod security;
 pub mod generate;
+pub mod update_signal;
 
 pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {
     ui.horizontal_wrapped(|ui| {
