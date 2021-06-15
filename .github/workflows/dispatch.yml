@@ -40,6 +40,15 @@ jobs:
         env:
           SCRIPT_MODE: true
         run: LOADSTONE_CONFIG='${{ github.event.inputs.loadstone_configuration }}' cargo objcopy --bin demo_app --release --target thumbv7em-none-eabihf --features relocate-to-bootable-bank,${{ github.event.inputs.loadstone_features }} -- -O binary demo_app.bin
+      - name: Copy Ron File
+        env:
+          SCRIPT_MODE: true
+        run: echo '${{ github.event.inputs.loadstone_configuration }}' > loadstone_config.ron
+      - name: Upload Ron
+        uses: actions/upload-artifact@v2
+        with:
+           name: loadstone_config.ron
+           path: loadstone_config.ron
       - name: Upload Loadstone Artifacts
         uses: actions/upload-artifact@v2
         with:
