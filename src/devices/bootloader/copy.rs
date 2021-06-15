@@ -1,6 +1,6 @@
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
     pub fn copy_image_single_flash<F: Flash>(
         serial: &mut Option<SRL>,
         flash: &mut F,

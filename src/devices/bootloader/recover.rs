@@ -2,7 +2,7 @@ use crate::devices::cli::file_transfer::FileTransfer;
 
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
     /// Enters recovery mode, which requests a golden image to be transferred via serial through
     /// the XMODEM protocol, then reboot. If Loadstone has no golden image support, recovery
     /// mode will allow flashing the bootable bank directly.

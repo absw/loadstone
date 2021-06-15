@@ -12,7 +12,7 @@ use super::{
 use crate::error::Error;
 use blue_hal::{
     duprintln,
-    hal::{flash, time},
+    hal::{flash, time, update_signal::UpdateSignal},
     KB,
 };
 use core::{cmp::min, mem::size_of};
@@ -32,7 +32,7 @@ mod recover;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -41,9 +41,10 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> {
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
+    pub(crate) update_signal: Option<US>,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now> Bootloader<EXTF, MCUF, SRL, T> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
     /// Main bootloader routine.
     ///
     /// In case the MCU flash's main bank contains a valid image, an update is attempted.
