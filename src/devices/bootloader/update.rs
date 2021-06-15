@@ -1,5 +1,5 @@
 use super::*;
-use blue_hal::hal::update_signal::UpdateSignal;
+use blue_hal::hal::update_signal::{UpdateSignal, UpdateSignalResult};
 
 enum UpdateResult<MCUF: Flash> {
     NotUpdated(Image<MCUF::Address>),
@@ -22,13 +22,16 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
             return None;
         };
 
-        let should_update = self.update_signal.as_ref()
-            .map(UpdateSignal::should_update)
-            .unwrap_or(true);
-
-        if !should_update {
-            duprintln!(self.serial, "Update signal enabled, refusing to update.");
-            return Some(current_image);
+        match self.update_signal.should_update() {
+            UpdateSignalResult::None => {
+                duprintln!(self.serial, "Update signal enabled, refusing to update.");
+                return Some(current_image);
+            },
+            UpdateSignalResult::Any => {
+            },
+            UpdateSignalResult::Index(_) => {
+                unimplemented!();
+            },
         }
 
         let current_image = match self.update_internal(boot_bank, current_image) {
