@@ -1,6 +1,8 @@
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, US>
+{
     pub fn copy_image_single_flash<F: Flash>(
         serial: &mut Option<SRL>,
         flash: &mut F,
@@ -11,7 +13,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
         if input_bank.index == output_bank.index {
             return Err(Error::DeviceError("Attempted to copy a bank into itself"));
         }
-        let input_image = image::image_at(flash, input_bank)?;
+        let input_image = R::image_at(flash, input_bank)?;
         if must_be_golden && !input_image.is_golden() {
             duprintln!(serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));
@@ -55,7 +57,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
         output_bank: image::Bank<O::Address>,
         must_be_golden: bool,
     ) -> Result<(), Error> {
-        let input_image = image::image_at(input_flash, input_bank)?;
+        let input_image = R::image_at(input_flash, input_bank)?;
         if must_be_golden && !input_image.is_golden() {
             duprintln!(serial, "Image is not golden.",);
             return Err(Error::DeviceError("Image is not golden"));

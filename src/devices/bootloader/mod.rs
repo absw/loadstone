@@ -15,24 +15,24 @@ use blue_hal::{
     hal::{flash, time, update_signal::UpdateSignal},
     KB,
 };
-use core::{cmp::min, mem::size_of};
+use core::{cmp::min, marker::PhantomData, mem::size_of};
 use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
 
-/// Operations related to updating images with newer ones.
-mod update;
 /// Operations related to copying images between flash chips.
 mod copy;
-/// Operations related to restoring an image when there's no current one to boot.
-mod restore;
 /// Operations related to serial recovery when there's no fallback to restore to.
 mod recover;
+/// Operations related to restoring an image when there's no current one to boot.
+mod restore;
+/// Operations related to updating images with newer ones.
+mod update;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> {
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -42,9 +42,13 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: U
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
     pub(crate) update_signal: US,
+    pub(crate) greeting: &'static str,
+    pub(crate) _marker: PhantomData<R>,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, US>
+{
     /// Main bootloader routine.
     ///
     /// In case the MCU flash's main bank contains a valid image, an update is attempted.
@@ -63,7 +67,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
     pub fn run(mut self) -> ! {
         self.verify_bank_correctness();
         duprintln!(self.serial, "");
-        duprintln!(self.serial, "-- Loadstone Initialised --");
+        duprintln!(self.serial, "{}", self.greeting);
         if let Some(image) = self.latest_bootable_image() {
             duprintln!(self.serial, "Attempting to boot from default bank.");
             match self.boot(image).unwrap_err() {
@@ -111,11 +115,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
             current
         });
 
-        // Either there's no external flash and no external flash banks, or there
-        // is external flash and there is at least one external bank.
+        // Either there's external flash, or there's no external flash and no banks.
         assert!(
-            self.external_flash.is_some() && self.external_banks().count() > 0
-                || self.external_flash.is_none() && self.external_banks().count() == 0,
+            self.external_flash.is_some() ||
+            (self.external_flash.is_none() && self.external_banks().count() == 0),
             "Incorrect external flash configuration"
         );
     }
@@ -155,5 +158,76 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
     /// Returns an iterator of all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
+    }
+}
+
+#[cfg(test)]
+#[doc(hidden)]
+pub mod doubles {
+    use blue_hal::{
+        hal::{
+            doubles::{
+                error::FakeError,
+                flash::{Address, FakeFlash},
+                serial::SerialStub,
+                time::MockSysTick,
+            },
+            null::NullFlash,
+        },
+        utilities::memory::doubles::FakeAddress,
+    };
+
+    pub struct FakeReader;
+
+    impl Reader for FakeReader {
+        fn image_at<A, F>(_flash: &mut F, _bank: Bank<A>) -> Result<Image<A>, error::Error>
+        where
+            A: blue_hal::utilities::memory::Address,
+            F: blue_hal::hal::flash::ReadWrite<Address = A>,
+            error::Error: From<F::Error>,
+        {
+            unimplemented!()
+        }
+    }
+
+    pub type BootloaderDouble =
+        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader>;
+
+    impl BootloaderDouble {
+        pub fn new() -> Self {
+            BootloaderDouble {
+                mcu_flash: FakeFlash::new(Address(0)),
+                external_banks: &[],
+                mcu_banks: &[],
+                external_flash: Some(FakeFlash::new(Address(0))),
+                serial: Some(SerialStub),
+                boot_metrics: BootMetrics::default(),
+                start_time: None,
+                recovery_enabled: false,
+                greeting: "I'm a fake bootloader!",
+                _marker: Default::default(),
+            }
+        }
+
+        pub fn with_mcu_banks(self, mcu_banks: &'static [Bank<Address>]) -> Self {
+            Self { mcu_banks, ..self }
+        }
+
+        pub fn with_external_banks(self, external_banks: &'static [Bank<Address>]) -> Self {
+            Self { external_banks, ..self }
+        }
+    }
+
+    use crate::{
+        devices::{
+            boot_metrics::BootMetrics,
+            image::{Bank, Image, Reader},
+        },
+        error,
+    };
+    impl error::Convertible for FakeError {
+        fn into(self) -> error::Error {
+            error::Error::DeviceError("Something fake happened (test error)")
+        }
     }
 }

@@ -6,9 +6,6 @@
 use cortex_m_rt::{entry, exception};
 pub const HEAP_SIZE_BYTES: usize = 8192;
 
-pub const GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
-
 #[cfg(all(target_arch = "arm", feature = "stm32f412"))]
 #[entry]
 fn main() -> ! {
@@ -17,7 +14,7 @@ fn main() -> ! {
 
     use loadstone_lib::devices::boot_manager;
     let app = boot_manager::BootManager::new();
-    app.run(GREETING);
+    app.run();
 }
 
 #[cfg(all(target_arch = "arm", feature = "wgm160p"))]

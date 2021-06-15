@@ -1,6 +1,8 @@
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, US>
+{
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.
     pub fn restore(&mut self) -> Result<Image<MCUF::Address>, Error> {
@@ -41,7 +43,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
             self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
-            return image::image_at(&mut self.mcu_flash, output).ok();
+            return R::image_at(&mut self.mcu_flash, output).ok();
         }
         None
     }
@@ -77,7 +79,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
             self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
-            return image::image_at(&mut self.mcu_flash, output).ok();
+            return R::image_at(&mut self.mcu_flash, output).ok();
         }
         None
     }

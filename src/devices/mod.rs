@@ -3,9 +3,9 @@
 //! generic, while board specifics (pins, board config) are
 //! handled in the `ports` module.
 
-pub mod bootloader;
-pub mod boot_metrics;
 pub mod boot_manager;
+pub mod boot_metrics;
+pub mod bootloader;
 pub mod cli;
 pub mod image;
 

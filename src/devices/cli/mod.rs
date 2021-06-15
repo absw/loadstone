@@ -17,6 +17,7 @@ use ufmt::{uwrite, uwriteln};
 
 use super::{
     boot_manager::BootManager,
+    image,
     traits::{Flash, Serial},
 };
 
@@ -44,6 +45,8 @@ pub enum Error {
 impl From<ApplicationError> for Error {
     fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
 }
+
+pub const DEFAULT_GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--";
 
 /// Command line interface struct, generic over a serial driver. Offers a collection of commands
 /// to interact with the MCU and external flash chips and retrieve Loadstone boot metrics.
@@ -171,14 +174,15 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<MCUF: Flash, EXTF: Flash>(
+    pub fn run<MCUF: Flash, EXTF: Flash, R: image::Reader>(
         &mut self,
-        boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
+        boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
         greeting: &'static str,
     ) {
         if !self.greeted {
             uprintln!(self.serial, "");
             uprintln!(self.serial, "{}", greeting);
+            uprintln!(self.serial, "Type `help` for a list of commands");
             self.greeted = true;
         }
         if self.needs_prompt {
@@ -345,9 +349,9 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial>(
+        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<MCUF, EXTF, SRL>,
+            $boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         {
             match name {

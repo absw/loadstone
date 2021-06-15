@@ -1,0 +1,61 @@
+(
+    port: Stm32F412,
+    memory_configuration: (
+        internal_memory_map: (
+            bootloader_location: 134217728,
+            bootloader_length_kb: 64,
+            banks: [
+                (
+                    start_address: 134283264,
+                    size_kb: 64,
+                ),
+            ],
+            bootable_index: Some(0),
+        ),
+        external_memory_map: (
+            banks: [
+                (
+                    start_address: 0,
+                    size_kb: 64,
+                ),
+                (
+                    start_address: 65536,
+                    size_kb: 64,
+                ),
+            ],
+        ),
+        external_flash: Some((
+            name: "Micron n25q128a",
+            internal: false,
+            start: 0,
+            end: 16777215,
+            region_size: 4096,
+        )),
+        golden_index: Some(1),
+    ),
+    feature_configuration: (
+        serial: Enabled(
+            recovery_enabled: true,
+            tx_pin: (
+                peripheral: "USART1",
+                bank: "b",
+                index: 6,
+                af_index: 7,
+            ),
+            rx_pin: (
+                peripheral: "USART1",
+                bank: "b",
+                index: 7,
+                af_index: 7,
+            ),
+        ),
+        boot_metrics: Enabled(
+            timing: true,
+        ),
+        update_signal: Disabled,
+    ),
+    security_configuration: (
+        security_mode: P256ECDSA,
+        verifying_key_raw: "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp\nv7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----\n",
+    ),
+)

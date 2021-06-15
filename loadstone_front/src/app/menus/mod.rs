@@ -1,12 +1,15 @@
 use eframe::egui;
 use enum_iterator::IntoEnumIterator;
-use loadstone_config::{features::BootMetrics, port::Port};
+use loadstone_config::{
+    features::{BootMetrics, Greetings},
+    port::Port,
+};
 
-pub mod serial;
 pub mod memory_map;
 pub mod security;
 pub mod generate;
 pub mod update_signal;
+pub mod serial;
 
 pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {
     ui.horizontal_wrapped(|ui| {
@@ -44,4 +47,47 @@ pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics,
         ui.checkbox(timing_box, "Timing Metrics");
         ui.label("Include boot timing as part of the boot metrics.");
     });
+}
+
+pub fn configure_custom_greetings(ui: &mut egui::Ui, greetings: &mut Greetings) {
+    let mut greetings_box = matches!(greetings, Greetings::Custom { .. });
+    let loadstone_with_version = || {
+        format!(
+            "-- Loadstone [{}-{}] --",
+            env!("CARGO_PKG_VERSION"),
+            git_version::git_version!()
+        )
+    };
+    let demo_with_version = || {
+        format!(
+            "-- Loadstone Demo App [{}-{}] --",
+            env!("CARGO_PKG_VERSION"),
+            git_version::git_version!()
+        )
+    };
+    ui.horizontal_wrapped(|ui| {
+        ui.checkbox(&mut greetings_box, "Custom Greetings");
+        match (greetings_box, &greetings) {
+            (true, Greetings::Default) => {
+                *greetings = Greetings::Custom {
+                    loadstone: loadstone_with_version().into(),
+                    demo: demo_with_version().into(),
+                }
+            }
+            (false, Greetings::Custom { .. }) => *greetings = Greetings::Default,
+            _ => {}
+        }
+        ui.label("Select custom greetings for Loadstone and the demo application.");
+    });
+
+    if let Greetings::Custom { loadstone, demo } = greetings {
+        ui.horizontal_wrapped(|ui| {
+            ui.text_edit_singleline(loadstone.to_mut());
+            ui.label("Custom greeting when booting Loadstone.");
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.text_edit_singleline(demo.to_mut());
+            ui.label("Custom greeting when booting the demo application.");
+        });
+    }
 }

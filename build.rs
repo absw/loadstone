@@ -1,8 +1,7 @@
 #![feature(bool_to_option)]
 
 use anyhow::Result;
-use loadstone_config::{Configuration, codegen::generate_modules};
-use loadstone_config::security::SecurityMode;
+use loadstone_config::{codegen::generate_modules, security::SecurityMode, Configuration};
 use std::fs;
 
 fn configure_runner(target: &str) {
@@ -25,12 +24,14 @@ fn process_configuration_file() -> Result<()> {
             ron::from_str(&config)?
         }
     } else {
-        panic!("\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
+        panic!(
+            "\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
                 embedded in the `LOADSTONE_CONFIG` environment variable. \r\nTry again with \
                 'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \r\nIf you're just looking \
                 to run unit tests, or to build a port that does not require any code \
                 generation (manual port), supply an empty string:
-                'LOADSTONE_CONFIG=\"\" cargo...`\r\n\r\n")
+                'LOADSTONE_CONFIG=\"\" cargo...`\r\n\r\n"
+        )
     };
 
     validate_feature_flags_against_configuration(&configuration);
@@ -50,15 +51,16 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
 
     let missing_flags: Vec<_> = configuration
         .required_feature_flags()
-        .map(|s| s.replace("-","_"))
+        .map(|s| s.replace("-", "_"))
         .filter(|f| !&supplied_flags.contains(&(*f).to_owned()))
         .collect();
 
-    if configuration.security_configuration.security_mode != SecurityMode::P256ECDSA &&
-        supplied_flags.contains(&"ecdsa_verify".to_owned()) {
-            panic!("Configuration mismatch. Configuration file does not specify ECDSA security mode, \
+    if configuration.security_configuration.security_mode != SecurityMode::P256ECDSA
+        && supplied_flags.contains(&"ecdsa_verify".to_owned())
+    {
+        panic!("Configuration mismatch. Configuration file does not specify ECDSA security mode, \
                 but the `ecdsa-verify` flag was supplied. Try again without `ecdsa-verify` for CRC mode.");
-        }
+    }
 
     if !missing_flags.is_empty() {
         panic!(

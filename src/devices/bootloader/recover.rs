@@ -2,7 +2,9 @@ use crate::devices::cli::file_transfer::FileTransfer;
 
 use super::*;
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Bootloader<EXTF, MCUF, SRL, T, US> {
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, US>
+{
     /// Enters recovery mode, which requests a golden image to be transferred via serial through
     /// the XMODEM protocol, then reboot. If Loadstone has no golden image support, recovery
     /// mode will allow flashing the bootable bank directly.
@@ -64,23 +66,6 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
             }
         }
 
-        if no_golden_bank_support && external_golden_bank_exists {
-            duprintln!(self.serial, "Attempting image recovery to external flash...");
-            match self.recover_external(false) {
-                Ok(_) => {
-                    duprintln!(self.serial, "Finished flashing image.");
-                    self.reboot();
-                }
-                Err(e) => {
-                    duprintln!(self.serial, "FATAL: Image did not flash correctly.");
-                    if let Some(serial) = self.serial.as_mut() {
-                        e.report(serial);
-                    }
-                    self.reboot();
-                }
-            }
-        }
-
         self.reboot();
     }
 
@@ -109,7 +94,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
                 );
                 panic!();
             }
-            match image::image_at(&mut self.mcu_flash, *bank) {
+            match R::image_at(&mut self.mcu_flash, *bank) {
                 Ok(image) if golden && !image.is_golden() => {
                     duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)
@@ -148,7 +133,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, US: UpdateSignal> Boot
                 );
                 panic!();
             }
-            match image::image_at(self.external_flash.as_mut().unwrap(), *bank) {
+            match R::image_at(self.external_flash.as_mut().unwrap(), *bank) {
                 Ok(image) if golden && !image.is_golden() => {
                     duprintln!(self.serial, "FATAL: Flashed image is not a golden image.");
                     Err(Error::ImageIsNotGolden)

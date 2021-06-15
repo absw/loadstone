@@ -4,10 +4,12 @@ use self::menus::{
     configure_boot_metrics, memory_map::configure_memory_map, security::configure_security,
     select_port,
 };
+
 use crate::app::menus::{
     generate, update_signal::configure_update_signal,
-    serial::configure_serial
+    serial::configure_serial, configure_custom_greetings
 };
+
 use eframe::{
     egui::{self, mutex::Mutex, ScrollArea},
     epi,
@@ -26,6 +28,7 @@ pub struct LoadstoneApp {
     configuration: Configuration,
     verifying_key_text_field: String,
     personal_access_token_field: String,
+    git_ref_field: String,
     last_request_response: Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 }
 
@@ -35,6 +38,7 @@ impl Default for LoadstoneApp {
             configuration: Default::default(),
             verifying_key_text_field: Default::default(),
             personal_access_token_field: Default::default(),
+            git_ref_field: "staging".into(),
             last_request_response: Arc::new(Mutex::new(None)),
         }
     }
@@ -62,6 +66,7 @@ impl epi::App for LoadstoneApp {
             verifying_key_text_field,
             personal_access_token_field,
             last_request_response,
+            git_ref_field,
         } = self;
         configuration.cleanup();
 
@@ -97,6 +102,12 @@ impl epi::App for LoadstoneApp {
                         );
                     });
                     ui.group(|ui| {
+                        configure_custom_greetings(
+                            ui,
+                            &mut configuration.feature_configuration.greetings,
+                        );
+                    });
+                    ui.group(|ui| {
                         configure_update_signal(
                             ui,
                             &mut configuration.feature_configuration.update_signal,
@@ -129,6 +140,7 @@ impl epi::App for LoadstoneApp {
                         ui,
                         frame,
                         personal_access_token_field,
+                        git_ref_field,
                         last_request_response,
                         &configuration,
                     );
