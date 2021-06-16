@@ -31,8 +31,8 @@ fn generate_flash_stm32(
 ) -> Result<()> {
     if configuration.memory_configuration.external_flash.is_some() {
         code.append_all(quote!{
-            use super::pin_configuration::*;
             use blue_hal::hal::time;
+            use super::pin_configuration::*;
             pub fn construct_flash(qspi_pins: QspiPins, qspi: stm32pac::QUADSPI) -> Option<ExternalFlash> {
                 let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
                 let qspi = Qspi::from_config(qspi, qspi_pins, qspi_config).unwrap();
@@ -42,6 +42,7 @@ fn generate_flash_stm32(
         })
     } else {
         code.append_all(quote!{
+            use blue_hal::hal::time;
             use super::pin_configuration::*;
             #[allow(unused)]
             pub fn construct_flash(qspi_pins: QspiPins, qspi: stm32pac::QUADSPI) -> Option<ExternalFlash> { None }
@@ -59,7 +60,6 @@ fn generate_serial_stm32(
         code.append_all(quote! {
             use super::pin_configuration::{UsartPins, Serial};
             use blue_hal::stm32pac;
-            use blue_hal::hal::time;
             use blue_hal::drivers::stm32f4::rcc::Clocks;
             use blue_hal::drivers::stm32f4::serial::{self, UsartExt};
             #[allow(unused)]
