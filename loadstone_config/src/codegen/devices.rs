@@ -32,6 +32,7 @@ fn generate_flash_stm32(
     if configuration.memory_configuration.external_flash.is_some() {
         code.append_all(quote!{
             use super::pin_configuration::*;
+            use blue_hal::hal::time;
             pub fn construct_flash(qspi_pins: QspiPins, qspi: stm32pac::QUADSPI) -> Option<ExternalFlash> {
                 let qspi_config = qspi::Config::<mode::Single>::default().with_flash_size(24).unwrap();
                 let qspi = Qspi::from_config(qspi, qspi_pins, qspi_config).unwrap();
