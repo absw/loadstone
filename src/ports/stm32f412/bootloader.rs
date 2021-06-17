@@ -54,7 +54,8 @@ impl Bootloader<ExternalFlash, flash::McuFlash, Serial, SysTick, ImageReader, Up
         };
 
         let update_signal = if UDPATE_SIGNAL_ENABLED {
-            Some(UpdateSignal { })
+            let rtc_backup_register = peripherals.RTC;
+            Some(UpdateSignal::new(rtc_backup_register))
         } else {
             None
         };
