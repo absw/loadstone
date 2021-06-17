@@ -162,6 +162,13 @@ commands!( cli, boot_manager, names, helpstrings [
         boot_manager.reset();
     },
 
+    boot_bank ["Restart, attempting to boot into a specific image if available."] (
+        bank: u32 ["External bank index."],
+    ) {
+        uprintln!(cli.serial, "Restarting...");
+        boot_manager.reset_to_bank(bank);
+    },
+
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )
     {
         if let Some(metrics) = &boot_manager.boot_metrics {

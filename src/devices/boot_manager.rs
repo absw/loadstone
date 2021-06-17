@@ -95,6 +95,14 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> BootManager<MCUF, 
     /// Triggers a soft system reset.
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
+    /// Triggers a soft system reset, and sets the reset register read by the update signal.
+    pub fn reset_to_bank(&mut self, index: u32) -> ! {
+        // TODO: Do this properly.
+        let peripherals = unsafe { blue_hal::stm32pac::Peripherals::steal() };
+        peripherals.RTC.bkpr[0].write(|w| unsafe { w.bits(index) });
+        SCB::sys_reset();
+    }
+
     /// Gathers metrics left over in memory by Loadstone, if available, and launches
     /// the command line interface.
     pub fn run(mut self) -> ! {
