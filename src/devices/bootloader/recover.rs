@@ -1,4 +1,7 @@
-use crate::devices::cli::file_transfer::FileTransfer;
+use crate::devices::{
+    cli::file_transfer::FileTransfer,
+    update_signal::UpdateSignal,
+};
 
 use super::*;
 

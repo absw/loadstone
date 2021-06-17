@@ -1,5 +1,5 @@
 use super::*;
-use blue_hal::hal::update_signal::{UpdateSignal, UpdateSignalResult};
+use crate::devices::update_signal::*;
 
 enum UpdateResult<MCUF: Flash> {
     AlreadyUpToDate(Image<MCUF::Address>),
@@ -25,14 +25,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: 
             return None;
         };
 
-        match self.update_signal.should_update() {
-            UpdateSignalResult::None => {
+        match self.update_signal.as_ref().map(UpdateSignal::update_plan) {
+            None => { },
+            Some(UpdatePlan::None) => {
                 duprintln!(self.serial, "Update signal enabled, refusing to update.");
                 return Some(current_image);
             },
-            UpdateSignalResult::Any => {
-            },
-            UpdateSignalResult::Index(_) => {
+            Some(UpdatePlan::Any) => { },
+            Some(UpdatePlan::Index(_)) => {
                 unimplemented!();
             },
         }

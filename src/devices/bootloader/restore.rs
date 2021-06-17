@@ -1,4 +1,5 @@
 use super::*;
+use crate::devices::update_signal::UpdateSignal;
 
 impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
     Bootloader<EXTF, MCUF, SRL, T, R, US>

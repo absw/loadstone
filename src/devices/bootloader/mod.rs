@@ -12,7 +12,7 @@ use super::{
 use crate::error::Error;
 use blue_hal::{
     duprintln,
-    hal::{flash, time, update_signal::UpdateSignal},
+    hal::{flash, time},
     KB,
 };
 use core::{cmp::min, marker::PhantomData, mem::size_of};
@@ -20,6 +20,7 @@ use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
+use crate::devices::update_signal::UpdateSignal;
 
 /// Operations related to copying images between flash chips.
 mod copy;
@@ -41,7 +42,7 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: im
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
-    pub(crate) update_signal: US,
+    pub(crate) update_signal: Option<US>,
     pub(crate) greeting: &'static str,
     pub(crate) _marker: PhantomData<R>,
 }
