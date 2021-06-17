@@ -1,15 +1,9 @@
-use crate::devices::update_signal::*;
+use crate::devices::update_signal::{self, UpdatePlan};
 
-pub struct FixedUpdateSignal {
-    plan: UpdatePlan,
-}
+pub struct UpdateSignal;
 
-impl FixedUpdateSignal {
-    pub fn new(plan: UpdatePlan) -> Self {
-        Self { plan }
+impl update_signal::UpdateSignal for UpdateSignal {
+    fn update_plan(&self) -> UpdatePlan {
+        todo!()
     }
-}
-
-impl UpdateSignal for FixedUpdateSignal {
-    fn update_plan(&self) -> UpdatePlan { self.plan }
 }
