@@ -11,6 +11,10 @@ Ports exist under `loadstone/src/ports/`, and may be fully manually defined or
 depend on code generation. Those that depend on code generation require a
 configuration file generated in the `loadstone_front` application.
 
+To know more about code generation and when/how to use it when expanding
+Loadstone, check out the [documentation section for code
+generation.](./documentation/codegen.md)
+
 # Building
 
 Building Loadstone requires embedding configuration in a `LOADSTONE_CONFIG`
