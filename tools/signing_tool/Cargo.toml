@@ -1,6 +1,6 @@
 [package]
 name = "signing_tool"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Arron Speake <arron.speake@bluefruit.co.uk>"]
 edition = "2018"
 description = "Tool to calculate and append signatures to images."
@@ -10,7 +10,19 @@ description = "Tool to calculate and append signatures to images."
 [dependencies]
 clap = "2"
 base64 = "0.13"
+crc = "1.8.1"
 
-[dependencies.ring]
-version = "0.16"
-features = ["alloc", "std"]
+[dependencies.ecdsa]
+version = "*"
+features = ["pem"]
+
+[dependencies.sha2]
+version = "*"
+
+[dependencies.p256]
+version = "*"
+features = ["ecdsa", "sha256", "pem"]
+
+[dependencies.blue_hal]
+git = "ssh://git@github.com/absw/blue_hal.git"
+branch = "main"

@@ -1,0 +1,54 @@
+[package]
+name = "loadstone_front"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+eframe = { git = "https://github.com/emilk/egui.git", features = ["http"] } # Gives us egui, epi and web+native backends
+anyhow = "*"
+itertools = "*"
+serde = { version = "1.0", features = ["derive"] }
+wasm-bindgen = { version = "*", features = ["serde-serialize"] }
+web-sys = { version = "*", features = ["Blob", "BlobPropertyBag", "Url"] }
+wasm-bindgen-futures = "*"
+ron = "*"
+base64 = "*"
+git-version = "*"
+reqwest-wasm = "*"
+futures = "*"
+loadstone_config = { path = "../loadstone_config/" }
+atomic_refcell = "*"
+enum-iterator = "*"
+getrandom = { version = "*", features = ["js"] }
+
+[dependencies.ecdsa]
+version = "*"
+features = ["pem"]
+
+[dependencies.sha2]
+version = "*"
+
+[dependencies.p256]
+version = "*"
+features = ["ecdsa", "sha256", "pem"]
+
+[features]
+default = []
+http = ["eframe/http"] # Enable if you want to do http requests
+persistence = ["eframe/persistence"] # Enable if you want to persist app state on shutdown
+
+[profile.release]
+opt-level = 2 # fast and small wasm
+
+[patch.crates-io]
+
+# If you want to use the bleeding edge version of `egui`:
+# eframe = { git = "https://github.com/emilk/egui", branch = "master" }
+
+# If you fork https://github.com/emilk/egui you can test with:
+# eframe = { path = "../egui/eframe" }

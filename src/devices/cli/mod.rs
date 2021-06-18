@@ -7,10 +7,7 @@
 #![macro_use]
 use crate::error::Error as ApplicationError;
 use blue_hal::{
-    hal::{
-        flash,
-        serial::{self, Read},
-    },
+    hal::serial::{self, Read},
     uprint, uprintln,
     utilities::{buffer::TryCollectSlice, iterator::Unique},
 };
@@ -18,14 +15,14 @@ use core::str::{from_utf8, SplitWhitespace};
 use nb::block;
 use ufmt::{uwrite, uwriteln};
 
-use self::file_transfer::FileTransfer;
-
-use super::boot_manager::BootManager;
+use super::{
+    boot_manager::BootManager,
+    image,
+    traits::{Flash, Serial},
+};
 
 pub mod file_transfer;
 
-const GREETING: &str =
-    "--=Loadstone demo app CLI + Boot Manager=--\ntype `help` for a list of commands.";
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
@@ -49,6 +46,10 @@ impl From<ApplicationError> for Error {
     fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
 }
 
+pub const DEFAULT_GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--";
+
+/// Command line interface struct, generic over a serial driver. Offers a collection of commands
+/// to interact with the MCU and external flash chips and retrieve Loadstone boot metrics.
 pub struct Cli<S: serial::ReadWrite> {
     serial: S,
     greeted: bool,
@@ -171,16 +172,17 @@ const ARGUMENT_SEPARATOR: char = '=';
 const ALLOWED_TOKENS: &str = " =_";
 const LINE_TERMINATOR: char = '\n';
 
-impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
+impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<EXTF>(&mut self, boot_manager: &mut BootManager<EXTF, SRL>)
-    where
-        EXTF: flash::ReadWrite,
-        ApplicationError: From<EXTF::Error>,
-        ApplicationError: From<<SRL as serial::Read>::Error>,
-    {
+    pub fn run<MCUF: Flash, EXTF: Flash, R: image::Reader>(
+        &mut self,
+        boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
+        greeting: &'static str,
+    ) {
         if !self.greeted {
-            uprintln!(self.serial, "{}", GREETING);
+            uprintln!(self.serial, "");
+            uprintln!(self.serial, "{}", greeting);
+            uprintln!(self.serial, "Type `help` for a list of commands");
             self.greeted = true;
         }
         if self.needs_prompt {
@@ -200,7 +202,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Bad command encoding")
             }
             Err(Error::CharactersNotAllowed) => {
-                uwriteln!(self.serial, "[CLI Error] Illegal characters In command")
+                uwriteln!(self.serial, "[CLI Error] Illegal characters in command")
             }
             Err(Error::MalformedArguments) => {
                 uwriteln!(self.serial, "[CLI Error] Malformed command arguments")
@@ -215,7 +217,7 @@ impl<SRL: serial::ReadWrite + FileTransfer> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
             }
             Err(Error::ApplicationError(e)) => {
-                uwriteln!(self.serial, "[CLI Error] Internal boot_manager error: ").ok().unwrap();
+                uwriteln!(self.serial, "[CLI Error] Internal boot manager error: ").ok().unwrap();
                 e.report(&mut self.serial);
                 Ok(())
             }
@@ -347,13 +349,10 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<EXTF, SRL>(
+        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<EXTF, SRL>,
+            $boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
-        where
-            EXTF: flash::ReadWrite, ApplicationError: From<EXTF::Error>,
-            SRL: serial::ReadWrite + FileTransfer, ApplicationError: From<<SRL as serial::Read>::Error>,
         {
             match name {
                 $(
@@ -380,8 +379,14 @@ mod commands;
 
 #[cfg(test)]
 mod test {
+    use crate::error::Convertible;
+
     use super::*;
     use blue_hal::hal::doubles::serial::*;
+
+    impl Convertible for SerialStubError {
+        fn into(self) -> ApplicationError { ApplicationError::DeviceError("Serial stub failed") }
+    }
 
     #[test]
     fn basic_command_parsing() {
