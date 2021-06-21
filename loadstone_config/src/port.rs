@@ -4,6 +4,8 @@ use crate::KB;
 use enum_iterator::IntoEnumIterator;
 use serde::{Deserialize, Serialize};
 
+/// Top level description of the hardware target. Typically a chip subfamily, but it
+/// may be more or less concrete depending on the available drivers.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, IntoEnumIterator)]
 pub enum Port {
     Stm32F412,
@@ -16,12 +18,14 @@ impl Default for Port {
     fn default() -> Self { Self::Stm32F412 }
 }
 
+/// Supported hardware families.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Family {
     Stm32,
     Efm32,
 }
 
+/// Supported hardware subfamilies.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Subfamily {
     Stm32f4,
@@ -56,12 +60,15 @@ impl Display for Subfamily {
 }
 
 impl Port {
+    /// Hardware family of this port.
     pub fn family(&self) -> Family {
         match self {
             Port::Stm32F412 => Family::Stm32,
             Port::Wgm160P => Family::Efm32,
         }
     }
+
+    /// Hardware subfamily of this port.
     pub fn subfamily(&self) -> Subfamily {
         match self {
             Port::Stm32F412 => Subfamily::Stm32f4,
@@ -69,6 +76,8 @@ impl Port {
         }
     }
 
+    /// Constants to be propagated to the linker script for this port. This mainly
+    /// defines the sections of ram and flash memory.
     // We might consider making these configurable later, but the need hasn't come up yet.
     pub fn linker_script_constants(&self) -> Option<LinkerScriptConstants> {
         match self {
@@ -84,11 +93,15 @@ impl Port {
     }
 }
 
+/// Constants to be propagated to the linker script for this port.
 pub struct LinkerScriptConstants {
+    /// Available flash memory as defined in the linker script.
     pub flash: LinkerArea,
+    /// Available ram memory as defined in the linker script.
     pub ram: LinkerArea,
 }
 
+/// A section of memory as defined in the linker script.
 pub struct LinkerArea {
     pub origin: u32,
     pub size: usize,
