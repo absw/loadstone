@@ -1,5 +1,5 @@
 use super::*;
-use crate::devices::update_signal::*;
+use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
 
 enum UpdateResult<MCUF: Flash> {
     AlreadyUpToDate(Image<MCUF::Address>),
@@ -8,15 +8,14 @@ enum UpdateResult<MCUF: Flash> {
     UpdateError,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
-    Bootloader<EXTF, MCUF, SRL, T, R, US>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, RUS>
 {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
     /// is repeated for all non-golden banks. Returns the current
     /// bootable image after the process, if available.
     pub fn latest_bootable_image(&mut self) -> Option<Image<MCUF::Address>> {
-        duprintln!(self.serial, "Checking for image updates...");
         let boot_bank = self.boot_bank();
         let current_image = if let Ok(image) = R::image_at(&mut self.mcu_flash, boot_bank) {
             image
@@ -25,17 +24,24 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: 
             return None;
         };
 
-        match self.update_signal.as_ref().map(UpdateSignal::update_plan) {
-            None => { },
+
+        // TODO: Use _bank.
+        let _bank : Option<u8> = match self.update_signal.as_ref().map(ReadUpdateSignal::read_update_plan) {
+            None => None,
             Some(UpdatePlan::None) => {
-                duprintln!(self.serial, "Update signal enabled, refusing to update.");
+                duprintln!(self.serial, "Update signal set to None, refusing to update.");
                 return Some(current_image);
             },
-            Some(UpdatePlan::Any) => { },
-            Some(UpdatePlan::Index(_)) => {
-                unimplemented!();
+            Some(UpdatePlan::Any) => {
+                duprintln!(self.serial, "Update signal set to Any, checking for image updates.");
+                None
             },
-        }
+            Some(UpdatePlan::Index(i)) => {
+                duprintln!(self.serial, "Update signal set to Index({}), checking for update in \
+                    that bank.", i);
+                Some(i)
+            },
+        };
 
         let current_image = match self.update_internal(boot_bank, current_image) {
             UpdateResult::NotUpdated(current_image) => current_image,

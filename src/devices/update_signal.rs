@@ -8,9 +8,13 @@ pub enum UpdatePlan {
     Any,
 
     /// Update from a specific image.
-    Index(u32), // TODO: Use proper type for image bank.
+    Index(u8),
 }
 
-pub trait UpdateSignal {
-    fn update_plan(&self) -> UpdatePlan;
+pub trait ReadUpdateSignal {
+    fn read_update_plan(&self) -> UpdatePlan;
+}
+
+pub trait WriteUpdateSignal {
+    fn write_update_plan(&mut self, plan: UpdatePlan);
 }

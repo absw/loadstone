@@ -5,6 +5,7 @@ use crate::{
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
         traits::{Flash, Serial},
+        update_signal::{WriteUpdateSignal, UpdatePlan},
     },
     error::Error as ApplicationError,
 };
@@ -162,13 +163,18 @@ commands!( cli, boot_manager, names, helpstrings [
         boot_manager.reset();
     },
 
-    boot_bank ["Restart, attempting to boot into a specific image if available."] (
-        bank: u32 ["External bank index."],
+    update_signal_bank ["Set the update signal to update to a specific bank."] (
+        bank: u8 ["Bank index."],
     ) {
-        uprintln!(cli.serial, "Restarting...");
-        let peripherals = unsafe { blue_hal::stm32pac::Peripherals::steal() };
-        peripherals.RTC.bkpr[0].write(|w| unsafe { w.bits(bank) });
-        boot_manager.reset(bank);
+        boot_manager.set_update_signal(UpdatePlan::Index(bank))
+    },
+
+    update_signal_none ["Set the update signal to disallow updating."] ( ) {
+        boot_manager.set_update_signal(UpdatePlan::None);
+    },
+
+    update_signal_any ["Set the update signal to allow updating."] ( ) {
+        boot_manager.set_update_signal(UpdatePlan::Any);
     },
 
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )

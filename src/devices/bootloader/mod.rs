@@ -20,7 +20,7 @@ use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
-use crate::devices::update_signal::UpdateSignal;
+use crate::devices::update_signal::ReadUpdateSignal;
 
 /// Operations related to copying images between flash chips.
 mod copy;
@@ -33,7 +33,7 @@ mod update;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal> {
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -42,13 +42,13 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: im
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
-    pub(crate) update_signal: Option<US>,
+    pub(crate) update_signal: Option<RUS>,
     pub(crate) greeting: &'static str,
     pub(crate) _marker: PhantomData<R>,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, US: UpdateSignal>
-    Bootloader<EXTF, MCUF, SRL, T, R, US>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, RUS>
 {
     /// Main bootloader routine.
     ///
