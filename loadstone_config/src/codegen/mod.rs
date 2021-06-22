@@ -126,7 +126,7 @@ fn generate_top_level_module<P: AsRef<Path>>(
         #[allow(unused)]
         pub const DEMO_APP_GREETING: &str = #demo_app_greeting;
         #[allow(unused)]
-        pub const UDPATE_SIGNAL_ENABLED: bool = #update_signal_enabled;
+        pub const UPDATE_SIGNAL_ENABLED: bool = #update_signal_enabled;
     };
 
     file.write_all(format!("{}", code).as_bytes())?;
