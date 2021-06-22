@@ -166,7 +166,9 @@ commands!( cli, boot_manager, names, helpstrings [
         bank: u32 ["External bank index."],
     ) {
         uprintln!(cli.serial, "Restarting...");
-        boot_manager.reset_to_bank(bank);
+        let peripherals = unsafe { blue_hal::stm32pac::Peripherals::steal() };
+        peripherals.RTC.bkpr[0].write(|w| unsafe { w.bits(bank) });
+        boot_manager.reset(bank);
     },
 
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )

@@ -18,6 +18,15 @@ impl BootManager<flash::McuFlash, ExternalFlash, Serial, ImageReader> {
         let mut peripherals = stm32pac::Peripherals::take().unwrap();
         let cortex_peripherals = cortex_m::Peripherals::take().unwrap();
         let mcu_flash = flash::McuFlash::new(peripherals.FLASH).unwrap();
+
+        peripherals.RCC.apb1enr.modify(|_, w| { w.pwren().set_bit() });
+        peripherals.PWR.csr.modify(|_, w| { w.bre().set_bit() });
+        peripherals.PWR.cr.modify(|_, w| { w.dbp().set_bit() });
+        peripherals.RCC.bdcr.modify(|_, w| {
+            w.rtcen().set_bit()
+            .rtcsel().bits(0b10)
+        });
+
         let (serial_pins, qspi_pins) = pin_configuration::pins(
                 peripherals.GPIOA,
                 peripherals.GPIOB,
