@@ -177,6 +177,7 @@ pub mod doubles {
         },
         utilities::memory::doubles::FakeAddress,
     };
+    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
 
     pub struct FakeReader;
 
@@ -191,8 +192,13 @@ pub mod doubles {
         }
     }
 
+    pub struct FakeUpdateSignal;
+    impl ReadUpdateSignal for FakeUpdateSignal {
+        fn read_update_plan(&self) -> UpdatePlan { UpdatePlan::Any }
+    }
+
     pub type BootloaderDouble =
-        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader>;
+        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader, FakeUpdateSignal>;
 
     impl BootloaderDouble {
         pub fn new() -> Self {
@@ -207,6 +213,7 @@ pub mod doubles {
                 recovery_enabled: false,
                 greeting: "I'm a fake bootloader!",
                 _marker: Default::default(),
+                update_signal: None,
             }
         }
 
