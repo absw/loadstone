@@ -41,3 +41,15 @@ impl update_signal::WriteUpdateSignal for UpdateSignalWriter {
         self.rtc.bkpr[0].write(|w| unsafe { w.bits(bits) });
     }
 }
+
+/// Initializes the backup domain registers of the realtime clock, required for the update signal
+/// to function.
+pub fn initialize_rtc_backup_domain(rcc: &mut blue_hal::stm32pac::RCC, pwr: &mut blue_hal::stm32pac::PWR) {
+    rcc.apb1enr.modify(|_, w| { w.pwren().set_bit() });
+    pwr.csr.modify(|_, w| { w.bre().set_bit() });
+    pwr.cr.modify(|_, w| { w.dbp().set_bit() });
+    rcc.bdcr.modify(|_, w| {
+        w.rtcen().set_bit()
+        .rtcsel().bits(0b10)
+    });
+}
