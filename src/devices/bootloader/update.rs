@@ -24,9 +24,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
             return None;
         };
 
-
-        // TODO: Use _bank.
-        let _bank : Option<u8> = match self.update_signal.as_ref().map(ReadUpdateSignal::read_update_plan) {
+        let bank : Option<u8> = match self.update_signal.as_ref().map(ReadUpdateSignal::read_update_plan) {
             None => None,
             Some(UpdatePlan::None) => {
                 duprintln!(self.serial, "Update signal set to None, refusing to update.");
@@ -43,14 +41,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
             },
         };
 
-        let current_image = match self.update_internal(boot_bank, current_image) {
+        let current_image = match self.update_internal(boot_bank, current_image, bank) {
             UpdateResult::NotUpdated(current_image) => current_image,
             UpdateResult::AlreadyUpToDate(current_image) => return Some(current_image),
             UpdateResult::UpdatedTo(new_image) => return Some(new_image),
             UpdateResult::UpdateError => return None,
         };
 
-        match self.update_external(boot_bank, current_image) {
+        match self.update_external(boot_bank, current_image, bank) {
             UpdateResult::NotUpdated(current_image) => Some(current_image),
             UpdateResult::AlreadyUpToDate(current_image) => Some(current_image),
             UpdateResult::UpdatedTo(new_image) => Some(new_image),
@@ -62,12 +60,24 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
         &mut self,
         boot_bank: Bank<MCUF::Address>,
         current_image: Image<MCUF::Address>,
+        target_bank: Option<u8>,
     ) -> UpdateResult<MCUF> {
         for bank in self.mcu_banks().filter(|b| b.index != boot_bank.index) {
             if bank.is_golden {
                 duprintln!(
                     self.serial,
                     "[{}] Skipping golden bank {:?} (Golden banks can't be updated from)...",
+                    MCUF::label(),
+                    bank.index
+                );
+                continue;
+            }
+
+            let skip_nontarget_bank = target_bank.map(|t| t != bank.index).unwrap_or(false);
+            if skip_nontarget_bank {
+                duprintln!(
+                    self.serial,
+                    "[{}] Skipping bank {:?} (Update signal was set to a bank index)...",
                     MCUF::label(),
                     bank.index
                 );
@@ -100,6 +110,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
         &mut self,
         boot_bank: Bank<MCUF::Address>,
         current_image: Image<MCUF::Address>,
+        target_bank: Option<u8>,
     ) -> UpdateResult<MCUF> {
         if self.external_flash.is_some() {
             for bank in self.external_banks() {
@@ -112,6 +123,18 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
                     );
                     continue;
                 }
+
+                let skip_nontarget_bank = target_bank.map(|t| t != bank.index).unwrap_or(false);
+                if skip_nontarget_bank {
+                    duprintln!(
+                        self.serial,
+                        "[{}] Skipping bank {:?} (Update signal was set to a bank index)...",
+                        MCUF::label(),
+                        bank.index
+                    );
+                    continue;
+                }
+
                 duprintln!(
                     self.serial,
                     "[{}] Scanning bank {:?} for a newer image...",
