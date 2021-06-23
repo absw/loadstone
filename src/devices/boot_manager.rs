@@ -21,6 +21,7 @@ use super::{
     cli::{Cli, DEFAULT_GREETING},
     image,
     traits::{Flash, Serial},
+    update_signal::{WriteUpdateSignal, UpdatePlan},
 };
 use crate::error::Error;
 use blue_hal::hal::flash;
@@ -29,7 +30,7 @@ use cortex_m::peripheral::SCB;
 /// Generic boot manager, composed of a CLI interface to serial and flash
 /// functionality. Its behaviour is fully generic, and the
 /// [ports module](`crate::ports`) provides constructors for specific chips.
-pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> {
+pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader, WUS: WriteUpdateSignal> {
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
     pub(crate) mcu_flash: MCUF,
@@ -38,9 +39,10 @@ pub struct BootManager<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> 
     pub(crate) boot_metrics: Option<BootMetrics>,
     pub(crate) greeting: Option<&'static str>,
     pub(crate) _marker: PhantomData<R>,
+    pub(crate) update_signal: Option<WUS>,
 }
 
-impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> BootManager<MCUF, EXTF, SRL, R> {
+impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader, WUS: WriteUpdateSignal> BootManager<MCUF, EXTF, SRL, R, WUS> {
     /// Provides an iterator over all external flash banks.
     pub fn external_banks(&self) -> impl Iterator<Item = image::Bank<EXTF::Address>> {
         self.external_banks.iter().cloned()
@@ -94,6 +96,16 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader> BootManager<MCUF, 
 
     /// Triggers a soft system reset.
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
+
+    pub fn set_update_signal(&mut self, plan: UpdatePlan) -> Result<(), Error> {
+        if let Some(us) = self.update_signal.as_mut() {
+            us.write_update_plan(plan);
+            Ok(())
+        } else {
+            Err(Error::DeviceError("Update signal commands are not supported without the update \
+                signal feature enabled."))
+        }
+    }
 
     /// Gathers metrics left over in memory by Loadstone, if available, and launches
     /// the command line interface.

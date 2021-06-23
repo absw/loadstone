@@ -20,6 +20,7 @@ use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
+use crate::devices::update_signal::ReadUpdateSignal;
 
 /// Operations related to copying images between flash chips.
 mod copy;
@@ -32,7 +33,7 @@ mod update;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader> {
+pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -41,12 +42,13 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: im
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
+    pub(crate) update_signal: Option<RUS>,
     pub(crate) greeting: &'static str,
     pub(crate) _marker: PhantomData<R>,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader>
-    Bootloader<EXTF, MCUF, SRL, T, R>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal>
+    Bootloader<EXTF, MCUF, SRL, T, R, RUS>
 {
     /// Main bootloader routine.
     ///
@@ -175,6 +177,7 @@ pub mod doubles {
         },
         utilities::memory::doubles::FakeAddress,
     };
+    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
 
     pub struct FakeReader;
 
@@ -189,8 +192,13 @@ pub mod doubles {
         }
     }
 
+    pub struct FakeUpdateSignal;
+    impl ReadUpdateSignal for FakeUpdateSignal {
+        fn read_update_plan(&self) -> UpdatePlan { UpdatePlan::Any }
+    }
+
     pub type BootloaderDouble =
-        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader>;
+        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader, FakeUpdateSignal>;
 
     impl BootloaderDouble {
         pub fn new() -> Self {
@@ -205,6 +213,7 @@ pub mod doubles {
                 recovery_enabled: false,
                 greeting: "I'm a fake bootloader!",
                 _marker: Default::default(),
+                update_signal: None,
             }
         }
 

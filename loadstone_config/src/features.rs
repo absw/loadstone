@@ -8,6 +8,7 @@ use crate::{pins::Pin, port::Port};
 pub struct FeatureConfiguration {
     pub serial: Serial,
     pub boot_metrics: BootMetrics,
+    pub update_signal: UpdateSignal,
     pub greetings: Greetings,
 }
 
@@ -58,4 +59,14 @@ impl Serial {
         }
     }
     pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub enum UpdateSignal {
+    Disabled,
+    Enabled,
+}
+
+impl Default for UpdateSignal {
+    fn default() -> Self { UpdateSignal::Disabled }
 }

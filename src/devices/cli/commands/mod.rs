@@ -5,6 +5,7 @@ use crate::{
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
         traits::{Flash, Serial},
+        update_signal::{WriteUpdateSignal, UpdatePlan},
     },
     error::Error as ApplicationError,
 };
@@ -160,6 +161,23 @@ commands!( cli, boot_manager, names, helpstrings [
     {
         uprintln!(cli.serial, "Restarting...");
         boot_manager.reset();
+    },
+
+    update_signal_bank ["Only allow loadstone to update from a specific bank."] (
+        bank: u8 ["Updatable bank index."],
+    ) {
+        return boot_manager.set_update_signal(UpdatePlan::Index(bank))
+            .map_err(|e| Error::ApplicationError(e));
+    },
+
+    update_signal_none ["Disallow loadstone from updating."] ( ) {
+        return boot_manager.set_update_signal(UpdatePlan::None)
+            .map_err(|e| Error::ApplicationError(e));
+    },
+
+    update_signal_any ["Allow loadstone to update from any bank."] ( ) {
+        return boot_manager.set_update_signal(UpdatePlan::Any)
+            .map_err(|e| Error::ApplicationError(e));
     },
 
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )

@@ -5,9 +5,10 @@ use loadstone_config::{
     port::Port,
 };
 
-pub mod generate;
 pub mod memory_map;
 pub mod security;
+pub mod generate;
+pub mod update_signal;
 pub mod serial;
 
 pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {

@@ -8,6 +8,7 @@ pub mod boot_metrics;
 pub mod bootloader;
 pub mod cli;
 pub mod image;
+pub mod update_signal;
 
 /// General purpose traits that summarize requirements on devices.
 pub mod traits {

@@ -19,6 +19,7 @@ use super::{
     boot_manager::BootManager,
     image,
     traits::{Flash, Serial},
+    update_signal::WriteUpdateSignal,
 };
 
 pub mod file_transfer;
@@ -174,9 +175,9 @@ const LINE_TERMINATOR: char = '\n';
 
 impl<SRL: Serial> Cli<SRL> {
     /// Reads a line, parses it as a command and attempts to execute it.
-    pub fn run<MCUF: Flash, EXTF: Flash, R: image::Reader>(
+    pub fn run<MCUF: Flash, EXTF: Flash, R: image::Reader, WUS: WriteUpdateSignal>(
         &mut self,
-        boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
+        boot_manager: &mut BootManager<MCUF, EXTF, SRL, R, WUS>,
         greeting: &'static str,
     ) {
         if !self.greeted {
@@ -349,9 +350,9 @@ macro_rules! commands {
         ];
 
         #[allow(unreachable_code)]
-        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader>(
+        pub(super) fn run<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader, WUS: WriteUpdateSignal>(
             $cli: &mut Cli<SRL>,
-            $boot_manager: &mut BootManager<MCUF, EXTF, SRL, R>,
+            $boot_manager: &mut BootManager<MCUF, EXTF, SRL, R, WUS>,
             name: Name, arguments: ArgumentIterator) -> Result<(), Error>
         {
             match name {
