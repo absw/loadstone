@@ -50,12 +50,12 @@ jobs:
       - name: Check sample stm32f4 build without external flash
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),(start_address:135170048,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(2),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:true,)update_signal: Enabled,,greetings: Custom( loadstone: \"hi\", demo: \"hello\",),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
+          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),(start_address:135170048,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(2),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:true,)update_signal: Enabled,greetings: Custom( loadstone: \"hi\", demo: \"hello\",),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
         run: cargo check --features 'stm32f412' --target thumbv7em-none-eabihf
       - name: Check sample wgm160p build
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Wgm160P,memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:1,banks:[(start_address:4096,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(3),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:false,)update_signal: Enabled,,greetings: Default,),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
+          LOADSTONE_CONFIG: "(port:Wgm160P,memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:1,banks:[(start_address:4096,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(3),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:false,)update_signal: Enabled,greetings: Default,),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
         run: cargo check --features 'wgm160p' --target thumbv7em-none-eabihf
       - name: Check sample stm32f4 build with encryption
         env:
