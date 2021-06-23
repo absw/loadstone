@@ -163,18 +163,21 @@ commands!( cli, boot_manager, names, helpstrings [
         boot_manager.reset();
     },
 
-    update_signal_bank ["Set the update signal to update to a specific bank."] (
-        bank: u8 ["Bank index."],
+    update_signal_bank ["Only allow loadstone to update from a specific bank."] (
+        bank: u8 ["Updatable bank index."],
     ) {
-        boot_manager.set_update_signal(UpdatePlan::Index(bank))
+        return boot_manager.set_update_signal(UpdatePlan::Index(bank))
+            .map_err(|e| Error::ApplicationError(e));
     },
 
-    update_signal_none ["Set the update signal to disallow updating."] ( ) {
-        boot_manager.set_update_signal(UpdatePlan::None);
+    update_signal_none ["Disallow loadstone from updating."] ( ) {
+        return boot_manager.set_update_signal(UpdatePlan::None)
+            .map_err(|e| Error::ApplicationError(e));
     },
 
-    update_signal_any ["Set the update signal to allow updating."] ( ) {
-        boot_manager.set_update_signal(UpdatePlan::Any);
+    update_signal_any ["Allow loadstone to update from any bank."] ( ) {
+        return boot_manager.set_update_signal(UpdatePlan::Any)
+            .map_err(|e| Error::ApplicationError(e));
     },
 
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )

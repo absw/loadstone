@@ -97,10 +97,14 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader, WUS: WriteUpdateSi
     /// Triggers a soft system reset.
     pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
 
-    pub fn set_update_signal(&mut self, plan: UpdatePlan) {
-        self.update_signal.as_mut().map(|us| {
+    pub fn set_update_signal(&mut self, plan: UpdatePlan) -> Result<(), Error> {
+        if let Some(us) = self.update_signal.as_mut() {
             us.write_update_plan(plan);
-        });
+            Ok(())
+        } else {
+            Err(Error::DeviceError("Update signal commands are not supported without the update \
+                signal feature enabled."))
+        }
     }
 
     /// Gathers metrics left over in memory by Loadstone, if available, and launches
