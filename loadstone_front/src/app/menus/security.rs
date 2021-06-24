@@ -3,6 +3,8 @@ use loadstone_config::security::SecurityMode;
 use p256::ecdsa::VerifyingKey;
 use std::str::FromStr;
 
+/// Renders the menu to configure security options (at the moment,
+/// `CRC` and `ECDSA` image verification.
 pub fn configure_security(
     ui: &mut egui::Ui,
     security_mode: &mut SecurityMode,

@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{pins::Pin, port::Port};
+use crate::{pins::PeripheralPin, port::Port};
 
 /// Collection of Loadstone features that are optional or
 /// somehow configurable.
@@ -42,6 +42,7 @@ impl Default for BootMetrics {
 }
 
 impl BootMetrics {
+    /// Whether a given port is capable of recording boot timing information.
     pub fn timing_supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
@@ -59,9 +60,9 @@ pub enum Serial {
         /// with no bootable image via serial.
         recovery_enabled: bool,
         /// Hardware pin for serial transmission (from loadstone's perspective).
-        tx_pin: Pin,
+        tx_pin: PeripheralPin,
         /// Hardware pin for serial reception (from loadstone's perspective).
-        rx_pin: Pin
+        rx_pin: PeripheralPin
     },
     Disabled,
 }
@@ -71,11 +72,13 @@ impl Default for Serial {
 }
 
 impl Serial {
+    /// Whether a port is capable of supporting serial communications.
     pub fn supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
             Port::Wgm160P => false,
         }
     }
+
     pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
 }

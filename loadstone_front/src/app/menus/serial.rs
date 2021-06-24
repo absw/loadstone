@@ -2,10 +2,13 @@ use eframe::egui;
 use itertools::Itertools;
 use loadstone_config::{
     features::{self, Serial},
-    pins::{self, Peripheral, Pin},
+    pins::{self, Peripheral, PeripheralPin},
     port::Port,
 };
 
+/// Renders the menu that configures serial communication features, including
+/// whether serial communication is available at all, whether it allows for image
+/// recovery, and what pins and peripherals it uses in a particular port.
 pub fn configure_serial(ui: &mut egui::Ui, serial: &mut Serial, port: &Port) {
     let mut available_peripherals =
         pins::serial_tx(port).chain(pins::serial_rx(port)).map(|p| p.peripheral).collect_vec();
@@ -57,8 +60,8 @@ fn define_serial_options(
     ui: &mut egui::Ui,
     port: &Port,
     recovery_enabled: &mut bool,
-    tx_pin: &mut Pin,
-    rx_pin: &mut Pin,
+    tx_pin: &mut PeripheralPin,
+    rx_pin: &mut PeripheralPin,
     available_peripherals: impl Iterator<Item = Peripheral>,
 ) {
     ui.vertical(|ui| {
@@ -72,8 +75,8 @@ fn define_serial_options(
 fn select_peripheral(
     ui: &mut egui::Ui,
     port: &Port,
-    tx_pin: &mut Pin,
-    rx_pin: &mut Pin,
+    tx_pin: &mut PeripheralPin,
+    rx_pin: &mut PeripheralPin,
     available_peripherals: impl Iterator<Item = Peripheral>,
 ) {
     let mut inferred_peripheral = tx_pin.peripheral.clone();
@@ -103,7 +106,7 @@ fn select_peripheral(
     }
 }
 
-fn select_rx_pins(ui: &mut egui::Ui, rx_pin: &mut Pin, port: &Port) {
+fn select_rx_pins(ui: &mut egui::Ui, rx_pin: &mut PeripheralPin, port: &Port) {
     ui.horizontal_wrapped(|ui| {
         ui.separator();
         ui.label("\u{2B05}");
@@ -118,7 +121,7 @@ fn select_rx_pins(ui: &mut egui::Ui, rx_pin: &mut Pin, port: &Port) {
     });
 }
 
-fn select_tx_pins(ui: &mut egui::Ui, tx_pin: &mut Pin, port: &Port) {
+fn select_tx_pins(ui: &mut egui::Ui, tx_pin: &mut PeripheralPin, port: &Port) {
     ui.horizontal_wrapped(|ui| {
         ui.separator();
         ui.label("\u{27A1}");

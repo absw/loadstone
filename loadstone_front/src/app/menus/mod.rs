@@ -10,6 +10,8 @@ pub mod memory_map;
 pub mod security;
 pub mod serial;
 
+/// Renders the dropdown menu to select one of the supported
+/// hardware ports.
 pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {
     ui.horizontal_wrapped(|ui| {
         egui::ComboBox::from_label(format!(
@@ -26,6 +28,8 @@ pub fn select_port(ui: &mut egui::Ui, port: &mut Port) {
     });
 }
 
+/// Renders the menu to configure the boot metrics feature (information relayed from the bootloader
+/// to the running application, including an optional boot timing report.
 pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics, port: &Port) {
     let mut metrics_box = matches!(boot_metrics, BootMetrics::Enabled { .. });
     ui.horizontal_wrapped(|ui| {
@@ -48,6 +52,9 @@ pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics,
     });
 }
 
+/// Configures the custom greetings feature; optional strings that will be printed via
+/// serial by both Loadstone and the companion demo app. When enabled, they default to
+/// a version string containing Git and Cargo information.
 pub fn configure_custom_greetings(ui: &mut egui::Ui, greetings: &mut Greetings) {
     let mut greetings_box = matches!(greetings, Greetings::Custom { .. });
     let loadstone_with_version = || {

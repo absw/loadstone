@@ -3,6 +3,8 @@ use std::{fs::OpenOptions, io::Write};
 use crate::{port::LinkerScriptConstants, Configuration};
 use anyhow::{anyhow, Result};
 
+/// Generates the linker script `memory.x`, which describes the amount and location
+/// of flash and RAM memory available to a particular Loadstone instance.
 pub fn generate_linker_script(configuration: &Configuration) -> Result<()> {
     let mut file = OpenOptions::new().write(true).create(true).truncate(true).open("memory.x")?;
 

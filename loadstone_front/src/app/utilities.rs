@@ -1,5 +1,6 @@
 use wasm_bindgen::{prelude::*, JsCast};
 
+/// Triggers a text file download prompt.
 pub fn download_file(name: &str, data: &str) -> Result<(), JsValue> {
     use web_sys::{Blob, BlobPropertyBag, HtmlElement, Url};
     let document = web_sys::window().unwrap().document().unwrap();

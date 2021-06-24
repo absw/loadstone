@@ -5,7 +5,10 @@ use loadstone_config::{
 };
 
 /// Ensures internal consistency of the memory maps is maintained. Rules like banks
-/// staying contiguous, single boot banks, etc are enforced here.
+/// staying contiguous, single boot banks, etc are enforced here. This is called
+/// after the GUI drives any modification of the memory map, as the invariants can't
+/// be easily upheld by the types alone, and having this additional step makes writing
+/// the GUI code a lot simpler.
 pub fn normalize(
     internal_memory_map: &mut InternalMemoryMap,
     external_memory_map: &mut ExternalMemoryMap,
