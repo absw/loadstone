@@ -16,6 +16,9 @@ static GOLDEN_TOOLTIP: &'static str =
 
 mod normalize;
 
+/// Renders the menu to configure the entire memory map, consisting of a mandatory internal
+/// flash (and its bank distribution, which must contain a bootable bank) and an optional
+/// external flash.
 pub fn configure_memory_map(
     ui: &mut egui::Ui,
     internal_memory_map: &mut InternalMemoryMap,
@@ -24,12 +27,8 @@ pub fn configure_memory_map(
     golden_index: &mut Option<usize>,
     port: &Port,
 ) {
-    let internal_flash = if let Some(internal_flash) = memory::internal_flash(port) {
-        internal_flash
-    } else {
-        ui.label("No internal flash available for the current target.");
-        return;
-    };
+    let internal_flash = memory::internal_flash(port);
+
     normalize(
         internal_memory_map,
         external_memory_map,

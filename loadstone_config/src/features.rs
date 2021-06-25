@@ -2,8 +2,10 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{pins::Pin, port::Port};
+use crate::{pins::PeripheralPin, port::Port};
 
+/// Collection of Loadstone features that are optional or
+/// somehow configurable.
 #[derive(Default, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureConfiguration {
     pub serial: Serial,
@@ -12,12 +14,20 @@ pub struct FeatureConfiguration {
     pub greetings: Greetings,
 }
 
+/// Feature that governs whether loadstone will relay boot information
+/// to the application, so it can consume or display it.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum BootMetrics {
-    Enabled { timing: bool },
+    Enabled {
+        /// Support for boot timing information (time elapsed between starting
+        /// Loadstone and boot).
+        timing: bool
+    },
     Disabled,
 }
 
+/// Custom greetings feature. If enabled, both loadstone and the associated demo app
+/// will use custom greetings on startup.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Greetings {
     Default,
@@ -33,6 +43,7 @@ impl Default for BootMetrics {
 }
 
 impl BootMetrics {
+    /// Whether a given port is capable of recording boot timing information.
     pub fn timing_supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
@@ -41,9 +52,19 @@ impl BootMetrics {
     }
 }
 
+/// Serial communication feature. If enabled, Loastone will provide
+/// information about the boot process via serial.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Serial {
-    Enabled { recovery_enabled: bool, tx_pin: Pin, rx_pin: Pin },
+    Enabled {
+        /// If enabled, loadstone will offer the option to recover a device
+        /// with no bootable image via serial.
+        recovery_enabled: bool,
+        /// Hardware pin for serial transmission (from loadstone's perspective).
+        tx_pin: PeripheralPin,
+        /// Hardware pin for serial reception (from loadstone's perspective).
+        rx_pin: PeripheralPin
+    },
     Disabled,
 }
 
@@ -52,12 +73,14 @@ impl Default for Serial {
 }
 
 impl Serial {
+    /// Whether a port is capable of supporting serial communications.
     pub fn supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
             Port::Wgm160P => false,
         }
     }
+
     pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
 }
 

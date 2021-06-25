@@ -18,10 +18,10 @@ default-features = false
 features = ["pem"]
 
 [dependencies.sha2]
-version = "*"
+version = "0.9.5"
 default-features = false
 
 [dependencies.p256]
-version = "*"
+version = "0.8.1"
 default-features = false
 features = ["ecdsa", "sha256", "pem"]

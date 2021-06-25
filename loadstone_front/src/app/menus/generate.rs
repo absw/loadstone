@@ -1,3 +1,8 @@
+//! This module manages the `Generate` dropdown menu, where
+//! the Loadstone configuration as a a whole is validated and,
+//! in case it's complete, gets transformed into a .ron file
+//! to be sent to GithubActions or built locally.
+
 use base64::write::EncoderWriter as Base64Encoder;
 use itertools::Itertools;
 use ron::ser::PrettyConfig;
@@ -26,6 +31,7 @@ const GITHUB_TOKEN_INSTRUCTIONS: &str = "https://docs.github.com/en/github/\
 
 const LOCAL_OUTPUT_FILENAME: &str = "loadstone_config.ron";
 
+/// Renders the image generation menu.
 pub fn generate<'a>(
     ui: &mut Ui,
     frame: &mut epi::Frame<'_>,
@@ -59,6 +65,7 @@ pub fn generate<'a>(
     }
 }
 
+/// Renders a link to download the finished .ron file.
 fn generate_download(ui: &mut Ui, configuration: &Configuration) {
     ui.heading("Option 2: Local");
     ui.horizontal_wrapped(|ui| {
@@ -73,6 +80,10 @@ fn generate_download(ui: &mut Ui, configuration: &Configuration) {
     });
 }
 
+/// Automatically triggers a Loadstone build in Github Actions. This requires a personal
+/// access token with write acces to the main Loadstone repository. For the time being,
+/// pointing this to a separate repository can be done only by modifying the `REST_API_ENDPOINT`
+/// constant.
 fn generate_in_ci(
     ui: &mut Ui,
     personal_access_token_field: &mut String,
@@ -139,6 +150,8 @@ fn generate_in_ci(
     }
 }
 
+/// Generates a .ron file and saves it to the current directory. This is the
+/// only available approach when running loadstone_front natively.
 fn generate_native(ui: &mut Ui, configuration: &Configuration) {
     ui.group(|ui| {
         ui.heading("Local generation");
@@ -165,6 +178,8 @@ fn generate_native(ui: &mut Ui, configuration: &Configuration) {
     });
 }
 
+/// Generates a loadstone image when loadstone_front is ran as a web application. Offers
+/// both a download link and an automated Github Actions CI trigger.
 fn generate_web(
     configuration: &Configuration,
     token: &str,

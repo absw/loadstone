@@ -22,13 +22,20 @@ use reqwest_wasm::Response;
 mod menus;
 mod utilities;
 
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
+/// Contains all persistent information required to render the loadstone web app
+/// options, and therefore fully define a Loadstone port. It wraps
+/// loadstone_config's `Configuration` struct, which can be serialized into a .ron
+/// file to be later consumed by Loadstone when generating code.
+// We derive Deserialize/Serialize so we can persist app state on shutdown.
 #[cfg_attr(feature = "persistence", derive(serde::Deserialize, serde::Serialize))]
 pub struct LoadstoneApp {
     configuration: Configuration,
     verifying_key_text_field: String,
     personal_access_token_field: String,
     git_ref_field: String,
+    /// This complicated type exists to hold the last response to our outgoing POST
+    /// requests to github actions. It must be thread safe as responses are received
+    /// in a separate context.
     last_request_response: Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 }
 
