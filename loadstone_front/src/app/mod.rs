@@ -32,6 +32,7 @@ pub struct LoadstoneApp {
     configuration: Configuration,
     verifying_key_text_field: String,
     personal_access_token_field: String,
+    git_fork_field: String,
     git_ref_field: String,
     /// This complicated type exists to hold the last response to our outgoing POST
     /// requests to github actions. It must be thread safe as responses are received
@@ -46,6 +47,7 @@ impl Default for LoadstoneApp {
             verifying_key_text_field: Default::default(),
             personal_access_token_field: Default::default(),
             git_ref_field: "staging".into(),
+            git_fork_field: "absw".into(),
             last_request_response: Arc::new(Mutex::new(None)),
         }
     }
@@ -74,6 +76,7 @@ impl epi::App for LoadstoneApp {
             personal_access_token_field,
             last_request_response,
             git_ref_field,
+            git_fork_field,
         } = self;
         configuration.cleanup();
 
@@ -148,6 +151,7 @@ impl epi::App for LoadstoneApp {
                         frame,
                         personal_access_token_field,
                         git_ref_field,
+                        git_fork_field,
                         last_request_response,
                         &configuration,
                     );
