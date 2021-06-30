@@ -21,8 +21,8 @@ use eframe::{
 
 use crate::app::utilities::download_file;
 
-const REST_API_ENDPOINT: &str =
-    "https://api.github.com/repos/absw/loadstone/actions/workflows/dispatch.yml/dispatches";
+const REST_API_ROOT: &str = "https://api.github.com/repos";
+const REST_API_LEAF: &str = "loadstone/actions/workflows/dispatch.yml/dispatches";
 
 const ACTIONS_URL: &str = "https://github.com/absw/loadstone/actions";
 
@@ -37,6 +37,7 @@ pub fn generate<'a>(
     frame: &mut epi::Frame<'_>,
     personal_access_token_field: &mut String,
     git_ref_field: &mut String,
+    git_fork_field: &mut String,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
     configuration: &Configuration,
 ) {
@@ -47,6 +48,7 @@ pub fn generate<'a>(
                     ui,
                     personal_access_token_field,
                     git_ref_field,
+                    git_fork_field,
                     configuration,
                     last_request_response,
                 );
@@ -80,14 +82,14 @@ fn generate_download(ui: &mut Ui, configuration: &Configuration) {
     });
 }
 
-/// Automatically triggers a Loadstone build in Github Actions. This requires a personal
-/// access token with write acces to the main Loadstone repository. For the time being,
-/// pointing this to a separate repository can be done only by modifying the `REST_API_ENDPOINT`
-/// constant.
+/// Automatically triggers a Loadstone build in Github Actions. By default, this requires a
+/// personal access token with write access to the main Loadstone repository, but it can
+/// be pointed at different forks.
 fn generate_in_ci(
     ui: &mut Ui,
     personal_access_token_field: &mut String,
     git_ref_field: &mut String,
+    git_fork_field: &mut String,
     configuration: &Configuration,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 ) {
@@ -95,13 +97,19 @@ fn generate_in_ci(
     ui.horizontal_wrapped(|ui| {
         ui.label(
             "Paste your Github PAT to trigger a Github Actions build. \
-                         For instructions on how to generate a Github Personal Access Token,",
+            You must have sufficient permissions on the chosen Loadstone fork \
+            to trigger workflow dispatches. \
+            For instructions on how to generate a Github Personal Access Token,",
         );
         ui.hyperlink_to("visit this link.", GITHUB_TOKEN_INSTRUCTIONS);
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(personal_access_token_field);
         ui.colored_label(Color32::LIGHT_BLUE, "Personal Access Token");
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.text_edit_singleline(git_fork_field);
+        ui.colored_label(Color32::LIGHT_BLUE, "Github Fork (You must have write access)");
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(git_ref_field);
@@ -112,7 +120,7 @@ fn generate_in_ci(
         if ui.button("Trigger Build").clicked() {
             let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
                 .unwrap_or("Invalid Configuration Supplied".into());
-            generate_web(&configuration, &personal_access_token_field, &git_ref_field, &ron, last_request_response)
+            generate_web(&configuration, &personal_access_token_field, &git_ref_field, &git_fork_field, &ron, last_request_response)
                 .unwrap();
             personal_access_token_field.clear();
         }
@@ -184,6 +192,7 @@ fn generate_web(
     configuration: &Configuration,
     token: &str,
     git_ref: &str,
+    git_fork: &str,
     ron: &str,
     last_request_response: &mut Arc<Mutex<Option<Result<Response, reqwest_wasm::Error>>>>,
 ) -> Result<()> {
@@ -204,7 +213,7 @@ fn generate_web(
 
     wasm_bindgen_futures::spawn_local(
         client
-            .post(REST_API_ENDPOINT)
+            .post(&format!("{}/{}/{}", REST_API_ROOT, git_fork, REST_API_LEAF))
             .header("Accept", "application/vnd.github.v3+json")
             .header("Authorization", auth_bytes)
             .body(formatted_body)
