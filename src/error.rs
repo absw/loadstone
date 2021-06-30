@@ -1,4 +1,4 @@
-//! Error types and methods for the Secure Bootloader project.
+//! Loadstone Error types and methods
 
 use blue_hal::{hal::serial::Write, uprint};
 use defmt::Format;
