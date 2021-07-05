@@ -53,6 +53,7 @@ fn generate_key<P: AsRef<Path>>(loadstone_path: P, configuration: &Configuration
     assert!(configuration.security_configuration.security_mode == SecurityMode::P256ECDSA,
         "Configuration mismatch: Config file requires ECDSA verification, but feature is disabled");
 
+    fs::create_dir(loadstone_path.as_ref().join("src/devices/assets/")).ok();
     let key_path = loadstone_path.as_ref().join(
         "src/devices/assets/key.sec1"
     );
