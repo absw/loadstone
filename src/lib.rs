@@ -1,7 +1,4 @@
-//! # Secure Bootloader Library
-//!
-//! This crate contains all functionality for the
-//! secure bootloader project in library form.
+//! # Loadstone Library
 #![feature(never_type)]
 #![feature(bool_to_option)]
 #![feature(associated_type_bounds)]

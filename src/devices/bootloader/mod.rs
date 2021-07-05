@@ -9,7 +9,7 @@ use super::{
     image::{self, Bank, Image},
     traits::{Flash, Serial},
 };
-use crate::error::Error;
+use crate::{devices::update_signal::ReadUpdateSignal, error::Error};
 use blue_hal::{
     duprintln,
     hal::{flash, time},
@@ -20,7 +20,6 @@ use cortex_m::peripheral::SCB;
 use defmt::{info, warn};
 use nb::block;
 use ufmt::uwriteln;
-use crate::devices::update_signal::ReadUpdateSignal;
 
 /// Operations related to copying images between flash chips.
 mod copy;
@@ -33,7 +32,14 @@ mod update;
 
 /// Main bootloader struct.
 // Members are public for the `ports` layer to be able to construct them freely and easily.
-pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal> {
+pub struct Bootloader<
+    EXTF: Flash,
+    MCUF: Flash,
+    SRL: Serial,
+    T: time::Now,
+    R: image::Reader,
+    RUS: ReadUpdateSignal,
+> {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
     pub(crate) mcu_banks: &'static [image::Bank<<MCUF as flash::ReadWrite>::Address>],
@@ -47,8 +53,14 @@ pub struct Bootloader<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: im
     pub(crate) _marker: PhantomData<R>,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal>
-    Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+impl<
+        EXTF: Flash,
+        MCUF: Flash,
+        SRL: Serial,
+        T: time::Now,
+        R: image::Reader,
+        RUS: ReadUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
 {
     /// Main bootloader routine.
     ///
@@ -118,8 +130,8 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
 
         // Either there's external flash, or there's no external flash and no banks.
         assert!(
-            self.external_flash.is_some() ||
-            (self.external_flash.is_none() && self.external_banks().count() == 0),
+            self.external_flash.is_some()
+                || (self.external_flash.is_none() && self.external_banks().count() == 0),
             "Incorrect external flash configuration"
         );
     }
@@ -165,6 +177,7 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
 #[cfg(test)]
 #[doc(hidden)]
 pub mod doubles {
+    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
     use blue_hal::{
         hal::{
             doubles::{
@@ -177,7 +190,6 @@ pub mod doubles {
         },
         utilities::memory::doubles::FakeAddress,
     };
-    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
 
     pub struct FakeReader;
 
@@ -197,8 +209,14 @@ pub mod doubles {
         fn read_update_plan(&self) -> UpdatePlan { UpdatePlan::Any }
     }
 
-    pub type BootloaderDouble =
-        super::Bootloader<FakeFlash, FakeFlash, SerialStub, MockSysTick, FakeReader, FakeUpdateSignal>;
+    pub type BootloaderDouble = super::Bootloader<
+        FakeFlash,
+        FakeFlash,
+        SerialStub,
+        MockSysTick,
+        FakeReader,
+        FakeUpdateSignal,
+    >;
 
     impl BootloaderDouble {
         pub fn new() -> Self {

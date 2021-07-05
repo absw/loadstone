@@ -15,7 +15,6 @@ fn main() -> Result<()> { process_configuration_file() }
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");
-    println!("cargo:rerun-if-changed=loadstone_config/sample_configurations/");
 
     let configuration: Configuration = if let Ok(config) = std::env::var("LOADSTONE_CONFIG") {
         if config.is_empty() {

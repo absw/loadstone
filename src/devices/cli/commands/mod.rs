@@ -5,7 +5,7 @@ use crate::{
         cli::{file_transfer::FileTransfer, ArgumentIterator, Cli, Error, Name, RetrieveArgument},
         image::{self, MAGIC_STRING},
         traits::{Flash, Serial},
-        update_signal::{WriteUpdateSignal, UpdatePlan},
+        update_signal::{UpdatePlan, WriteUpdateSignal},
     },
     error::Error as ApplicationError,
 };

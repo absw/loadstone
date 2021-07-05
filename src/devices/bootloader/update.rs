@@ -8,8 +8,14 @@ enum UpdateResult<MCUF: Flash> {
     UpdateError,
 }
 
-impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS: ReadUpdateSignal>
-    Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+impl<
+        EXTF: Flash,
+        MCUF: Flash,
+        SRL: Serial,
+        T: time::Now,
+        R: image::Reader,
+        RUS: ReadUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
 {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
@@ -24,21 +30,29 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, RUS:
             return None;
         };
 
-        let bank : Option<u8> = match self.update_signal.as_ref().map(ReadUpdateSignal::read_update_plan) {
+        let bank: Option<u8> = match self
+            .update_signal
+            .as_ref()
+            .map(ReadUpdateSignal::read_update_plan)
+        {
             None => None,
             Some(UpdatePlan::None) => {
                 duprintln!(self.serial, "Update signal set to None, refusing to update.");
                 return Some(current_image);
-            },
+            }
             Some(UpdatePlan::Any) => {
                 duprintln!(self.serial, "Update signal set to Any, checking for image updates.");
                 None
-            },
+            }
             Some(UpdatePlan::Index(i)) => {
-                duprintln!(self.serial, "Update signal set to Index({}), checking for update in \
-                    that bank.", i);
+                duprintln!(
+                    self.serial,
+                    "Update signal set to Index({}), checking for update in \
+                    that bank.",
+                    i
+                );
                 Some(i)
-            },
+            }
         };
 
         let current_image = match self.update_internal(boot_bank, current_image, bank) {
