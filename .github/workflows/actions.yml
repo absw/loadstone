@@ -9,7 +9,7 @@ jobs:
 
   tests:
     needs: setup
-    container: eu.gcr.io/bluefire-ci/loadstone-build:latest
+    container: bluefruitpathfinder/loadstone-build:latest
     runs-on: ubuntu-latest
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true
@@ -30,7 +30,7 @@ jobs:
   # the maximum amount of ports without taking time to compile final artifacts.
   sample_checks:
     needs: setup
-    container: eu.gcr.io/bluefire-ci/loadstone-build:latest
+    container: bluefruitpathfinder/loadstone-build:latest
     runs-on: ubuntu-latest
     env:
       CARGO_NET_GIT_FETCH_WITH_CLI: true
