@@ -1,9 +1,11 @@
 [target.'cfg(all(target_arch = "arm", target_os = "none"))']
-runner = "arm-none-eabi-gdb -q -x openocd.gdb"
+runner = ".cargo/runner-wrapper"
 
 rustflags = [
   # LLD (shipped with the Rust toolchain) is used as the default linker
   "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=-Tdefmt.x",
+  "-C", "link-arg=-Map=/tmp/loadstone.map",
 
   # if you run into problems with LLD switch to the GNU linker by commenting out
   # this line
@@ -16,3 +18,15 @@ rustflags = [
   # "-C", "link-arg=-Wl,-Tlink.x",
   # "-C", "link-arg=-nostartfiles",
 ]
+
+[alias]
+b = "build --release --target thumbv7em-none-eabi --bin"
+rb = "run --release --target thumbv7em-none-eabi --bin"
+sz = "size --release --bin loadstone --target thumbv7em-none-eabi"
+st = "strip --bin loadstone --release --target thumbv7em-none-eabi"
+d = "doc --release --target thumbv7em-none-eabi"
+dop = "doc --release --target thumbv7em-none-eabi --open"
+bl = "bloat --release --bin loadstone --target thumbv7em-none-eabi"
+
+[net]
+git-fetch-with-cli = true

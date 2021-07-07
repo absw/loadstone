@@ -1,0 +1,6 @@
+imports_granularity="Crate"
+fn_single_line = true
+overflow_delimited_expr = true
+use_field_init_shorthand = true
+use_small_heuristics = "Max"
+reorder_modules = false

@@ -1,38 +1,42 @@
-//! # Secure Bootloader Library
-//!
-//! This crate contains all functionality for the
-//! secure bootloader project in library form.
+//! # Loadstone Library
 #![feature(never_type)]
 #![feature(bool_to_option)]
 #![feature(associated_type_bounds)]
+#![feature(alloc_error_handler)]
 #![cfg_attr(test, allow(unused_imports))]
 #![cfg_attr(target_arch = "arm", no_std)]
 
-#[cfg(feature = "stm32f407")]
-pub use stm32f4::stm32f407 as stm32pac;
-#[cfg(feature = "stm32f412")]
-pub use stm32f4::stm32f412 as stm32pac;
-#[cfg(feature = "stm32f429")]
-pub use stm32f4::stm32f429 as stm32pac;
-#[cfg(feature = "stm32f469")]
-pub use stm32f4::stm32f469 as stm32pac;
+#[cfg(target_arch = "arm")]
+use alloc_cortex_m::CortexMHeap;
+
+/// Loadstone uses the Cortex M heap allocator, for the purposes of
+/// ECDSA signature verification.
+#[cfg(target_arch = "arm")]
+#[global_allocator]
+pub static ALLOCATOR: CortexMHeap = CortexMHeap::empty();
 
 #[cfg(target_arch = "arm")]
-extern crate panic_abort;
-extern crate static_assertions;
-
-#[macro_use]
-pub mod utilities {
-    pub mod bitwise;
-    pub mod iterator;
-    pub mod memory;
-    pub mod guard;
-    pub mod buffer;
-    mod macros;
+#[alloc_error_handler]
+fn oom(_: core::alloc::Layout) -> ! {
+    defmt::error!("Out of heap memory!");
+    loop {}
 }
 
-pub mod hal;
-pub mod drivers;
+#[cfg(target_arch = "arm")]
+use panic_semihosting as _;
+
+#[cfg(target_arch = "arm")]
+use defmt_rtt as _; // global logger
+
 pub mod devices;
 pub mod error;
+
+#[cfg(feature = "cortex_m_any")]
 pub mod ports;
+
+#[cfg(all(target_arch = "arm", not(feature = "cortex_m_any")))]
+compile_error!(
+    "Loadstone can't be built for `arm` without further target specification \
+               Either run tests with `cargo test` natively, or define a target through the \
+               appropriate configuration and/or feature flags."
+);
