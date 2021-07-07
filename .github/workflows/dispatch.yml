@@ -13,7 +13,6 @@ on:
 
 jobs:
   embedded_build:
-    needs: setup
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: ubuntu-latest
     env:
