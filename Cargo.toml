@@ -78,10 +78,7 @@ features = ["ecdsa", "sha256", "pem"]
 optional = true
 
 [dependencies.blue_hal]
-# Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
-#path = "blue_hal"
-git = "ssh://git@github.com/absw/blue_hal.git"
-branch = "main"
+version = "1.0.0"
 
 [dependencies.ufmt]
 version = "*"
@@ -115,3 +112,4 @@ serde = "*"
 
 [build-dependencies.loadstone_config]
 path = "loadstone_config"
+version = "1.0.0"
