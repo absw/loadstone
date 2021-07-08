@@ -5,12 +5,10 @@ on:
       loadstone_configuration:
         description: 'Loadstone configuration .ron file (inline)'
         required: true
-        default: ''
 
       loadstone_features:
         description: 'Loadstone features (comma separated list)'
         required: true
-        default: ''
 
 jobs:
   embedded_build:
