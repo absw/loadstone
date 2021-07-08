@@ -4,6 +4,13 @@ readme = "README.md"
 name = "loadstone"
 version = "1.0.0"
 default-run = "loadstone"
+license = "MIT"
+description = "Portable secure bootloader for Cortex-M MCUs"
+repository = "https://github.com/absw/loadstone"
+readme = "Readme.md"
+keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
+categories = ["embedded", "no-std"]
+exclude = ["docker/*", "docs/*", "documentation/*", "svd/*"]
 
 [features]
 default = [
@@ -75,7 +82,7 @@ optional = true
 # Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
 #path = "blue_hal"
 git = "ssh://git@github.com/absw/blue_hal.git"
-branch = "staging"
+branch = "main"
 
 [dependencies.ufmt]
 version = "*"
@@ -109,4 +116,3 @@ serde = "*"
 
 [build-dependencies.loadstone_config]
 path = "loadstone_config"
-
