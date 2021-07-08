@@ -101,8 +101,8 @@ dependencies = [
 
 [[package]]
 name = "blue_hal"
-version = "0.1.0"
-source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#a5301989e126768693638b589a73d930ae206618"
+version = "1.0.0"
+source = "git+ssh://git@github.com/absw/blue_hal.git?branch=main#a3fccfb1c7381c2cfa9e2d709f4c896b82306a79"
 dependencies = [
  "bytemuck",
  "cortex-m 0.7.2",
@@ -476,7 +476,7 @@ dependencies = [
  "funty",
  "loadstone_config",
  "marker-blanket",
- "nb 0.1.3",
+ "nb 1.0.0",
  "p256",
  "panic-semihosting",
  "ron",
