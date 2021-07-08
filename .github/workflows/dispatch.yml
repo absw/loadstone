@@ -15,6 +15,7 @@ jobs:
     container: bluefruitpathfinder/loadstone-build:latest
     runs-on: ubuntu-latest
     env:
+      CARGO_NET_GIT_FETCH_WITH_CLI: true
       CARGO_TERM_VERBOSE: true
     steps:
       - name: Checkout
