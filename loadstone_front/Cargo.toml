@@ -2,6 +2,12 @@
 name = "loadstone_front"
 version = "1.0.0"
 edition = "2018"
+license = "MIT"
+description = "Portable secure bootloader for Cortex-M MCUs - Builder Web App"
+repository = "https://github.com/absw/loadstone"
+readme = "README.md"
+keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
+categories = ["embedded", "no-std"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

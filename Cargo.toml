@@ -1,9 +1,15 @@
 [package]
 edition = "2018"
-readme = "README.md"
 name = "loadstone"
 version = "1.0.0"
 default-run = "loadstone"
+license = "MIT"
+description = "Portable secure bootloader for Cortex-M MCUs"
+repository = "https://github.com/absw/loadstone"
+readme = "README.md"
+keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
+categories = ["embedded", "no-std"]
+exclude = ["docker/*", "docs/*", "documentation/*", "svd/*"]
 
 [features]
 default = [
@@ -39,13 +45,13 @@ relocate-to-bootable-bank = []
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
-nb = "*"
-panic-semihosting = "*"
-static_assertions = "*"
+nb = "0.1.*"
+panic-semihosting = "0.5.*"
+static_assertions = "1.1.*"
 defmt = "0.2"
 defmt-rtt = "0.2"
-alloc-cortex-m = "*"
-marker-blanket = "*"
+alloc-cortex-m = "0.4.*"
+marker-blanket = "0.1.*"
 
 [dependencies.funty]
 version = "=1.1.0"
@@ -62,23 +68,20 @@ features = ["pem"]
 optional = true
 
 [dependencies.sha2]
-version = "*"
+version = "0.9.5"
 default-features = false
 
 [dependencies.p256]
-version = "*"
+version = "0.8.*"
 default-features = false
 features = ["ecdsa", "sha256", "pem"]
 optional = true
 
 [dependencies.blue_hal]
-# Uncomment the next line and comment the next two lines to develop blue_hal locally in parallel
-#path = "blue_hal"
-git = "ssh://git@github.com/absw/blue_hal.git"
-branch = "staging"
+version = "1.0.0"
 
 [dependencies.ufmt]
-version = "*"
+version = "0.1.*"
 default-features = false
 
 [lib]
@@ -103,10 +106,10 @@ codegen-units = 1 # better optimizations
 lto = true # better optimizations
 
 [build-dependencies]
-anyhow = "*"
-ron = "*"
-serde = "*"
+anyhow = "1.0.*"
+ron = "0.6.*"
+serde = "1.0.*"
 
 [build-dependencies.loadstone_config]
 path = "loadstone_config"
-
+version = "1.0.0"

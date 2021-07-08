@@ -101,8 +101,9 @@ dependencies = [
 
 [[package]]
 name = "blue_hal"
-version = "0.1.0"
-source = "git+ssh://git@github.com/absw/blue_hal.git?branch=staging#a5301989e126768693638b589a73d930ae206618"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c933e92b6104a582f3ddb367aac39156ef29314b20160abb585d5730f9c77b66"
 dependencies = [
  "bytemuck",
  "cortex-m 0.7.2",
@@ -312,7 +313,8 @@ dependencies = [
 [[package]]
 name = "efm32gg11b"
 version = "0.1.0"
-source = "git+https://github.com/pablo-mansanet-bluefruit/efm32gg11b-hal.git#932b53745133d8fced5c1fd30cfc778fd4cd3a31"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16328ab8e279fdc14fd6bc05cd1fb8d1e844b271317bd0782f36e7f49f1c7905"
 dependencies = [
  "bare-metal",
  "cortex-m 0.5.11",
