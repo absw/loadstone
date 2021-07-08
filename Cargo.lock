@@ -102,7 +102,7 @@ dependencies = [
 [[package]]
 name = "blue_hal"
 version = "1.0.0"
-source = "git+ssh://git@github.com/absw/blue_hal.git?branch=main#39b604496d9ab3737e4e01fb65ec1342aca4686f"
+source = "git+ssh://git@github.com/absw/blue_hal.git?branch=main#a3fccfb1c7381c2cfa9e2d709f4c896b82306a79"
 dependencies = [
  "bytemuck",
  "cortex-m 0.7.2",
