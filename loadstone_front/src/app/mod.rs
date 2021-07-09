@@ -46,7 +46,7 @@ impl Default for LoadstoneApp {
             configuration: Default::default(),
             verifying_key_text_field: Default::default(),
             personal_access_token_field: Default::default(),
-            git_ref_field: "staging".into(),
+            git_ref_field: "main".into(),
             git_fork_field: "absw".into(),
             last_request_response: Arc::new(Mutex::new(None)),
         }

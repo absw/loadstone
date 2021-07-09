@@ -1,37 +1,24 @@
 name: dispatch
 on:
-   workflow_dispatch:
-      inputs:
-         loadstone_configuration:
-            description: 'Loadstone configuration .ron file (inline)'
-            required: true
+  workflow_dispatch:
+    inputs:
+      loadstone_configuration:
+        description: 'Loadstone configuration .ron file (inline)'
+        required: true
 
-         loadstone_features:
-            description: 'Loadstone features (comma separated list)'
-            required: true
-            default: ''
+      loadstone_features:
+        description: 'Loadstone features (comma separated list)'
+        required: true
 
 jobs:
-  setup:
-    runs-on: self-hosted
+  embedded_build:
+    container: bluefruitpathfinder/loadstone-build:latest
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_VERBOSE: true
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-
-  embedded_build:
-    needs: setup
-    container: eu.gcr.io/bluefire-ci/loadstone-build:latest
-    runs-on: self-hosted
-    env:
-      CARGO_NET_GIT_FETCH_WITH_CLI: true
-      CARGO_TERM_VERBOSE: true
-    steps:
-      - name: Configure SSH
-        run: |
-          mkdir -p /home/user/.ssh/
-          echo "${{ secrets.PATHFINDERDELL_KNOWN_HOSTS }}" >> /home/user/.ssh/known_hosts
-          echo "${{ secrets.PATHFINDERDELL_PRIVATE_KEY }}" > /home/user/.ssh/id_rsa
-          chmod 600 /home/user/.ssh/id_rsa
       - name: Build Loadstone
         env:
           SCRIPT_MODE: true

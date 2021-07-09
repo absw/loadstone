@@ -24,7 +24,8 @@ use crate::app::utilities::download_file;
 const REST_API_ROOT: &str = "https://api.github.com/repos";
 const REST_API_LEAF: &str = "loadstone/actions/workflows/dispatch.yml/dispatches";
 
-const ACTIONS_URL: &str = "https://github.com/absw/loadstone/actions";
+const ACTIONS_URL_ROOT: &str = "https://github.com";
+const ACTIONS_URL_LEAF: &str = "loadstone/actions";
 
 const GITHUB_TOKEN_INSTRUCTIONS: &str = "https://docs.github.com/en/github/\
     authenticating-to-github/keeping-your-account-and-data-secure/creating-a-personal-access-token";
@@ -134,7 +135,7 @@ fn generate_in_ci(
             ui.horizontal_wrapped(|ui| {
                 ui.colored_label(Color32::GREEN, "Request accepted!");
                 ui.label("Go to");
-                ui.hyperlink_to("Loadstone's Github Actions", ACTIONS_URL);
+                ui.hyperlink_to("Loadstone's Github Actions", format!("{}/{}/{}", ACTIONS_URL_ROOT, git_fork_field, ACTIONS_URL_LEAF));
                 ui.label("to monitor your build's progress.");
             });
         }
