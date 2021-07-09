@@ -4,13 +4,6 @@ FROM rust:buster
 RUN apt-get update
 RUN apt-get install zip -y
 
-# Add user
-RUN adduser --disabled-password --gecos '' user
-USER user
-WORKDIR /home/user/
-
-RUN eval `ssh-agent -s`
-
 # Install rust dependencies
 RUN rustup default nightly
 RUN rustup update
