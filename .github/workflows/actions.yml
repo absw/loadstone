@@ -14,6 +14,15 @@ jobs:
           LOADSTONE_CONFIG: ""
         run: cargo test
 
+   design:
+      description: 'Creates PDF and HTML files from Markdown.'
+      runs:
+        using: 'docker'
+        image: 'docker/design/Dockerfile'
+        args:
+          - documentation/design/
+          - target/
+
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
   sample_checks:

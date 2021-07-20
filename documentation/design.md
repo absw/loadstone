@@ -22,7 +22,9 @@ graph LR
    Application--selected from-->Images[Firmware Images]
 ```
 
-# Bootloader (C2-1)
+What follows are the container level diagrams (C2):
+
+## Bootloader (C2-1)
 
 ```mermaid
 graph TB
@@ -47,7 +49,7 @@ graph TB
 
 ```
 
-# Codegen Port (C2-2)
+## Codegen Port (C2-2)
 ```mermaid
 flowchart
    App[Builder Web App]-.generates.->Config
@@ -75,7 +77,7 @@ flowchart
    Drivers--compose-->Bootloader
 ```
 
-# Builder App (C2-3)
+## Builder App (C2-3)
 ```mermaid
 flowchart
    App[Builder Web App]--rendered via-->EGUI
@@ -91,6 +93,106 @@ flowchart
    Configuration--serializes into-->File[.ron configuration file]
    File-->Web{Running\n as Web app?}
    Web--yes-->Trigger[Trigger build in Github Actions]
-   Web--yes-->Download[Download .ron file for local builds]
+   Web--yes-->Download[Download .ron file]
    Web--no-->Local[Save .ron file locally]
+   Trigger--builds-->Artifacts
+   Download--builds-->Artifacts
+   Local--builds-->Artifacts
+   subgraph Artifacts
+      Loadstone
+      Demo[Loadstone \nDemo App]
+   end
+```
+
+## User Application (C2-4)
+```mermaid
+flowchart
+   App[User Application]
+   style App stroke-width:5px
+   App==runs==>Main[Application Logic]
+   Main-.may signal.->Update[Update plans\nto Loadstone]
+   Main-.may read.->BootMetrics[Boot Metrics\nfrom Loadstone]
+   Main--drives-->Flash[Flash Memory]
+   Main--writes-->Fw[Firmware Images]
+   Fw--stored in-->Flash
+```
+
+## Demo Application (C2-5)
+```mermaid
+flowchart
+   App[Loadstone\nDemo App]
+   style App stroke-width:5px
+   App==runs==>Cli[Command Line Interface]
+   User--interacts-->Cli
+   Cli--manages-->Flash[Flash Memory]
+   Cli--tests-->Security[Security Features]
+   Cli--tests-->Integrity[Image Integrity]
+   Cli--displays-->Banks[Bank layout]
+   Cli--displays-->Images[Image Layout]
+   Images--retrieved from-->Flash
+   Integrity--via-->Corruption[Image Corruption]
+   Security--via-->Corruption[Image Corruption]
+   Security--via-->SigCorruption[Signature Corruption]
+```
+
+Component-level diagrams (C3):
+
+## Firmware Image Storage (C3-1):
+
+```mermaid
+flowchart
+   Mcu[Mcu Flash]
+   External[External Flash]
+   Mcu--composes-->Storage
+   External-.may compose.->Storage
+   Storage==divided in==>Banks
+   Banks==store==>Valid
+   Banks--"of type"-->Types
+   subgraph Types[Bank Types]
+      Golden["Golden\n(Zero or one)"]o--incompatible--oBootable["Bootable\n(One)"]
+      Regular["Regular\n(Any number)"]
+   end
+
+   Bootable--"only available in"-->Mcu
+   subgraph Images[Image Types]
+      subgraph Valid
+         ValidGolden[Valid Golden]
+         ValidRegular[Valid Regular]
+      end
+      subgraph Invalid
+         Corrupted
+         Undecorated
+      end
+   end
+
+   style External stroke-dasharray: 5 5
+   style Golden stroke-dasharray: 5 5
+   style Storage stroke-width:5px
+```
+
+## Image Reader (C3-2)
+
+```mermaid
+flowchart
+   Reader[Abstract\nImage Reader]
+   Identifier[Abstract Identifier]
+   Reader--verifies-->Image
+   EcdsaReader--defines-->Ecdsa[Ecdsa Identifier]
+   Ecdsa--implements-->Identifier
+   CrcReader--defines-->Crc[Crc Identifier]
+   Crc--implements-->Identifier
+   subgraph Image
+      subgraph Types[Image Types]
+         Bootable
+         Regular
+         Golden
+      end
+   end
+
+   Image--must have-->Termination[Terminating String]
+   Image--must have-->Identifier
+   Golden--must have-->GoldenString[Golden String]
+   Reader==verifies \nand validates==>Identifier
+
+   style Reader stroke-width:5px
 ```
