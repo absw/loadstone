@@ -23,8 +23,11 @@ jobs:
           uses: ./design/markdown-to-pdf-action@v1
           with:
              input_dir: 'documentation/'
-             input_dir: 'documentation/'
-
+             output_dir: 'docs/design/'
+          uses: actions/upload-artifact@v2
+          with:
+            name: 'design'
+            path: 'docs/design/'
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
