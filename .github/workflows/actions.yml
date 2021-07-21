@@ -22,7 +22,7 @@ jobs:
           uses: actions/checkout@v2
         - name: Convert Markdown to PDF
           id: design
-          uses: ./design/markdown-to-pdf-action@v1
+          uses: ./.github/workflows/design/
           with:
              input_dir: 'documentation/'
              output_dir: 'docs/design/'
