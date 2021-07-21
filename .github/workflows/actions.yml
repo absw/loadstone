@@ -18,6 +18,8 @@ jobs:
      runs-on: ubuntu-latest
      name: Generate design documentation
      steps:
+        - name: Checkout
+          uses: actions/checkout@v2
         - name: Convert Markdown to PDF
           id: design
           uses: ./design/markdown-to-pdf-action@v1
