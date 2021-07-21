@@ -14,14 +14,16 @@ jobs:
           LOADSTONE_CONFIG: ""
         run: cargo test
 
-   design:
-      description: 'Creates PDF and HTML files from Markdown.'
-      runs:
-        using: 'docker'
-        image: 'docker/design/Dockerfile'
-        args:
-          - documentation/design/
-          - target/
+  design:
+     runs-on: ubuntu-latest
+     name: Generate design documentation
+     steps:
+        - name: Convert Markdown to PDF
+          id: design
+          uses: design/markdown-to-pdf-action@v1
+          with:
+             input_dir: 'documentation/'
+             output_dir: 'documentation/'
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
