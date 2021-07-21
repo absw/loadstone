@@ -18,20 +18,6 @@ jobs:
      runs-on: ubuntu-latest
      name: Generate design documentation
      steps:
-        #  - name: Checkout
-        #    uses: actions/checkout@v2
-        #  - name: Convert Markdown to PDF
-        #    id: design
-        #    uses: ./.github/workflows/design/
-        #    with:
-        #       input_dir: 'documentation/'
-        #       output_dir: 'docs/design/'
-        #  - name: Upload design artifacts
-        #    uses: actions/upload-artifact@v2
-        #    with:
-        #      name: 'design'
-        #      path: 'docs/design/'
-
         - uses: actions/checkout@v2
           with:
             fetch-depth: 2
@@ -57,6 +43,12 @@ jobs:
             output_dir: documentation/output
             images_dir: ./images
             build_html: true
+
+        - name: Upload Design Artifacts
+          uses: actions/upload-artifact@v2
+          with:
+            name: design.zip
+            path: documentation/output
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
