@@ -24,6 +24,7 @@ jobs:
           with:
              input_dir: 'documentation/'
              output_dir: 'docs/design/'
+        - name: Upload design artifacts
           uses: actions/upload-artifact@v2
           with:
             name: 'design'
