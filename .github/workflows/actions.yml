@@ -18,20 +18,13 @@ jobs:
      runs-on: ubuntu-latest
      name: Generate design documentation
      steps:
-         - uses: actions/checkout@v2
-         - uses: baileyjm02/markdown-to-pdf@v1
-           with:
-             input_dir: documentation
-             images_dir: documentation
-             output_dir: docs/design
-             # for example <img src="./images/file-name.png">
-             image_import: ./images
-             # Default is true, can set to false to only get PDF files
-             build_html: false
-         - uses: actions/upload-artifact@v1
-           with:
-             name: design
-             path: docs/design
+        - name: Convert Markdown to PDF
+          id: design
+          uses: ./design/markdown-to-pdf-action@v1
+          with:
+             input_dir: 'documentation/'
+             input_dir: 'documentation/'
+
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
