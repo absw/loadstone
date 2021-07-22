@@ -31,10 +31,13 @@ jobs:
           uses: neenjaw/compile-mermaid-markdown-action@v0.3.3
           with:
             files: ${{ steps.getfile.outputs.files }}
-            output: documentation/images
+            output: images
           env:
             HIDE_CODEBLOCKS: 1
             ABSOLUTE_IMAGE_LINKS:
+
+        - name: copy images to output folder
+          run: cp -r images documentation/
 
         - name: Generate documentation
           uses: baileyjm02/markdown-to-pdf@v1
@@ -47,8 +50,8 @@ jobs:
         - name: Upload Design Artifacts
           uses: actions/upload-artifact@v2
           with:
-            name: design.zip
-            path: documentation/output
+            name: design
+            path: documentation
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
