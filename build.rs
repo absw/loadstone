@@ -65,7 +65,7 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
         panic!(
             "\r\n\r\nThe configuration file requires flags that haven't been supplied. \
             Please build again with `--features={}`\r\n\r\n",
-            missing_flags.join(","),
+            missing_flags.join(",").replace("_", "-"),
         );
     }
 }
