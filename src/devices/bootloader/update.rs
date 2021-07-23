@@ -117,7 +117,7 @@ impl<
                 _ => (),
             }
         }
-        return UpdateResult::NotUpdated(current_image);
+        UpdateResult::NotUpdated(current_image)
     }
 
     fn update_external(
@@ -169,7 +169,7 @@ impl<
                 }
             }
         }
-        return UpdateResult::NotUpdated(current_image);
+        UpdateResult::NotUpdated(current_image)
     }
 
     fn replace_image_internal(

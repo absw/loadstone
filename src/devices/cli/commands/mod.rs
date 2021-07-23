@@ -102,7 +102,7 @@ commands!( cli, boot_manager, names, helpstrings [
                 nb::block!(external_flash.read(signature_location, &mut signature_bytes))
                     .map_err(|e| Error::ApplicationError(e.into()))?;
                 signature_bytes[0] = !signature_bytes[0];
-                nb::block!(external_flash.write(signature_location, &mut signature_bytes))
+                nb::block!(external_flash.write(signature_location, &signature_bytes))
                     .map_err(|e| Error::ApplicationError(e.into()))?;
                 uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
             }
@@ -116,7 +116,7 @@ commands!( cli, boot_manager, names, helpstrings [
             nb::block!(boot_manager.mcu_flash.read(signature_location, &mut signature_bytes))
                 .map_err(|e| Error::ApplicationError(e.into()))?;
             signature_bytes[0] = !signature_bytes[0];
-            nb::block!(boot_manager.mcu_flash.write(signature_location, &mut signature_bytes))
+            nb::block!(boot_manager.mcu_flash.write(signature_location, &signature_bytes))
                 .map_err(|e| Error::ApplicationError(e.into()))?;
             uprintln!(cli.serial, "Flipped the first signature byte from {} to {}.", !signature_bytes[0], signature_bytes[0]);
         } else {
@@ -146,7 +146,7 @@ commands!( cli, boot_manager, names, helpstrings [
         let mut byte_buffer = [0u8];
         nb::block!(external_flash.read(byte_location, &mut byte_buffer)).map_err(|e| Error::ApplicationError(e.into()))?;
         byte_buffer[0] = !byte_buffer[0];
-        nb::block!(external_flash.write(byte_location, &mut byte_buffer)).map_err(|e| Error::ApplicationError(e.into()))?;
+        nb::block!(external_flash.write(byte_location, &byte_buffer)).map_err(|e| Error::ApplicationError(e.into()))?;
         uprintln!(cli.serial, "Flipped an application byte byte from {} to {}.", !byte_buffer[0], byte_buffer[0]);
     },
 
@@ -167,17 +167,17 @@ commands!( cli, boot_manager, names, helpstrings [
         bank: u8 ["Updatable bank index."],
     ) {
         return boot_manager.set_update_signal(UpdatePlan::Index(bank))
-            .map_err(|e| Error::ApplicationError(e));
+            .map_err(Error::ApplicationError);
     },
 
     update_signal_none ["Disallow loadstone from updating."] ( ) {
         return boot_manager.set_update_signal(UpdatePlan::None)
-            .map_err(|e| Error::ApplicationError(e));
+            .map_err(Error::ApplicationError);
     },
 
     update_signal_any ["Allow loadstone to update from any bank."] ( ) {
         return boot_manager.set_update_signal(UpdatePlan::Any)
-            .map_err(|e| Error::ApplicationError(e));
+            .map_err(Error::ApplicationError);
     },
 
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )
