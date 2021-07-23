@@ -1,4 +1,4 @@
-name: actions
+name: Tests and Samples
 on: [push, pull_request]
 jobs:
   tests:
