@@ -12,7 +12,9 @@ categories = ["embedded", "no-std"]
 exclude = ["docker/*", "docs/*", "documentation/*", "svd/*"]
 
 [features]
-default = ["defmt-default",]
+default = [
+   "defmt-default",
+]
 
 # The features below reflect the hierarchy of stm32 families.
 # Choosing a f4 family implies f4, which implies stm32, which
