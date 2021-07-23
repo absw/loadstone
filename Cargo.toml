@@ -50,7 +50,7 @@ panic-semihosting = "0.5.*"
 static_assertions = "1.1.*"
 defmt = "0.2"
 defmt-rtt = "0.2"
-alloc-cortex-m = "0.4.*"
+alloc-cortex-m = "0.4.1"
 marker-blanket = "0.1.*"
 
 [dependencies.funty]
