@@ -83,7 +83,7 @@ impl<'a> Iterator for ArgumentIterator<'a> {
     type Item = Argument<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(token) = self.tokens.next() {
+        for token in &mut self.tokens {
             let mut split = token.split(ARGUMENT_SEPARATOR);
             match split.clone().count() {
                 2 => return Some(Argument::Pair(split.next().unwrap(), split.next().unwrap())),

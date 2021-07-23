@@ -140,7 +140,7 @@ impl<
     pub fn boot(&mut self, image: Image<MCUF::Address>) -> Result<!, Error> {
         warn!("Jumping to a new firmware image. This will break `defmt`.");
         let image_location_raw: usize = image.location().into();
-        let time_ms = self.start_time.and_then(|t| Some((T::now() - t).0));
+        let time_ms = self.start_time.map(|t| (T::now() - t).0);
         self.boot_metrics.boot_time_ms = time_ms;
 
         // NOTE(Safety): Thoroughly unsafe operations, for obvious reasons: We are jumping to an

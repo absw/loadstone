@@ -90,7 +90,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
 
 impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
     fn process_message(&mut self, buffer: &[u8]) -> Option<[u8; BLOCK_SIZE]> {
-        match xmodem::parse_message(&buffer) {
+        match xmodem::parse_message(buffer) {
             Ok((_, xmodem::Message::EndOfTransmission)) => {
                 self.end_transmission();
                 None

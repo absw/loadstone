@@ -1,4 +1,4 @@
-name: dispatch
+name: Build on Demand
 on:
   workflow_dispatch:
     inputs:

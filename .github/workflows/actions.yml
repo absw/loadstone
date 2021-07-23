@@ -1,4 +1,4 @@
-name: actions
+name: Tests and Samples
 on: [push, pull_request]
 jobs:
   tests:
@@ -13,6 +13,19 @@ jobs:
         env:
           LOADSTONE_CONFIG: ""
         run: cargo test
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+            toolchain: nightly
+            components: clippy
+            override: true
+      - uses: actions-rs/clippy@master
+        with:
+          args: --all-features --all-targets
 
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
