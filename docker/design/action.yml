@@ -1,5 +1,5 @@
 name: 'markdown-to-pdf-action'
-description: 'Creates PDF and HTML files from Markdown.'
+description: 'Creates PDF files from Markdown.'
 inputs:
   input_dir:
       description: '(Path) The location of the folder containing your .md or .markdown files'
