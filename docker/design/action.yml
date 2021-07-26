@@ -1,0 +1,15 @@
+name: 'markdown-to-pdf-action'
+description: 'Creates PDF files from Markdown.'
+inputs:
+  input_dir:
+      description: '(Path) The location of the folder containing your .md or .markdown files'
+      required: true
+  output_dir:
+      description: '(Path) The location of the folder for the pdf/html output files'
+      required: true
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  args:
+    - ${{ inputs.input_dir }}
+    - ${{ inputs.output_dir}}
