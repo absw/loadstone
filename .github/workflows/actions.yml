@@ -14,6 +14,40 @@ jobs:
           LOADSTONE_CONFIG: ""
         run: cargo test
 
+  design:
+     runs-on: ubuntu-latest
+     name: Generate design documentation
+     steps:
+        - uses: actions/checkout@v2
+          with:
+            fetch-depth: 2
+
+        - name: get documentation file list
+          id: getfile
+          run: |
+            echo "::set-output name=files::$(find documentation -name '*.md' | xargs)"
+
+        - name: Compile mermaid diagrams
+          uses: neenjaw/compile-mermaid-markdown-action@v0.3.3
+          with:
+            files: ${{ steps.getfile.outputs.files }}
+            output: documentation/images
+          env:
+            HIDE_CODEBLOCKS: 1
+            ABSOLUTE_IMAGE_LINKS:
+
+        - name: Generate documentation
+          uses: ./docker/design # Uses an action in the docker design directory
+          with:
+            input_dir: documentation
+            output_dir: documentation/output
+
+        - name: Upload Design Artifacts
+          uses: actions/upload-artifact@v2
+          with:
+            name: design
+            path: documentation/output
+
   # This job launches a few `cargo check` invocations using several config file samples, to exercise
   # the maximum amount of ports without taking time to compile final artifacts.
   sample_checks:
