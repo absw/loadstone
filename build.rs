@@ -24,12 +24,12 @@ fn process_configuration_file() -> Result<()> {
         }
     } else {
         panic!(
-            "\r\n\r\nBuilding Loadstone requires you supply a configuration file, \
-                embedded in the `LOADSTONE_CONFIG` environment variable. \r\nTry again with \
-                'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \r\nIf you're just looking \
+            "\n\nBuilding Loadstone requires you supply a configuration file, \
+                embedded in the `LOADSTONE_CONFIG` environment variable. \nTry again with \
+                'LOADSTONE_CONFIG=`cat my_config.ron` cargo... \nIf you're just looking \
                 to run unit tests, or to build a port that does not require any code \
                 generation (manual port), supply an empty string:
-                'LOADSTONE_CONFIG=\"\" cargo...`\r\n\r\n"
+                'LOADSTONE_CONFIG=\"\" cargo...`\n\n"
         )
     };
 
@@ -63,8 +63,8 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
 
     if !missing_flags.is_empty() {
         panic!(
-            "\r\n\r\nThe configuration file requires flags that haven't been supplied. \
-            Please build again with `--features={}`\r\n\r\n",
+            "\n\nThe configuration file requires flags that haven't been supplied. \
+            Please build again with `--features={}`\n\n",
             missing_flags.join(",").replace("_", "-"),
         );
     }

@@ -11,7 +11,7 @@ use loadstone_config::{
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
 static GOLDEN_TOOLTIP: &'static str =
-    "Mark this bank as golden (used as a fallback in case of corruption)\r\n \
+    "Mark this bank as golden (used as a fallback in case of corruption)\n \
     Only one non-bootable bank may be golden, and only golden banks can store golden images.";
 
 mod normalize;

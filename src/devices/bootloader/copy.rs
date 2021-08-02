@@ -27,7 +27,7 @@ impl<
         }
         duprintln!(
             serial,
-            "Copying bank {:?} image [Address {:?}, size {:?}]\r\n* Input: [{}]\r\n* Output: [{}]",
+            "Copying bank {:?} image [Address {:?}, size {:?}]\n* Input: [{}]\n* Output: [{}]",
             input_bank.index,
             input_image.location().into(),
             input_image.size(),
@@ -71,7 +71,7 @@ impl<
         }
         duprintln!(
             serial,
-            "Copying bank {:?} image [Address {:?}, size {:?}]\r\n* Input: [{}]\r\n* Output: [{}]",
+            "Copying bank {:?} image [Address {:?}, size {:?}]\n* Input: [{}]\n* Output: [{}]",
             input_bank.index,
             input_image.location().into(),
             input_image.size(),
