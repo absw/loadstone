@@ -14,9 +14,8 @@ impl<
         SRL: Serial,
         T: time::Now,
         R: image::Reader,
-        RUS: ReadUpdateSignal,
-        WUS: WriteUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
+        U: UpdatePlanner,
+    > Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
@@ -33,9 +32,9 @@ impl<
 
 
         let bank: Option<u8> = match self
-            .update_signal
+            .update_planner
             .as_ref()
-            .map(|(r, _)| r.read_update_plan())
+            .map(ReadUpdateSignal::read_update_plan)
         {
             None => None,
             Some(UpdatePlan::None) => {
@@ -77,6 +76,8 @@ impl<
     }
 
     fn attempt_serial_update(&mut self) -> Option<Image<MCUF::Address>> {
+        // Restore the update plan so the attempt is done only once.
+        self.update_planner.as_mut().unwrap().write_update_plan(UpdatePlan::None);
         duprintln!(
             self.serial,
             "Please send firmware image via XMODEM.",

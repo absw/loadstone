@@ -1,4 +1,4 @@
-use crate::devices::{cli::file_transfer::FileTransfer, update_signal::ReadUpdateSignal};
+use crate::devices::cli::file_transfer::FileTransfer;
 
 use super::*;
 
@@ -8,9 +8,8 @@ impl<
         SRL: Serial,
         T: time::Now,
         R: image::Reader,
-        RUS: ReadUpdateSignal,
-        WUS: WriteUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
+        U: UpdatePlanner,
+    > Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// Enters recovery mode, which requests a golden image to be transferred via serial through
     /// the XMODEM protocol, then reboot. If Loadstone has no golden image support, recovery
