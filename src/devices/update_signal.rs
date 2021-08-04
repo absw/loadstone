@@ -3,12 +3,12 @@
 pub enum UpdatePlan {
     /// Do not update.
     None,
-
     /// Allow updates, if one is available.
     Any,
-
     /// Update from a specific image.
     Index(u8),
+    /// Attempt to update through serial recovery once.
+    Serial,
 }
 
 pub trait ReadUpdateSignal {

@@ -8,7 +8,8 @@ impl<
         T: time::Now,
         R: image::Reader,
         RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        WUS: WriteUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
 {
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.

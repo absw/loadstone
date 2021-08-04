@@ -4,11 +4,7 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{
-    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
-    image::{self, Bank, Image},
-    traits::{Flash, Serial},
-};
+use super::{boot_metrics::{boot_metrics_mut, BootMetrics, BootPath}, image::{self, Bank, Image}, traits::{Flash, Serial}, update_signal::WriteUpdateSignal};
 use crate::{devices::update_signal::ReadUpdateSignal, error::Error};
 use blue_hal::{
     duprintln,
@@ -39,6 +35,7 @@ pub struct Bootloader<
     T: time::Now,
     R: image::Reader,
     RUS: ReadUpdateSignal,
+    WUS: WriteUpdateSignal,
 > {
     pub(crate) mcu_flash: MCUF,
     pub(crate) external_banks: &'static [image::Bank<<EXTF as flash::ReadWrite>::Address>],
@@ -48,7 +45,7 @@ pub struct Bootloader<
     pub(crate) boot_metrics: BootMetrics,
     pub(crate) start_time: Option<T::I>,
     pub(crate) recovery_enabled: bool,
-    pub(crate) update_signal: Option<RUS>,
+    pub(crate) update_signal: Option<(RUS, WUS)>,
     pub(crate) greeting: &'static str,
     pub(crate) _marker: PhantomData<R>,
 }
@@ -60,7 +57,8 @@ impl<
         T: time::Now,
         R: image::Reader,
         RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        WUS: WriteUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
 {
     /// Main bootloader routine.
     ///
@@ -177,7 +175,7 @@ impl<
 #[cfg(test)]
 #[doc(hidden)]
 pub mod doubles {
-    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
+    use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan, WriteUpdateSignal};
     use blue_hal::{
         hal::{
             doubles::{
@@ -204,9 +202,16 @@ pub mod doubles {
         }
     }
 
-    pub struct FakeUpdateSignal;
+    pub struct FakeUpdateSignal {
+        plan: UpdatePlan,
+    }
     impl ReadUpdateSignal for FakeUpdateSignal {
-        fn read_update_plan(&self) -> UpdatePlan { UpdatePlan::Any }
+        fn read_update_plan(&self) -> UpdatePlan { self.plan }
+    }
+    impl WriteUpdateSignal for FakeUpdateSignal {
+        fn write_update_plan(&mut self, plan: UpdatePlan) {
+            self.plan = plan;
+        }
     }
 
     pub type BootloaderDouble = super::Bootloader<
@@ -216,6 +221,7 @@ pub mod doubles {
         MockSysTick,
         FakeReader,
         FakeUpdateSignal,
+        FakeUpdateSignal
     >;
 
     impl BootloaderDouble {

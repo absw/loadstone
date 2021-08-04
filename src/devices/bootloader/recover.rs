@@ -9,7 +9,8 @@ impl<
         T: time::Now,
         R: image::Reader,
         RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        WUS: WriteUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
 {
     /// Enters recovery mode, which requests a golden image to be transferred via serial through
     /// the XMODEM protocol, then reboot. If Loadstone has no golden image support, recovery

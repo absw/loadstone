@@ -8,7 +8,8 @@ impl<
         T: time::Now,
         R: image::Reader,
         RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        WUS: WriteUpdateSignal,
+    > Bootloader<EXTF, MCUF, SRL, T, R, RUS, WUS>
 {
     pub fn copy_image_single_flash<F: Flash>(
         serial: &mut Option<SRL>,
