@@ -1,5 +1,5 @@
 use super::*;
-use crate::devices::update_signal::{ReadUpdateSignal, UpdatePlan};
+use crate::devices::{cli::file_transfer::FileTransfer, update_signal::{ReadUpdateSignal, UpdatePlan}};
 
 enum UpdateResult<MCUF: Flash> {
     AlreadyUpToDate(Image<MCUF::Address>),
@@ -14,8 +14,8 @@ impl<
         SRL: Serial,
         T: time::Now,
         R: image::Reader,
-        RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        U: UpdatePlanner,
+    > Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
@@ -30,8 +30,9 @@ impl<
             return None;
         };
 
+
         let bank: Option<u8> = match self
-            .update_signal
+            .update_planner
             .as_ref()
             .map(ReadUpdateSignal::read_update_plan)
         {
@@ -53,6 +54,10 @@ impl<
                 );
                 Some(i)
             }
+            Some(UpdatePlan::Serial) => {
+                duprintln!(self.serial, "Update signal set to Serial, attempting one-shot serial update.");
+                return self.attempt_serial_update();
+            }
         };
 
         let current_image = match self.update_internal(boot_bank, current_image, bank) {
@@ -68,6 +73,22 @@ impl<
             UpdateResult::UpdatedTo(new_image) => Some(new_image),
             UpdateResult::UpdateError => None,
         }
+    }
+
+    fn attempt_serial_update(&mut self) -> Option<Image<MCUF::Address>> {
+        // Restore the update plan so the attempt is done only once.
+        self.update_planner.as_mut().unwrap().write_update_plan(UpdatePlan::None);
+        duprintln!(
+            self.serial,
+            "Please send firmware image via XMODEM.",
+        );
+        let bank = self.boot_bank();
+        let blocks = self.serial.as_mut().unwrap().blocks(None);
+        if self.mcu_flash.write_from_blocks(bank.location, blocks).is_err() {
+            duprintln!(self.serial, "FATAL: Failed to flash image during serial update.",);
+            panic!();
+        }
+        R::image_at(&mut self.mcu_flash, bank).ok()
     }
 
     fn update_internal(

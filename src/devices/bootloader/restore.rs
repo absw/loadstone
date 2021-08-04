@@ -1,5 +1,4 @@
 use super::*;
-use crate::devices::update_signal::ReadUpdateSignal;
 
 impl<
         EXTF: Flash,
@@ -7,8 +6,8 @@ impl<
         SRL: Serial,
         T: time::Now,
         R: image::Reader,
-        RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        U: UpdatePlanner,
+    > Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.

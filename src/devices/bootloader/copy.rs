@@ -1,5 +1,4 @@
 use super::*;
-use crate::devices::update_signal::ReadUpdateSignal;
 
 impl<
         EXTF: Flash,
@@ -7,8 +6,8 @@ impl<
         SRL: Serial,
         T: time::Now,
         R: image::Reader,
-        RUS: ReadUpdateSignal,
-    > Bootloader<EXTF, MCUF, SRL, T, R, RUS>
+        U: UpdatePlanner,
+    > Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     pub fn copy_image_single_flash<F: Flash>(
         serial: &mut Option<SRL>,

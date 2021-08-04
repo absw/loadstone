@@ -180,6 +180,11 @@ commands!( cli, boot_manager, names, helpstrings [
             .map_err(Error::ApplicationError);
     },
 
+    update_signal_serial ["Set loadstone to attempt a one-shot serial update."] ( ) {
+        return boot_manager.set_update_signal(UpdatePlan::Serial)
+            .map_err(Error::ApplicationError);
+    },
+
     metrics ["Displays boot process metrics relayed by Loadstone."] ( )
     {
         if let Some(metrics) = &boot_manager.boot_metrics {
