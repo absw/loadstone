@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{array::IntoIter, borrow::Cow, fmt::Display};
+use std::{array::IntoIter, borrow::Cow, collections::HashMap, fmt::Display};
 
-use crate::port::Port;
+use crate::{memory::FlashChip, port::Port};
 
 /// Name of a peripheral. Different platforms may assign arbitrary names
 /// to these (e.g. USART, UART, QSPI), hence the need to represent it as a string.
@@ -36,8 +36,10 @@ impl Display for PeripheralPin {
     }
 }
 
+pub type PinIterator = Box<dyn Iterator<Item = PeripheralPin>>;
+
 /// Returns an iterator over the possible serial transmission pins for this port.
-pub fn serial_tx(port: &Port) -> Box<dyn Iterator<Item = PeripheralPin>> {
+pub fn serial_tx(port: &Port) -> PinIterator {
     match port {
         Port::Stm32F412 => Box::new(IntoIter::new([
             PeripheralPin::new(Cow::from("USART1"), Cow::from("a"), 9, 7),
@@ -54,7 +56,7 @@ pub fn serial_tx(port: &Port) -> Box<dyn Iterator<Item = PeripheralPin>> {
 }
 
 /// Returns an iterator over the possible serial reception pins for this port.
-pub fn serial_rx(port: &Port) -> Box<dyn Iterator<Item = PeripheralPin>> {
+pub fn serial_rx(port: &Port) -> PinIterator {
     match port {
         Port::Stm32F412 => Box::new(IntoIter::new([
             PeripheralPin::new(Cow::from("USART1"), Cow::from("b"), 3, 7),
@@ -67,5 +69,58 @@ pub fn serial_rx(port: &Port) -> Box<dyn Iterator<Item = PeripheralPin>> {
             PeripheralPin::new(Cow::from("USART6"), Cow::from("g"), 9, 8),
         ])),
         Port::Wgm160P => Box::new(None.into_iter()),
+    }
+}
+
+pub struct QspiPinOptions {
+    clk: PinIterator,
+    bk1_cs: PinIterator,
+    bk1_io0: PinIterator,
+    bk1_io1: PinIterator,
+    bk1_io2: PinIterator,
+    bk1_io3: PinIterator,
+}
+
+pub fn qspi(port: &Port) -> QspiPinOptions {
+    match port {
+        Port::Stm32F412 => QspiPinOptions {
+            clk: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("b"), 1, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("b"), 2, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 3, 9),
+            ])),
+            bk1_cs: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("b"), 6, 10),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("g"), 6, 10),
+            ])),
+            bk1_io0: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("c"), 9, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 11, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 8, 10),
+            ])),
+            bk1_io1: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("c"), 10, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 12, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 9, 10),
+            ])),
+            bk1_io2: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("c"), 10, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 12, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 9, 10),
+            ])),
+            bk1_io3: Box::new(IntoIter::new([
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("a"), 1, 10),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 13, 10),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 6, 9),
+            ])),
+        },
+        Port::Wgm160P => QspiPinOptions {
+            clk: Box::new(IntoIter::new([])),
+            bk1_cs: Box::new(IntoIter::new([])),
+            bk1_io0: Box::new(IntoIter::new([])),
+            bk1_io1: Box::new(IntoIter::new([])),
+            bk1_io2: Box::new(IntoIter::new([])),
+            bk1_io3: Box::new(IntoIter::new([])),
+        }
     }
 }
