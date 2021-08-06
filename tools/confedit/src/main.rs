@@ -7,6 +7,7 @@ struct Arguments {
     external_banks: Option<Vec<u32>>,
     greeting: Option<String>,
     golden_bank: Option<Option<usize>>,
+    bootable_bank: Option<usize>,
     recovery: Option<bool>,
 }
 
@@ -49,6 +50,10 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
 
     if let Some(bank) = arguments.golden_bank {
         configuration.memory_configuration.golden_index = bank;
+    }
+
+    if let Some(bank) = arguments.bootable_bank {
+        configuration.memory_configuration.internal_memory_map.bootable_index = Some(bank);
     }
 
     if let Some(recovery) = arguments.recovery {
@@ -156,6 +161,7 @@ fn run_clap() -> Result<Arguments, String> {
         (version: env!("CARGO_PKG_VERSION"))
         (@arg greeting: --greeting +takes_value)
         (@arg golden: --golden +takes_value)
+        (@arg bootable: --bootable +takes_value)
         (@arg recovery: --recovery +takes_value)
         (@arg internal_banks: --internalbanks +takes_value)
         (@arg external_banks: --externalbanks +takes_value)
@@ -174,6 +180,15 @@ fn run_clap() -> Result<Arguments, String> {
         }
     } else {
         None
+    };
+
+    let bootable_bank = match matches.value_of("bootable") {
+        None => None,
+        Some(string) => {
+            let n = string.parse::<usize>()
+                .map_err(|_| "--golden-bank expected an unsigned integer argument".to_string())?;
+            Some(n)
+        },
     };
 
     let recovery = match matches.value_of("recovery") {
@@ -198,6 +213,7 @@ fn run_clap() -> Result<Arguments, String> {
         external_banks,
         greeting,
         golden_bank,
+        bootable_bank,
         recovery,
     })
 }
