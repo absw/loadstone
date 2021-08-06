@@ -69,8 +69,6 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
         let mut offset = configuration.memory_configuration.internal_memory_map.bootloader_location
             + (configuration.memory_configuration.internal_memory_map.bootloader_length_kb * 1024);
 
-        println!("{:?}", banks);
-
         configuration.memory_configuration.internal_memory_map.banks = banks.into_iter()
             .map(|size| {
                 let bank = Bank {
