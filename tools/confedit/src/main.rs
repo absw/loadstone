@@ -1,8 +1,10 @@
 use std::{borrow::Cow, io::{Read, Write}};
 use clap::clap_app;
-use loadstone_config::{Configuration, features::{Greetings, Serial}, security::{SecurityConfiguration, SecurityMode}};
+use loadstone_config::{Configuration, features::{Greetings, Serial}, memory::Bank, security::{SecurityConfiguration, SecurityMode}};
 
 struct Arguments {
+    internal_banks: Option<Vec<u32>>,
+    external_banks: Option<Vec<u32>>,
     greeting: Option<String>,
     golden_bank: Option<Option<usize>>,
     recovery: Option<bool>,
@@ -18,7 +20,7 @@ fn read_input_string() -> Result<String, String> {
 }
 
 fn get_input_configuration(string: String) -> Result<Configuration, String> {
-    if string == "" {
+    if string.is_empty() {
         Ok(Configuration {
             security_configuration: SecurityConfiguration {
                 security_mode: SecurityMode::Crc,
@@ -58,6 +60,37 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
         }
     }
 
+    if let Some(banks) = arguments.internal_banks {
+        let mut offset = configuration.memory_configuration.internal_memory_map.bootloader_location
+            + (configuration.memory_configuration.internal_memory_map.bootloader_length_kb * 1024);
+
+        println!("{:?}", banks);
+
+        configuration.memory_configuration.internal_memory_map.banks = banks.into_iter()
+            .map(|size| {
+                let bank = Bank {
+                    size_kb: size,
+                    start_address: offset,
+                };
+                offset += size;
+                bank
+            }).collect();
+    }
+
+    if let Some(banks) = arguments.external_banks {
+        let mut offset = 0;
+
+        configuration.memory_configuration.external_memory_map.banks = banks.into_iter()
+            .map(|size| {
+                let bank = Bank {
+                    size_kb: size,
+                    start_address: offset,
+                };
+                offset += size;
+                bank
+            }).collect();
+    }
+
     Ok(configuration)
 }
 
@@ -80,6 +113,43 @@ fn run() -> Result<(), String> {
     write_output_string(output)
 }
 
+fn to_decimal_digit(c: char) -> Option<u32> {
+    match c {
+        '0' => Some(0),
+        '1' => Some(1),
+        '2' => Some(2),
+        '3' => Some(3),
+        '4' => Some(4),
+        '5' => Some(5),
+        '6' => Some(6),
+        '7' => Some(7),
+        '8' => Some(8),
+        '9' => Some(9),
+        _ => None
+    }
+}
+
+fn parse_banks(string: &str) -> Result<Vec<u32>, String> {
+    let mut sizes = Vec::new();
+    let mut size : u32 = 0;
+    for c in string.chars() {
+        if let Some(d) = to_decimal_digit(c) {
+            size = (size * 10) + d;
+        } else if c == ',' {
+            sizes.push(size);
+            size = 0;
+        } else {
+            return Err(format!("bank size list expects decimal digits and commas, found {}.", c))
+        }
+    };
+
+    if size > 0 {
+        sizes.push(size);
+    }
+
+    Ok(sizes)
+}
+
 fn run_clap() -> Result<Arguments, String> {
     let matches = clap_app!(app =>
         (name: env!("CARGO_PKG_NAME"))
@@ -87,6 +157,8 @@ fn run_clap() -> Result<Arguments, String> {
         (@arg greeting: --greeting +takes_value)
         (@arg golden: --golden +takes_value)
         (@arg recovery: --recovery +takes_value)
+        (@arg internal_banks: --internalbanks +takes_value)
+        (@arg external_banks: --externalbanks +takes_value)
     )
     .get_matches();
 
@@ -97,7 +169,7 @@ fn run_clap() -> Result<Arguments, String> {
             Some(None)
         } else {
             let n = s.parse::<usize>()
-                .map_err(|_| format!("--golden-bank expected an unsigned integer argument"))?;
+                .map_err(|_| "--golden-bank expected an unsigned integer argument".to_string())?;
             Some(Some(n))
         }
     } else {
@@ -108,10 +180,22 @@ fn run_clap() -> Result<Arguments, String> {
         None => None,
         Some("true") => Some(true),
         Some("false") => Some(false),
-        Some(_) => Err(format!("--recovery expected a boolean argument"))?,
+        Some(_) => return Err("--recovery expected a boolean argument".to_string()),
+    };
+
+    let internal_banks = match matches.value_of("internal_banks") {
+        None => None,
+        Some(string) => Some(parse_banks(string)?),
+    };
+
+    let external_banks = match matches.value_of("external_banks") {
+        None => None,
+        Some(string) => Some(parse_banks(string)?),
     };
 
     Ok(Arguments {
+        internal_banks,
+        external_banks,
         greeting,
         golden_bank,
         recovery,
