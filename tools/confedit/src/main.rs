@@ -75,7 +75,7 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
                     size_kb: size,
                     start_address: offset,
                 };
-                offset += size;
+                offset += size * 1024;
                 bank
             }).collect();
     }
@@ -89,7 +89,7 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
                     size_kb: size,
                     start_address: offset,
                 };
-                offset += size;
+                offset += size * 1024;
                 bank
             }).collect();
     }
