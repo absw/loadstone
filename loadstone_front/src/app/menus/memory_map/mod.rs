@@ -3,11 +3,7 @@ use std::cmp::{self, max};
 use crate::app::menus::memory_map::normalize::normalize;
 
 use eframe::egui::{self, Button, Color32, Label, Slider};
-use loadstone_config::{
-    memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap},
-    port::Port,
-    KB,
-};
+use loadstone_config::{KB, memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap}, pins::QspiPins, port::Port};
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
 static GOLDEN_TOOLTIP: &'static str =
@@ -80,6 +76,7 @@ pub fn configure_memory_map(
             ui.separator();
             configure_external_banks(
                 ui,
+                port,
                 external_memory_map,
                 internal_memory_map,
                 external_flash,
@@ -205,13 +202,32 @@ fn configure_internal_bank(
 
 fn configure_external_banks(
     ui: &mut egui::Ui,
+    port: &Port,
     external_memory_map: &mut ExternalMemoryMap,
     internal_memory_map: &InternalMemoryMap,
     external_flash: &memory::FlashChip,
     golden_index: &mut Option<usize>,
 ) {
-    let ExternalMemoryMap { banks: external_banks } = external_memory_map;
+    let ExternalMemoryMap { pins, banks: external_banks } = external_memory_map;
     let InternalMemoryMap { banks: internal_banks, .. } = internal_memory_map;
+
+    let mut pins_box = pins.is_some();
+    ui.horizontal_wrapped(|ui| {
+        ui.checkbox(&mut pins_box, "Pins");
+        match (pins_box, &pins) {
+            (true, None) => {
+                *pins = Some(QspiPins::create(port));
+            },
+            (false, Some(_)) => {
+                *pins = None;
+            },
+            _ => { },
+        };
+    });
+
+    if pins_box {
+
+    }
 
     let mut to_delete: Option<usize> = None;
     for (i, bank) in external_banks.iter_mut().enumerate() {
