@@ -3,7 +3,7 @@ use std::cmp::{self, max};
 use crate::app::menus::memory_map::normalize::normalize;
 
 use eframe::egui::{self, Button, Color32, Label, Slider};
-use loadstone_config::{KB, memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap}, pins::QspiPins, port::Port};
+use loadstone_config::{KB, memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap}, pins::{PeripheralPin, QspiPins, qspi}, port::Port};
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
 static GOLDEN_TOOLTIP: &'static str =
@@ -225,8 +225,8 @@ fn configure_external_banks(
         };
     });
 
-    if pins_box {
-
+    if let Some(pins) = pins {
+        configure_qpsi_pins(ui, port, pins);
     }
 
     let mut to_delete: Option<usize> = None;
@@ -375,4 +375,58 @@ fn select_bootloader_location(
             .text_color(Color32::LIGHT_BLUE),
         );
     });
+}
+
+fn configure_qpsi_pins(ui: &mut egui::Ui, port: &Port, pins: &mut QspiPins) {
+    let old_pins = [
+        pins.clk.clone(),
+        pins.bk1_cs.clone(),
+        pins.bk1_io0.clone(),
+        pins.bk1_io1.clone(),
+        pins.bk1_io2.clone(),
+        pins.bk1_io3.clone(),
+    ];
+
+    let available = qspi(port);
+    let mut alternatives = vec![
+        available.clk,
+        available.bk1_cs,
+        available.bk1_io0,
+        available.bk1_io1,
+        available.bk1_io2,
+        available.bk1_io3,
+    ];
+
+    let new_pins = [
+        &mut pins.clk,
+        &mut pins.bk1_cs,
+        &mut pins.bk1_io0,
+        &mut pins.bk1_io1,
+        &mut pins.bk1_io2,
+        &mut pins.bk1_io3,
+    ];
+
+    let names = [
+        "clk",
+        "bk1_cs",
+        "bk1_io0",
+        "bk1_io1",
+        "bk1_io2",
+        "bk1_io3",
+    ];
+
+    for i in 0..6usize {
+        let alternatives: Vec<PeripheralPin> = alternatives.remove(0).filter(|p| {
+            for o in &old_pins {
+                if *o == *p { return false; }
+            }
+            true
+        }).collect();
+
+        egui::ComboBox::from_label(names[i]).selected_text(new_pins[i].to_string()).show_ui(ui, |ui| {
+            for alternative in alternatives {
+                ui.selectable_value(new_pins[i], alternative.clone(), alternative);
+            }
+        });
+    }
 }
