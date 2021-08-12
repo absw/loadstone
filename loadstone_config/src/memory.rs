@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::port::Port;
+use crate::{pins::QspiPins, port::Port};
 
 /// Helper macro for kilobytes in any type (simply multiplies by 1024).
 #[macro_export(local_inner_macros)]
@@ -39,6 +39,7 @@ pub struct InternalMemoryMap {
 /// bank, but it may contain a golden bank.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ExternalMemoryMap {
+    pub pins: Option<QspiPins>,
     pub banks: Vec<Bank>,
 }
 

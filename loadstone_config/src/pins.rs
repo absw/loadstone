@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::{array::IntoIter, borrow::Cow, collections::HashMap, fmt::Display};
+use std::{array::IntoIter, borrow::Cow, fmt::Display};
 
-use crate::{memory::FlashChip, port::Port};
+use crate::port::Port;
 
 /// Name of a peripheral. Different platforms may assign arbitrary names
 /// to these (e.g. USART, UART, QSPI), hence the need to represent it as a string.
@@ -12,7 +12,7 @@ pub type Peripheral = Cow<'static, str>;
 pub type Bank = Cow<'static, str>;
 
 /// A pin configured to perform a specific peripheral function (as opposed to a raw input/output).
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct PeripheralPin {
     /// Associated peripheral for this pin.
     pub peripheral: Peripheral,
@@ -72,6 +72,52 @@ pub fn serial_rx(port: &Port) -> PinIterator {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct QspiPins {
+    pub clk: PeripheralPin,
+    pub bk1_cs: PeripheralPin,
+    pub bk1_io0: PeripheralPin,
+    pub bk1_io1: PeripheralPin,
+    pub bk1_io2: PeripheralPin,
+    pub bk1_io3: PeripheralPin,
+}
+
+impl QspiPins {
+    pub fn create(port: &Port) -> Self {
+        assert!(matches!(port, &Port::Stm32F412));
+
+        let mut used_pins = Vec::<&PeripheralPin>::with_capacity(6);
+        let mut options = qspi(port);
+
+        let clk = options.clk.next().unwrap();
+        used_pins.push(&clk);
+
+        let bk1_cs = options.bk1_cs.find(|p| !used_pins.contains(&p)).unwrap();
+        used_pins.push(&bk1_cs);
+
+        let bk1_io0 = options.bk1_io0.find(|p| !used_pins.contains(&p)).unwrap();
+        used_pins.push(&bk1_io0);
+
+        let bk1_io1 = options.bk1_io1.find(|p| !used_pins.contains(&p)).unwrap();
+        used_pins.push(&bk1_io1);
+
+        let bk1_io2 = options.bk1_io2.find(|p| !used_pins.contains(&p)).unwrap();
+        used_pins.push(&bk1_io2);
+
+        let bk1_io3 = options.bk1_io3.find(|p| !used_pins.contains(&p)).unwrap();
+
+        Self {
+            clk,
+            bk1_cs,
+            bk1_io0,
+            bk1_io1,
+            bk1_io2,
+            bk1_io3,
+        }
+    }
+}
+
+#[allow(dead_code)]
 pub struct QspiPinOptions {
     clk: PinIterator,
     bk1_cs: PinIterator,
