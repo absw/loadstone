@@ -117,14 +117,13 @@ impl QspiPins {
     }
 }
 
-#[allow(dead_code)]
 pub struct QspiPinOptions {
-    clk: PinIterator,
-    bk1_cs: PinIterator,
-    bk1_io0: PinIterator,
-    bk1_io1: PinIterator,
-    bk1_io2: PinIterator,
-    bk1_io3: PinIterator,
+    pub clk: PinIterator,
+    pub bk1_cs: PinIterator,
+    pub bk1_io0: PinIterator,
+    pub bk1_io1: PinIterator,
+    pub bk1_io2: PinIterator,
+    pub bk1_io3: PinIterator,
 }
 
 pub fn qspi(port: &Port) -> QspiPinOptions {
