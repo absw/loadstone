@@ -82,37 +82,15 @@ pub struct QspiPins {
     pub bk1_io3: PeripheralPin,
 }
 
-impl QspiPins {
-    pub fn create(port: &Port) -> Self {
-        assert!(matches!(port, &Port::Stm32F412));
-
-        let mut used_pins = Vec::<&PeripheralPin>::with_capacity(6);
-        let mut options = qspi(port);
-
-        let clk = options.clk.next().unwrap();
-        used_pins.push(&clk);
-
-        let bk1_cs = options.bk1_cs.find(|p| !used_pins.contains(&p)).unwrap();
-        used_pins.push(&bk1_cs);
-
-        let bk1_io0 = options.bk1_io0.find(|p| !used_pins.contains(&p)).unwrap();
-        used_pins.push(&bk1_io0);
-
-        let bk1_io1 = options.bk1_io1.find(|p| !used_pins.contains(&p)).unwrap();
-        used_pins.push(&bk1_io1);
-
-        let bk1_io2 = options.bk1_io2.find(|p| !used_pins.contains(&p)).unwrap();
-        used_pins.push(&bk1_io2);
-
-        let bk1_io3 = options.bk1_io3.find(|p| !used_pins.contains(&p)).unwrap();
-
-        Self {
-            clk,
-            bk1_cs,
-            bk1_io0,
-            bk1_io1,
-            bk1_io2,
-            bk1_io3,
+impl Default for QspiPins {
+    fn default() -> Self {
+        QspiPins {
+            clk:     PeripheralPin { peripheral: "QSPI".into(), bank: "b".into(), index: 2, af_index: 9  },
+            bk1_cs:  PeripheralPin { peripheral: "QSPI".into(), bank: "g".into(), index: 6, af_index: 10 },
+            bk1_io0: PeripheralPin { peripheral: "QSPI".into(), bank: "f".into(), index: 8, af_index: 10 },
+            bk1_io1: PeripheralPin { peripheral: "QSPI".into(), bank: "f".into(), index: 9, af_index: 10 },
+            bk1_io2: PeripheralPin { peripheral: "QSPI".into(), bank: "f".into(), index: 7, af_index: 9  },
+            bk1_io3: PeripheralPin { peripheral: "QSPI".into(), bank: "f".into(), index: 6, af_index: 9  },
         }
     }
 }
