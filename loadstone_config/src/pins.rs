@@ -149,9 +149,9 @@ pub fn qspi(port: &Port) -> QspiPinOptions {
                 PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 9, 10),
             ])),
             bk1_io2: Box::new(IntoIter::new([
-                PeripheralPin::new(Cow::from("QSPI"), Cow::from("c"), 10, 9),
-                PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 12, 9),
-                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 9, 10),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("c"), 8, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("e"), 2, 9),
+                PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 7, 9),
             ])),
             bk1_io3: Box::new(IntoIter::new([
                 PeripheralPin::new(Cow::from("QSPI"), Cow::from("a"), 1, 10),
