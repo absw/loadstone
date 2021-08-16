@@ -76,7 +76,7 @@ pub fn configure_memory_map(
             ui.separator();
             configure_external_banks(
                 ui,
-                port,
+                *port,
                 external_memory_map,
                 internal_memory_map,
                 external_flash,
@@ -202,7 +202,7 @@ fn configure_internal_bank(
 
 fn configure_external_banks(
     ui: &mut egui::Ui,
-    port: &Port,
+    port: Port,
     external_memory_map: &mut ExternalMemoryMap,
     internal_memory_map: &InternalMemoryMap,
     external_flash: &memory::FlashChip,
@@ -377,7 +377,7 @@ fn select_bootloader_location(
     });
 }
 
-fn configure_qpsi_pins(ui: &mut egui::Ui, port: &Port, pins: &mut QspiPins) {
+fn configure_qpsi_pins(ui: &mut egui::Ui, port: Port, pins: &mut QspiPins) {
     let old_pins = [
         pins.clk.clone(),
         pins.bk1_cs.clone(),
