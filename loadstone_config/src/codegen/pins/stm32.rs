@@ -1,10 +1,10 @@
 use anyhow::Result;
 use itertools::Itertools;
-use quote::{format_ident, quote, TokenStreamExt};
+use quote::{TokenStreamExt, format_ident, quote};
 use std::{array::IntoIter, fs::File, io::Write};
 use syn::{Ident, Index};
 
-use crate::{features::Serial, Configuration};
+use crate::{Configuration, features::Serial};
 
 struct InputPinTokens {
     bank: char,
@@ -201,7 +201,7 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
 fn input_tokens(_configuration: &Configuration) -> Box<dyn Iterator<Item = InputPinTokens>> {
     Box::new(IntoIter::new([
         InputPinTokens { bank: 'a', index: 0.into(), mode: format_ident!("Floating") },
-        InputPinTokens { bank: 'a', index: 1.into(), mode: format_ident!("Floating") },
+        // InputPinTokens { bank: 'a', index: 1.into(), mode: format_ident!("Floating") },
     ]))
 }
 
@@ -231,44 +231,43 @@ fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = Seria
 fn qspi_flash_pin_tokens(
     configuration: &Configuration,
 ) -> Box<dyn Iterator<Item = QspiFlashPinTokens>> {
-    // TODO parse these from config file. They're currently hardcoded here
-    if let Some(_) = &configuration.memory_configuration.external_flash {
+    if let Some(pins) = &configuration.memory_configuration.external_memory_map.pins {
         Box::new(IntoIter::new([
             QspiFlashPinTokens {
-                bank: 'b',
-                index: 2.into(),
-                mode: format_ident!("AF9"),
+                bank: pins.clk.bank.chars().next().unwrap(),
+                index: (pins.clk.index as usize).into(),
+                mode: format_ident!("AF{}", pins.clk.af_index),
                 earmark: format_ident!("QspiClk"),
             },
             QspiFlashPinTokens {
-                bank: 'f',
-                index: 6.into(),
-                mode: format_ident!("AF9"),
-                earmark: format_ident!("QspiSecondaryInput"),
+                bank: pins.bk1_cs.bank.chars().next().unwrap(),
+                index: (pins.bk1_cs.index as usize).into(),
+                mode: format_ident!("AF{}", pins.bk1_cs.af_index),
+                earmark: format_ident!("QspiChipSelect"),
             },
             QspiFlashPinTokens {
-                bank: 'f',
-                index: 7.into(),
-                mode: format_ident!("AF9"),
-                earmark: format_ident!("QspiSecondaryOutput"),
-            },
-            QspiFlashPinTokens {
-                bank: 'f',
-                index: 8.into(),
-                mode: format_ident!("AF10"),
+                bank: pins.bk1_io0.bank.chars().next().unwrap(),
+                index: (pins.bk1_io0.index as usize).into(),
+                mode: format_ident!("AF{}", pins.bk1_io0.af_index),
                 earmark: format_ident!("QspiOutput"),
             },
             QspiFlashPinTokens {
-                bank: 'f',
-                index: 9.into(),
-                mode: format_ident!("AF10"),
+                bank: pins.bk1_io1.bank.chars().next().unwrap(),
+                index: (pins.bk1_io1.index as usize).into(),
+                mode: format_ident!("AF{}", pins.bk1_io1.af_index),
                 earmark: format_ident!("QspiInput"),
             },
             QspiFlashPinTokens {
-                bank: 'g',
-                index: 6.into(),
-                mode: format_ident!("AF10"),
-                earmark: format_ident!("QspiChipSelect"),
+                bank: pins.bk1_io2.bank.chars().next().unwrap(),
+                index: (pins.bk1_io2.index as usize).into(),
+                mode: format_ident!("AF{}", pins.bk1_io2.af_index),
+                earmark: format_ident!("QspiSecondaryOutput"),
+            },
+            QspiFlashPinTokens {
+                bank: pins.bk1_io3.bank.chars().next().unwrap(),
+                index: (pins.bk1_io3.index as usize).into(),
+                mode: format_ident!("AF{}", pins.bk1_io3.af_index),
+                earmark: format_ident!("QspiSecondaryInput"),
             },
         ]))
     } else {
