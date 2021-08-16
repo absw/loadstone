@@ -82,8 +82,9 @@ pub struct QspiPins {
     pub bk1_io3: PeripheralPin,
 }
 
-impl Default for QspiPins {
-    fn default() -> Self {
+impl QspiPins {
+    pub fn create(port: Port) -> Self {
+        assert!(matches!(port, Port::Stm32F412));
         QspiPins {
             clk:     PeripheralPin { peripheral: "QSPI".into(), bank: "b".into(), index: 2, af_index: 9  },
             bk1_cs:  PeripheralPin { peripheral: "QSPI".into(), bank: "g".into(), index: 6, af_index: 10 },
@@ -104,7 +105,7 @@ pub struct QspiPinOptions {
     pub bk1_io3: PinIterator,
 }
 
-pub fn qspi(port: &Port) -> QspiPinOptions {
+pub fn qspi(port: Port) -> QspiPinOptions {
     match port {
         Port::Stm32F412 => QspiPinOptions {
             clk: Box::new(IntoIter::new([

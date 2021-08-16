@@ -4,7 +4,7 @@ use quote::{TokenStreamExt, format_ident, quote};
 use std::{array::IntoIter, fs::File, io::Write, iter::empty};
 use syn::{Ident, Index};
 
-use crate::{Configuration, features::Serial};
+use crate::{Configuration, features::Serial, pins::QspiPins};
 
 struct InputPinTokens {
     bank: char,
@@ -223,7 +223,7 @@ fn qspi_flash_pin_tokens(
     }
 
     let pins = configuration.memory_configuration.external_memory_map.pins.clone()
-        .unwrap_or_default();
+        .unwrap_or_else(|| QspiPins::create(configuration.port));
 
     Box::new(IntoIter::new([
         QspiFlashPinTokens {
