@@ -70,33 +70,13 @@ fn generate_pin_constructor(
         };
 
     // TODO expose in configuration file
-    let qspi_pin_structs: Box<dyn Iterator<Item = Ident>> =
-        if configuration.memory_configuration.external_flash.is_some() {
-            Box::new(IntoIter::new([
-                format_ident!("gpiob"),
-                format_ident!("gpiog"),
-                format_ident!("gpiof"),
-                format_ident!("gpiof"),
-                format_ident!("gpiof"),
-                format_ident!("gpiof"),
-            ]))
-        } else {
-            Box::new(None.into_iter())
-        };
+    let qspi_pin_structs = qspi_flash_pin_tokens(configuration).map(|p| {
+        format_ident!("gpio{}", p.bank)
+    });
 
-    let qspi_pin_fields: Box<dyn Iterator<Item = Ident>> =
-        if configuration.memory_configuration.external_flash.is_some() {
-            Box::new(IntoIter::new([
-                format_ident!("pb2"),
-                format_ident!("pg6"),
-                format_ident!("pf8"),
-                format_ident!("pf9"),
-                format_ident!("pf7"),
-                format_ident!("pf6"),
-            ]))
-        } else {
-            Box::new(None.into_iter())
-        };
+    let qspi_pin_fields = qspi_flash_pin_tokens(configuration).map(|p| {
+        format_ident!("p{}{}", p.bank, p.index)
+    });
 
     code.append_all(quote! {
         #[allow(unused)]
@@ -107,7 +87,6 @@ fn generate_pin_constructor(
                 (#(#serial_pin_structs.#serial_pin_fields),*),
                 (#(#qspi_pin_structs.#qspi_pin_fields),*)
             )
-
         }
     });
 }
@@ -140,10 +119,18 @@ fn generate_imports_and_types(
         });
     }
     if let Some(_) = &configuration.memory_configuration.external_flash {
+        let qspi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
+            format_ident!("P{}{}", p.bank, p.index)
+        });
+
+        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
+            p.mode
+        });
+
         code.append_all(quote! {
             use blue_hal::drivers::micron::n25q128a_flash::MicronN25q128a;
             use blue_hal::drivers::stm32f4::systick::SysTick;
-            pub type QspiPins = (Pb2<AF9>, Pg6<AF10>, Pf8<AF10>, Pf9<AF10>, Pf7<AF9>, Pf6<AF9>);
+            pub type QspiPins = (#(#qspi_pins<#qspi_modes>,)*);
             pub type Qspi = QuadSpi<QspiPins, mode::Single>;
             pub type ExternalFlash = MicronN25q128a<Qspi, SysTick>;
             #[allow(unused_imports)]
@@ -183,7 +170,7 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
         let serial_peripheral = serial_tokens.iter().map(|t| &t.peripheral);
 
         let qspi_flash_index = qspi_flash_pin_tokens.iter().map(|t| &t.index);
-        let qspi_flash_mode = qspi_flash_pin_tokens.iter().map(|t| &t.mode);
+        let qspi_flash_mode = (qspi_flash_pin_tokens).iter().map(|t| &t.mode);
         let qspi_flash_earmark = qspi_flash_pin_tokens.iter().map(|t| &t.earmark);
 
         let bank = format_ident!("{}", bank);
