@@ -69,7 +69,6 @@ fn generate_pin_constructor(
             Box::new(None.into_iter())
         };
 
-    // TODO expose in configuration file
     let qspi_pin_structs = qspi_flash_pin_tokens(configuration).map(|p| {
         format_ident!("gpio{}", p.bank)
     });
@@ -170,7 +169,7 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
         let serial_peripheral = serial_tokens.iter().map(|t| &t.peripheral);
 
         let qspi_flash_index = qspi_flash_pin_tokens.iter().map(|t| &t.index);
-        let qspi_flash_mode = (qspi_flash_pin_tokens).iter().map(|t| &t.mode);
+        let qspi_flash_mode = qspi_flash_pin_tokens.iter().map(|t| &t.mode);
         let qspi_flash_earmark = qspi_flash_pin_tokens.iter().map(|t| &t.earmark);
 
         let bank = format_ident!("{}", bank);
@@ -188,7 +187,6 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
 fn input_tokens(_configuration: &Configuration) -> Box<dyn Iterator<Item = InputPinTokens>> {
     Box::new(IntoIter::new([
         InputPinTokens { bank: 'a', index: 0.into(), mode: format_ident!("Floating") },
-        // InputPinTokens { bank: 'a', index: 1.into(), mode: format_ident!("Floating") },
     ]))
 }
 
