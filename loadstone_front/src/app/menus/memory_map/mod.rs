@@ -72,8 +72,6 @@ pub fn configure_memory_map(
         ui.separator();
 
         if let Some(external_flash) = external_flash {
-            ui.label("Banks:");
-            ui.separator();
             configure_external_banks(
                 ui,
                 *port,
@@ -228,6 +226,9 @@ fn configure_external_banks(
     if let Some(pins) = pins {
         configure_qpsi_pins(ui, port, pins);
     }
+
+    ui.separator();
+    ui.label("Banks:");
 
     let mut to_delete: Option<usize> = None;
     for (i, bank) in external_banks.iter_mut().enumerate() {
