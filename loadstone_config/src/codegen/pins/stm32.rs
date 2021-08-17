@@ -6,11 +6,6 @@ use syn::{Ident, Index};
 
 use crate::{Configuration, features::Serial, pins::QspiPins};
 
-struct InputPinTokens {
-    bank: char,
-    index: Index,
-    mode: Ident,
-}
 struct SerialPinTokens {
     bank: char,
     index: Index,
@@ -155,13 +150,9 @@ fn generate_imports_and_types(
 
 fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__private::TokenStream) {
     for bank in 'a'..='h' {
-        let input_tokens = input_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
         let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
         let qspi_flash_pin_tokens =
             qspi_flash_pin_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
-
-        let input_index = input_tokens.iter().map(|t| &t.index);
-        let input_mode = input_tokens.iter().map(|t| &t.mode);
 
         let serial_index = serial_tokens.iter().map(|t| &t.index);
         let serial_mode = serial_tokens.iter().map(|t| &t.mode);
@@ -176,18 +167,11 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
 
         code.append_all(quote! {
             gpio!(#bank, [
-                #((#input_index, Input<#input_mode>),)*
                 #((#serial_index, #serial_mode as #serial_direction<#serial_peripheral>),)*
                 #((#qspi_flash_index, #qspi_flash_mode as #qspi_flash_earmark),)*
             ]);
         });
     }
-}
-
-fn input_tokens(_configuration: &Configuration) -> Box<dyn Iterator<Item = InputPinTokens>> {
-    Box::new(IntoIter::new([
-        InputPinTokens { bank: 'a', index: 0.into(), mode: format_ident!("Floating") },
-    ]))
 }
 
 fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = SerialPinTokens>> {
