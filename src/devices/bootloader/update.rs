@@ -153,7 +153,7 @@ impl<
                     duprintln!(
                         self.serial,
                         "[{}] Skipping golden bank {:?} (Golden banks can't be updated from)...",
-                        MCUF::label(),
+                        EXTF::label(),
                         bank.index
                     );
                     continue;
@@ -164,7 +164,7 @@ impl<
                     duprintln!(
                         self.serial,
                         "[{}] Skipping bank {:?} (Update signal was set to a bank index)...",
-                        MCUF::label(),
+                        EXTF::label(),
                         bank.index
                     );
                     continue;
