@@ -7,6 +7,7 @@
 use super::{boot_metrics::{boot_metrics_mut, BootMetrics, BootPath}, image::{self, Bank, Image}, traits::{Flash, Serial}, update_signal::UpdatePlanner};
 use crate::error::Error;
 use blue_hal::{
+    uprintln,
     duprintln,
     hal::{flash, time},
     KB,

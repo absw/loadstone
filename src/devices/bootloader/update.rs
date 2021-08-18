@@ -78,17 +78,21 @@ impl<
     fn attempt_serial_update(&mut self) -> Option<Image<MCUF::Address>> {
         // Restore the update plan so the attempt is done only once.
         self.update_planner.as_mut().unwrap().write_update_plan(UpdatePlan::None);
-        duprintln!(
-            self.serial,
-            "Please send firmware image via XMODEM.",
-        );
-        let bank = self.boot_bank();
-        let blocks = self.serial.as_mut().unwrap().blocks(None);
-        if self.mcu_flash.write_from_blocks(bank.location, blocks).is_err() {
-            duprintln!(self.serial, "FATAL: Failed to flash image during serial update.",);
-            panic!();
+
+        let boot_bank = self.boot_bank();
+
+        if let Some(serial) = self.serial.as_mut() {
+            uprintln!(serial, "Please send firmware image via XMODEM.");
+
+            if self.mcu_flash.write_from_blocks(boot_bank.location, serial.blocks(None)).is_err() {
+                uprintln!(serial, "FATAL: Failed to flash image during serial update.");
+                panic!();
+            }
+        } else {
+            defmt::error!("Cannot perform serial update without serial console.");
         }
-        R::image_at(&mut self.mcu_flash, bank).ok()
+
+        R::image_at(&mut self.mcu_flash, boot_bank).ok()
     }
 
     fn update_internal(
