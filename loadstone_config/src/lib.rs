@@ -84,6 +84,11 @@ impl Configuration {
             self.feature_configuration.serial = Serial::Disabled;
         }
 
+        self.memory_configuration.internal_memory_map.banks.truncate(u8::MAX as usize);
+        let max_external_banks = (u8::MAX as usize)
+            - self.memory_configuration.internal_memory_map.banks.len();
+        self.memory_configuration.external_memory_map.banks.truncate(max_external_banks);
+
         if !features::BootMetrics::timing_supported(&self.port) {
             if let BootMetrics::Enabled{timing} = &mut self.feature_configuration.boot_metrics {
                 *timing = false
