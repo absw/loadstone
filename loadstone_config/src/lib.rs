@@ -90,6 +90,10 @@ impl Configuration {
             }
         }
 
+        if !matches!(self.security_configuration.security_mode, SecurityMode::P256ECDSA) {
+            self.security_configuration.verifying_key_raw.clear();
+        }
+
         if !external_flash(&self.port).any(|f| Some(f) == self.memory_configuration.external_flash)
         {
             self.memory_configuration.external_flash = None;
