@@ -35,44 +35,43 @@ pub fn configure_memory_map(
         port,
     );
 
-    ui.group(|ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.add(Label::new("Internal flash chip: ").heading());
-            ui.add(
-                Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
-            );
-        });
-
-        ui.separator();
-        ui.label("Bootloader:");
-        select_bootloader_location(ui, internal_memory_map, &internal_flash);
-        select_bootloader_length(ui, internal_memory_map, &internal_flash);
-        ui.label("Banks:");
-        ui.separator();
-        configure_internal_banks(ui, internal_memory_map, &internal_flash, golden_index);
+    ui.horizontal_wrapped(|ui| {
+        ui.add(Label::new("Internal flash chip: ").heading());
+        ui.add(
+            Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
+        );
     });
 
-    ui.separator();
-
-    ui.group(|ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.set_enabled(memory::external_flash(port).count() > 0);
-            ui.add(Label::new("External flash chip:").heading());
-            egui::ComboBox::from_id_source("external_flash_chip")
-                .selected_text(match external_flash {
-                    Some(map) => &map.name,
-                    None => "Select external flash (optional)",
-                })
-                .show_ui(ui, |ui| {
-                    ui.selectable_value(external_flash, None, "None");
-                    for chip in memory::external_flash(port) {
-                        ui.selectable_value(external_flash, Some(chip.clone()), chip.name);
-                    }
-                });
+    ui.indent(0, |ui| {
+        ui.label("Bootloader");
+        ui.indent(0, |ui| {
+            select_bootloader_location(ui, internal_memory_map, &internal_flash);
+            select_bootloader_length(ui, internal_memory_map, &internal_flash);
         });
-        ui.separator();
+        ui.label("Banks");
+        ui.indent(0, |ui| {
+            configure_internal_banks(ui, internal_memory_map, &internal_flash, golden_index);
+        });
+    });
 
-        if let Some(external_flash) = external_flash {
+    ui.horizontal_wrapped(|ui| {
+        ui.set_enabled(memory::external_flash(port).count() > 0);
+        ui.add(Label::new("External flash chip:").heading());
+        egui::ComboBox::from_id_source("external_flash_chip")
+            .selected_text(match external_flash {
+                Some(map) => &map.name,
+                None => "Select external flash (optional)",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(external_flash, None, "None");
+                for chip in memory::external_flash(port) {
+                    ui.selectable_value(external_flash, Some(chip.clone()), chip.name);
+                }
+            });
+    });
+
+    if let Some(external_flash) = external_flash {
+        ui.indent(0, |ui| {
             configure_external_banks(
                 ui,
                 *port,
@@ -81,8 +80,8 @@ pub fn configure_memory_map(
                 external_flash,
                 golden_index,
             );
-        }
-    });
+        });
+    }
 }
 
 fn configure_internal_banks(
@@ -207,12 +206,12 @@ fn configure_external_banks(
     external_flash: &memory::FlashChip,
     golden_index: &mut Option<usize>,
 ) {
-    let ExternalMemoryMap { pins, banks: external_banks } = external_memory_map;
-    let InternalMemoryMap { banks: internal_banks, .. } = internal_memory_map;
+    let ExternalMemoryMap { pins, .. } = external_memory_map;
 
     let mut pins_box = pins.is_some();
     ui.horizontal_wrapped(|ui| {
         ui.checkbox(&mut pins_box, "Pins");
+        ui.label("Enable external flash pin override.");
         match (pins_box, &pins) {
             (true, None) => {
                 *pins = Some(QspiPins::create(port));
@@ -225,35 +224,41 @@ fn configure_external_banks(
     });
 
     if let Some(pins) = pins {
-        configure_qpsi_pins(ui, port, pins);
+        ui.indent(0, |ui| {
+            configure_qpsi_pins(ui, port, pins);
+        });
     }
 
-    ui.separator();
-    ui.label("Banks:");
+    ui.label("Banks");
+    ui.indent(0, |ui| {
+        let ExternalMemoryMap { banks: external_banks, .. } = external_memory_map;
+        let InternalMemoryMap { banks: internal_banks, .. } = internal_memory_map;
 
-    let mut to_delete: Option<usize> = None;
-    for (i, bank) in external_banks.iter_mut().enumerate() {
-        configure_external_bank(
-            i,
-            internal_banks,
-            ui,
-            bank,
-            external_flash,
-            golden_index,
-            &mut to_delete,
-        );
-    }
+        let mut to_delete: Option<usize> = None;
+        for (i, bank) in external_banks.iter_mut().enumerate() {
+            configure_external_bank(
+                i,
+                internal_banks,
+                ui,
+                bank,
+                external_flash,
+                golden_index,
+                &mut to_delete,
+            );
+        }
 
-    if let Some(to_delete) = to_delete {
-        external_banks.remove(to_delete);
-    }
+        if let Some(to_delete) = to_delete {
+            external_banks.remove(to_delete);
+        }
 
-    let bank_start_address =
-        external_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(external_flash.start);
-    let enough_space = bank_start_address + external_flash.region_size < external_flash.end;
-    ui.set_enabled(enough_space);
-    ui.horizontal_wrapped(|ui| {
-        add_external_bank(ui, external_memory_map, bank_start_address, external_flash);
+        let bank_start_address =
+            external_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(external_flash.start);
+        let enough_space = bank_start_address + external_flash.region_size < external_flash.end;
+        ui.set_enabled(enough_space);
+        ui.horizontal_wrapped(|ui| {
+            add_external_bank(ui, external_memory_map, bank_start_address, external_flash);
+        });
+
     });
 }
 

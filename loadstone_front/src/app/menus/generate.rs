@@ -44,19 +44,15 @@ pub fn generate<'a>(
 ) {
     if configuration.complete() {
         if frame.is_web() {
-            ui.group(|ui| {
-                generate_in_ci(
-                    ui,
-                    personal_access_token_field,
-                    git_ref_field,
-                    git_fork_field,
-                    configuration,
-                    last_request_response,
-                );
-            });
-            ui.group(|ui| {
-                generate_download(ui, configuration);
-            });
+            generate_in_ci(
+                ui,
+                personal_access_token_field,
+                git_ref_field,
+                git_fork_field,
+                configuration,
+                last_request_response,
+            );
+            generate_download(ui, configuration);
         } else {
             generate_native(ui, configuration);
         }
@@ -162,28 +158,26 @@ fn generate_in_ci(
 /// Generates a .ron file and saves it to the current directory. This is the
 /// only available approach when running loadstone_front natively.
 fn generate_native(ui: &mut Ui, configuration: &Configuration) {
-    ui.group(|ui| {
-        ui.heading("Local generation");
-        ui.horizontal_wrapped(|ui| {
-            if ui.button("Generate").clicked() {
-                // TODO clean up unwraps
-                let mut file = OpenOptions::new()
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(LOCAL_OUTPUT_FILENAME)
-                    .unwrap();
-                file.write_all(
-                    ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
-                        .unwrap()
-                        .as_bytes(),
-                )
+    ui.heading("Local generation");
+    ui.horizontal_wrapped(|ui| {
+        if ui.button("Generate").clicked() {
+            // TODO clean up unwraps
+            let mut file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(LOCAL_OUTPUT_FILENAME)
                 .unwrap();
-            }
-            ui.label("Generate a");
-            ui.colored_label(colours::info(ui), LOCAL_OUTPUT_FILENAME);
-            ui.label("file to be used locally to build Loadstone.");
-        });
+            file.write_all(
+                ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
+                    .unwrap()
+                    .as_bytes(),
+            )
+            .unwrap();
+        }
+        ui.label("Generate a");
+        ui.colored_label(colours::info(ui), LOCAL_OUTPUT_FILENAME);
+        ui.label("file to be used locally to build Loadstone.");
     });
 }
 
