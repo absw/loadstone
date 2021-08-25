@@ -7,6 +7,7 @@ use base64::write::EncoderWriter as Base64Encoder;
 use itertools::Itertools;
 use ron::ser::PrettyConfig;
 use std::{fs::OpenOptions, io::Write, sync::Arc};
+use super::colours;
 
 use anyhow::Result;
 use loadstone_config::Configuration;
@@ -15,7 +16,7 @@ use reqwest_wasm::{Response, StatusCode};
 use futures::future::FutureExt;
 
 use eframe::{
-    egui::{mutex::Mutex, Color32, Ui},
+    egui::{mutex::Mutex, Ui},
     epi,
 };
 
@@ -62,7 +63,7 @@ pub fn generate<'a>(
     } else {
         ui.label("Provide the missing configuration to generate the loadstone binary:");
         for step in configuration.required_configuration_steps() {
-            ui.colored_label(Color32::RED, format!("\u{27A1} {}.", step));
+            ui.colored_label(colours::error(ui), format!("\u{27A1} {}.", step));
         }
     }
 }
@@ -105,15 +106,15 @@ fn generate_in_ci(
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(personal_access_token_field);
-        ui.colored_label(Color32::LIGHT_BLUE, "Personal Access Token");
+        ui.colored_label(colours::info(ui), "Personal Access Token");
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(git_fork_field);
-        ui.colored_label(Color32::LIGHT_BLUE, "Github Fork (You must have write access)");
+        ui.colored_label(colours::info(ui), "Github Fork (You must have write access)");
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(git_ref_field);
-        ui.colored_label(Color32::LIGHT_BLUE, "Github Ref (Branch, tag or commit hash)");
+        ui.colored_label(colours::info(ui), "Github Ref (Branch, tag or commit hash)");
     });
     ui.horizontal_wrapped(|ui| {
         ui.set_enabled(!personal_access_token_field.is_empty());
@@ -132,25 +133,25 @@ fn generate_in_ci(
                 || response.status() == StatusCode::ACCEPTED =>
         {
             ui.horizontal_wrapped(|ui| {
-                ui.colored_label(Color32::GREEN, "Request accepted!");
+                ui.colored_label(colours::success(ui), "Request accepted!");
                 ui.label("Go to");
                 ui.hyperlink_to("Loadstone's Github Actions", ACTIONS_URL);
                 ui.label("to monitor your build's progress.");
             });
         }
         Some(Ok(response)) if response.status() == StatusCode::NOT_FOUND => {
-            ui.colored_label(Color32::RED, "Repository not found. This likely means your Github PAT doesn't have enough rights.");
+            ui.colored_label(colours::error(ui), "Repository not found. This likely means your Github PAT doesn't have enough rights.");
         }
         Some(Ok(response)) if response.status() == StatusCode::BAD_REQUEST => {
             ui.colored_label(
-                Color32::RED,
+                colours::error(ui),
                 "Bad request. Somehow your .ron file has broken the json parser. Please download \
                              it and submit it as a bug report.",
             );
         }
         Some(_) => {
             ui.colored_label(
-                Color32::RED,
+                colours::error(ui),
                 "Github Actions is not responding. Are you sure Github is up?",
             );
         }
@@ -180,7 +181,7 @@ fn generate_native(ui: &mut Ui, configuration: &Configuration) {
                 .unwrap();
             }
             ui.label("Generate a");
-            ui.colored_label(Color32::LIGHT_BLUE, LOCAL_OUTPUT_FILENAME);
+            ui.colored_label(colours::info(ui), LOCAL_OUTPUT_FILENAME);
             ui.label("file to be used locally to build Loadstone.");
         });
     });

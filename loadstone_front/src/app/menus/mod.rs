@@ -98,3 +98,39 @@ pub fn configure_custom_greetings(ui: &mut egui::Ui, greetings: &mut Greetings) 
         });
     }
 }
+
+mod colours {
+    use crate::app::egui::{Color32, Ui};
+
+    pub fn error(ui: &Ui) -> Color32 {
+        if ui.visuals().dark_mode {
+            Color32::from_rgb(0xbd, 0x19, 0x19)
+        } else {
+            Color32::from_rgb(0xf8, 0x19,0x19)
+        }
+    }
+
+    pub fn warning(ui: &Ui) -> Color32 {
+        if ui.visuals().dark_mode {
+            Color32::from_rgb(0xee, 0xc4, 0x0e)
+        } else {
+            Color32::from_rgb(0x98, 0x89, 0x00)
+        }
+    }
+
+    pub fn success(ui: &Ui) -> Color32 {
+        if ui.visuals().dark_mode {
+            Color32::from_rgb(0x32, 0xf0, 0x1d)
+        } else {
+            Color32::from_rgb(0x28, 0xb8, 0x00)
+        }
+    }
+
+    pub fn info(ui: &Ui) -> Color32 {
+        if ui.visuals().dark_mode {
+            Color32::from_rgb(0x1d, 0xa4, 0xf0)
+        } else {
+            Color32::from_rgb(0x31, 0x34, 0xc7)
+        }
+    }
+}

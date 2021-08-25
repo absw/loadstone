@@ -1,7 +1,8 @@
-use eframe::egui::{self, Button, Color32};
+use eframe::egui::{self, Button};
 use loadstone_config::security::SecurityMode;
 use p256::ecdsa::VerifyingKey;
 use std::str::FromStr;
+use super::colours;
 
 /// Renders the menu to configure security options (at the moment,
 /// `CRC` and `ECDSA` image verification.
@@ -21,7 +22,7 @@ pub fn configure_security(
     match security_mode {
         SecurityMode::Crc => {
             ui.colored_label(
-                Color32::YELLOW,
+                colours::warning(ui),
                 "WARNING: Disabling ECDSA Image Verification replaces cryptographic \
                 signatures with insecure CRC. This removes the guarantee of image authenticity.",
             );
@@ -31,8 +32,8 @@ pub fn configure_security(
 
             if !verifying_key_raw.is_empty() {
                 ui.horizontal_wrapped(|ui| {
-                    ui.colored_label(Color32::GREEN, "\u{1F5DD} Valid Key Supplied");
-                    if ui.add(Button::new("Delete").text_color(Color32::RED).small()).clicked() {
+                    ui.colored_label(colours::success(ui), "\u{1F5DD} Valid Key Supplied");
+                    if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
                         verifying_key_raw.clear();
                     };
                 });

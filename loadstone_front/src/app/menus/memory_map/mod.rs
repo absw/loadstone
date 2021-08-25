@@ -2,8 +2,9 @@ use std::cmp::{self, max};
 
 use crate::app::menus::memory_map::normalize::normalize;
 
-use eframe::egui::{self, Button, Color32, Label, Slider};
+use eframe::egui::{self, Button, Label, Slider};
 use loadstone_config::{KB, memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap}, pins::{PeripheralPin, QspiPins, qspi}, port::Port};
+use super::colours;
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
 static GOLDEN_TOOLTIP: &'static str =
@@ -38,7 +39,7 @@ pub fn configure_memory_map(
         ui.horizontal_wrapped(|ui| {
             ui.add(Label::new("Internal flash chip: ").heading());
             ui.add(
-                Label::new(internal_flash.name.clone()).heading().text_color(Color32::LIGHT_BLUE),
+                Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
             );
         });
 
@@ -172,7 +173,7 @@ fn configure_internal_bank(
         ui.label(format!("Bank {}", i + 1));
         ui.add(
             Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
-                .text_color(Color32::LIGHT_BLUE),
+                .text_color(colours::info(ui)),
         );
         ui.radio_value(bootable_index, Some(i), "Bootable");
         ui.scope(|ui| {
@@ -185,7 +186,7 @@ fn configure_internal_bank(
                 }
             };
         });
-        if ui.add(Button::new("Delete").text_color(Color32::RED).small()).clicked() {
+        if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
                 if i == *index {
@@ -296,7 +297,7 @@ fn configure_external_bank(
         ui.label(format!("Bank {}", global_index + 1));
         ui.add(
             Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
-                .text_color(Color32::LIGHT_BLUE),
+                .text_color(colours::info(ui)),
         );
         ui.scope(|ui| {
             if ui
@@ -310,7 +311,7 @@ fn configure_external_bank(
                 }
             };
         });
-        if ui.add(Button::new("Delete").text_color(Color32::RED).small()).clicked() {
+        if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
                 if global_index == *index {
@@ -344,7 +345,7 @@ fn select_bootloader_length(
     });
     if internal_memory_map.bootloader_length_kb < 64 {
         ui.colored_label(
-            Color32::YELLOW,
+            colours::warning(ui),
             "You must manually ensure you've allocated enough \
             bootloader space to hold the final compiled binary.",
         );
@@ -373,7 +374,7 @@ fn select_bootloader_location(
                 internal_memory_map.bootloader_location
                     + KB!(internal_memory_map.bootloader_length_kb)
             ))
-            .text_color(Color32::LIGHT_BLUE),
+            .text_color(colours::info(ui)),
         );
     });
 }
