@@ -9,7 +9,6 @@ use crate::app::menus::{
     generate, update_signal::configure_update_signal,
     serial::configure_serial, configure_custom_greetings
 };
-
 use eframe::{
     egui::{self, mutex::Mutex, ScrollArea},
     epi,
@@ -79,6 +78,16 @@ impl epi::App for LoadstoneApp {
             git_fork_field,
         } = self;
         configuration.cleanup();
+
+        ctx.set_style(egui::Style {
+            spacing: egui::style::Spacing {
+                slider_width: 200.0,
+                text_edit_width: 560.0,
+                scroll_bar_width: 12.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ScrollArea::auto_sized().show(ui, |ui| {
