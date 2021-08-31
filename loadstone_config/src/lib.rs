@@ -90,6 +90,10 @@ impl Configuration {
             }
         }
 
+        if !matches!(self.security_configuration.security_mode, SecurityMode::P256ECDSA) {
+            self.security_configuration.verifying_key_raw.clear();
+        }
+
         if let Some(golden_index) = self.memory_configuration.golden_index {
             let bank_count = self.memory_configuration.internal_memory_map.banks.len()
                 + self.memory_configuration.external_memory_map.banks.len();
