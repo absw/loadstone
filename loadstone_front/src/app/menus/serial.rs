@@ -64,7 +64,7 @@ fn define_serial_options(
     rx_pin: &mut PeripheralPin,
     available_peripherals: impl Iterator<Item = Peripheral>,
 ) {
-    ui.vertical(|ui| {
+    ui.indent(0, |ui| {
         select_peripheral(ui, port, tx_pin, rx_pin, available_peripherals);
         select_tx_pins(ui, tx_pin, port);
         select_rx_pins(ui, rx_pin, port);
@@ -108,7 +108,6 @@ fn select_peripheral(
 
 fn select_rx_pins(ui: &mut egui::Ui, rx_pin: &mut PeripheralPin, port: &Port) {
     ui.horizontal_wrapped(|ui| {
-        ui.separator();
         ui.label("\u{2B05}");
         egui::ComboBox::from_label("Serial console input pin (RX)")
             .selected_text(rx_pin.to_string())
@@ -123,7 +122,6 @@ fn select_rx_pins(ui: &mut egui::Ui, rx_pin: &mut PeripheralPin, port: &Port) {
 
 fn select_tx_pins(ui: &mut egui::Ui, tx_pin: &mut PeripheralPin, port: &Port) {
     ui.horizontal_wrapped(|ui| {
-        ui.separator();
         ui.label("\u{27A1}");
         egui::ComboBox::from_label("Serial console output pin (TX)")
             .selected_text(tx_pin.to_string())
@@ -139,7 +137,6 @@ fn select_tx_pins(ui: &mut egui::Ui, tx_pin: &mut PeripheralPin, port: &Port) {
 fn select_recovery_mode(ui: &mut egui::Ui, recovery_enabled: &mut bool, port: &Port) {
     ui.horizontal_wrapped(|ui| {
         ui.set_enabled(features::Serial::supported(port));
-        ui.separator();
         ui.checkbox(recovery_enabled, "Serial Recovery");
         ui.label("Allow recovering a device by sending a new image via XModem.");
     });

@@ -9,11 +9,7 @@ use crate::app::menus::{
     generate, update_signal::configure_update_signal,
     serial::configure_serial, configure_custom_greetings
 };
-
-use eframe::{
-    egui::{self, mutex::Mutex, ScrollArea},
-    epi,
-};
+use eframe::{egui::{self, ScrollArea, TextStyle, mutex::Mutex}, epi};
 const GIT_VERSION: &str = git_version::git_version!();
 
 use loadstone_config::{features::Serial, pins, Configuration};
@@ -80,52 +76,53 @@ impl epi::App for LoadstoneApp {
         } = self;
         configuration.cleanup();
 
+        ctx.set_style(egui::Style {
+            spacing: egui::style::Spacing {
+                slider_width: 200.0,
+                text_edit_width: 560.0,
+                scroll_bar_width: 12.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ScrollArea::auto_sized().show(ui, |ui| {
                 ui.heading(format!(
-                    "Loadstone Builder [{}-{}] ",
+                    "Loadstone builder [{}-{}] ",
                     env!("CARGO_PKG_VERSION"),
                     GIT_VERSION
                 ));
                 ui.separator();
                 select_port(ui, &mut configuration.port);
                 ui.separator();
-                ui.collapsing("Features", |ui| {
+                egui::CollapsingHeader::new("Features").text_style(TextStyle::Heading).show(ui, |ui| {
                     ui.label("Greyed out features are unsupported in the current configuration.");
-                    ui.group(|ui| {
-                        ui.set_enabled(
-                            Serial::supported(&mut configuration.port)
-                                && pins::serial_tx(&mut configuration.port).count() > 0
-                                && pins::serial_rx(&mut configuration.port).count() > 0,
-                        );
-                        configure_serial(
-                            ui,
-                            &mut &mut configuration.feature_configuration.serial,
-                            &mut configuration.port,
-                        );
-                    });
-                    ui.group(|ui| {
-                        configure_boot_metrics(
-                            ui,
-                            &mut configuration.feature_configuration.boot_metrics,
-                            &mut configuration.port,
-                        );
-                    });
-                    ui.group(|ui| {
-                        configure_custom_greetings(
-                            ui,
-                            &mut configuration.feature_configuration.greetings,
-                        );
-                    });
-                    ui.group(|ui| {
-                        configure_update_signal(
-                            ui,
-                            &mut configuration.feature_configuration.update_signal,
-                        );
-                    });
+                    ui.set_enabled(
+                        Serial::supported(&mut configuration.port)
+                            && pins::serial_tx(&mut configuration.port).count() > 0
+                            && pins::serial_rx(&mut configuration.port).count() > 0,
+                    );
+                    configure_serial(
+                        ui,
+                        &mut &mut configuration.feature_configuration.serial,
+                        &mut configuration.port,
+                    );
+                    configure_boot_metrics(
+                        ui,
+                        &mut configuration.feature_configuration.boot_metrics,
+                        &mut configuration.port,
+                    );
+                    configure_custom_greetings(
+                        ui,
+                        &mut configuration.feature_configuration.greetings,
+                    );
+                    configure_update_signal(
+                        ui,
+                        &mut configuration.feature_configuration.update_signal,
+                    );
                 });
-                ui.separator();
-                ui.collapsing("Memory Map", |ui| {
+                egui::CollapsingHeader::new("Memory map").text_style(TextStyle::Heading).show(ui, |ui| {
                     configure_memory_map(
                         ui,
                         &mut configuration.memory_configuration.internal_memory_map,
@@ -135,8 +132,7 @@ impl epi::App for LoadstoneApp {
                         &configuration.port,
                     );
                 });
-                ui.separator();
-                ui.collapsing("Security", |ui| {
+                egui::CollapsingHeader::new("Security").text_style(TextStyle::Heading).show(ui, |ui| {
                     configure_security(
                         ui,
                         &mut configuration.security_configuration.security_mode,
@@ -144,8 +140,7 @@ impl epi::App for LoadstoneApp {
                         verifying_key_text_field,
                     );
                 });
-                ui.separator();
-                ui.collapsing("Generate", |ui| {
+                egui::CollapsingHeader::new("Generate").text_style(TextStyle::Heading).show(ui, |ui| {
                     generate::generate(
                         ui,
                         frame,
