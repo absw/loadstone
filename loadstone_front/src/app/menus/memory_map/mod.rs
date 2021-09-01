@@ -35,11 +35,21 @@ pub fn configure_memory_map(
         port,
     );
 
-    ui.horizontal_wrapped(|ui| {
-        ui.add(Label::new("Internal flash chip: ").heading());
-        ui.add(
-            Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
-        );
+    ui.group(|ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.add(Label::new("Internal flash chip: ").heading());
+            ui.add(
+                Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
+            );
+        });
+
+        ui.separator();
+        ui.label("Bootloader:");
+        select_bootloader_location(ui, internal_memory_map, &internal_flash);
+        select_bootloader_length(ui, internal_memory_map, &internal_flash);
+        ui.label("Banks:");
+        ui.separator();
+        configure_internal_banks(ui, internal_memory_map, external_memory_map, &internal_flash, golden_index);
     });
 
     ui.indent(0, |ui| {
@@ -87,6 +97,7 @@ pub fn configure_memory_map(
 fn configure_internal_banks(
     ui: &mut egui::Ui,
     internal_memory_map: &mut InternalMemoryMap,
+    external_memory_map: &ExternalMemoryMap,
     internal_flash: &memory::FlashChip,
     golden_index: &mut Option<usize>,
 ) {
@@ -108,6 +119,8 @@ fn configure_internal_banks(
         banks.remove(to_delete);
     }
 
+    let max_bank_count = (u8::MAX as usize) - external_memory_map.banks.len();
+
     let bank_start_address =
         internal_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(max(
             internal_memory_map.bootloader_location
@@ -123,6 +136,7 @@ fn configure_internal_banks(
             internal_memory_map,
             bank_start_address,
             internal_flash,
+            max_bank_count,
         );
     });
 }
@@ -133,7 +147,12 @@ fn add_internal_bank(
     internal_memory_map: &mut InternalMemoryMap,
     bank_start_address: u32,
     internal_flash: &FlashChip,
+    max_bank_count: usize,
 ) {
+    if internal_memory_map.banks.len() >= max_bank_count {
+        return;
+    }
+
     if ui.button("Add bank").clicked() {
         // Bump the golden index if we added a bank under the golden one
         match golden_index {
@@ -259,6 +278,15 @@ fn configure_external_banks(
             add_external_bank(ui, external_memory_map, bank_start_address, external_flash);
         });
 
+    let max_bank_count = (u8::MAX as usize) - internal_memory_map.banks.len();
+
+    let bank_start_address =
+        external_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(external_flash.start);
+    let enough_space = bank_start_address + external_flash.region_size < external_flash.end;
+    ui.set_enabled(enough_space);
+    ui.horizontal_wrapped(|ui| {
+        add_external_bank(ui, external_memory_map, bank_start_address, external_flash, max_bank_count);
+
     });
 }
 
@@ -267,7 +295,12 @@ fn add_external_bank(
     external_memory_map: &mut ExternalMemoryMap,
     bank_start_address: u32,
     external_flash: &FlashChip,
+    max_bank_count: usize,
 ) {
+    if external_memory_map.banks.len() >= max_bank_count {
+        return;
+    }
+
     if ui.button("Add bank").clicked() {
         external_memory_map.banks.push(Bank {
             start_address: bank_start_address,
