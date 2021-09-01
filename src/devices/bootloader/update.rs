@@ -1,5 +1,6 @@
 use super::*;
 use crate::devices::{cli::file_transfer::FileTransfer, update_signal::{ReadUpdateSignal, UpdatePlan}};
+use blue_hal::uprintln;
 
 enum UpdateResult<MCUF: Flash> {
     AlreadyUpToDate(Image<MCUF::Address>),
@@ -56,7 +57,15 @@ impl<
             }
             Some(UpdatePlan::Serial) => {
                 duprintln!(self.serial, "Update signal set to Serial, attempting one-shot serial update.");
-                return self.attempt_serial_update();
+                match self.attempt_serial_update() {
+                    Ok(image) => return Some(image),
+                    Err(e) => {
+                        if let Some(serial) = self.serial.as_mut() {
+                            e.report(serial);
+                        }
+                        None
+                    }
+                }
             }
         };
 
@@ -75,7 +84,7 @@ impl<
         }
     }
 
-    fn attempt_serial_update(&mut self) -> Option<Image<MCUF::Address>> {
+    fn attempt_serial_update(&mut self) -> Result<Image<MCUF::Address>, Error> {
         // Restore the update plan so the attempt is done only once.
         self.update_planner.as_mut().unwrap().write_update_plan(UpdatePlan::None);
 
@@ -85,14 +94,13 @@ impl<
             uprintln!(serial, "Please send firmware image via XMODEM.");
 
             if self.mcu_flash.write_from_blocks(boot_bank.location, serial.blocks(None)).is_err() {
-                uprintln!(serial, "FATAL: Failed to flash image during serial update.");
-                panic!();
+                return Err(Error::FlashCorrupted);
             }
         } else {
-            defmt::error!("Cannot perform serial update without serial console.");
+            return Err(Error::DeviceError("Cannot perform serial update without serial console."));
         }
 
-        R::image_at(&mut self.mcu_flash, boot_bank).ok()
+        R::image_at(&mut self.mcu_flash, boot_bank)
     }
 
     fn update_internal(
