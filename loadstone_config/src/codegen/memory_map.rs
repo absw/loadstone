@@ -75,6 +75,10 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
             .iter()
             .map(|f| format_ident!("{}", f))
             .collect(),
+        Subfamily::Maxim3263 => ["blue_hal", "drivers", "flash", "Address"]
+            .iter()
+            .map(|f| format_ident!("{}", f))
+            .collect(),
     };
 
     let code = quote! {

@@ -52,6 +52,7 @@ pub fn serial_tx(port: &Port) -> PinIterator {
             PeripheralPin::new(Cow::from("USART6"), Cow::from("g"), 14, 8),
         ])),
         Port::Wgm160P => Box::new(None.into_iter()),
+        Port::Maxim3263 => Box::new(None.into_iter()),
     }
 }
 
@@ -69,6 +70,7 @@ pub fn serial_rx(port: &Port) -> PinIterator {
             PeripheralPin::new(Cow::from("USART6"), Cow::from("g"), 9, 8),
         ])),
         Port::Wgm160P => Box::new(None.into_iter()),
+        Port::Maxim3263 => Box::new(None.into_iter()),
     }
 }
 
@@ -145,6 +147,14 @@ pub fn qspi(port: Port) -> QspiPinOptions {
             bk1_io1: Box::new(IntoIter::new([])),
             bk1_io2: Box::new(IntoIter::new([])),
             bk1_io3: Box::new(IntoIter::new([])),
-        }
+        },
+        Port::Maxim3263 => QspiPinOptions {
+            clk: Box::new(IntoIter::new([])),
+            bk1_cs: Box::new(IntoIter::new([])),
+            bk1_io0: Box::new(IntoIter::new([])),
+            bk1_io1: Box::new(IntoIter::new([])),
+            bk1_io2: Box::new(IntoIter::new([])),
+            bk1_io3: Box::new(IntoIter::new([])),
+        },
     }
 }
