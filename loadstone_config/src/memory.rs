@@ -111,8 +111,8 @@ pub fn internal_flash(port: &Port) -> FlashChip {
             end: 512 * KB!(4),
             region_size: KB!(4),
         },
-        Port::Maxim3263 => FlashChip {
-            name: "Maxim3263 MCU Flash".to_owned(),
+        Port::Maxim32630 => FlashChip {
+            name: "Maxim32630 MCU Flash".to_owned(),
             internal: true,
             start: 0x0000_0000,
             end: 256 * KB!(8),
@@ -134,6 +134,6 @@ pub fn external_flash(port: &Port) -> impl Iterator<Item = FlashChip> {
         })
         .into_iter(),
         Port::Wgm160P => None.into_iter(),
-        Port::Maxim3263 => None.into_iter(),
+        Port::Maxim32630 => None.into_iter(),
     }
 }

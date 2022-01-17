@@ -48,7 +48,7 @@ impl BootMetrics {
         match port {
             Port::Stm32F412 => true,
             Port::Wgm160P => false,
-            Port::Maxim3263 => false,
+            Port::Maxim32630 => false,
         }
     }
 }
@@ -79,7 +79,7 @@ impl Serial {
         match port {
             Port::Stm32F412 => true,
             Port::Wgm160P => false,
-            Port::Maxim3263 => false,
+            Port::Maxim32630 => false,
         }
     }
 

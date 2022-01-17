@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub enum Port {
     Stm32F412,
     Wgm160P,
-    Maxim3263,
+    Maxim32630,
 }
 
 impl Default for Port {
@@ -40,7 +40,7 @@ impl Display for Port {
         f.write_str(match self {
             Port::Stm32F412 => "stm32f412",
             Port::Wgm160P => "wgm160p",
-            Port::Maxim3263 => "maxim3263",
+            Port::Maxim32630 => "maxim32630",
         })
     }
 }
@@ -71,7 +71,7 @@ impl Port {
         match self {
             Port::Stm32F412 => Family::Stm32,
             Port::Wgm160P => Family::Efm32,
-            Port::Maxim3263 => Family::Maxim32,
+            Port::Maxim32630 => Family::Maxim32,
         }
     }
 
@@ -80,7 +80,7 @@ impl Port {
         match self {
             Port::Stm32F412 => Subfamily::Stm32f4,
             Port::Wgm160P => Subfamily::Efm32Gg11,
-            Port::Maxim3263 => Subfamily::Maxim3263,
+            Port::Maxim32630 => Subfamily::Maxim3263,
         }
     }
 
@@ -97,7 +97,7 @@ impl Port {
                 flash: LinkerArea { origin: 0x00000000, size: KB!(1024) },
                 ram: LinkerArea { origin: 0x20000000, size: KB!(128) },
             }),
-            Port::Maxim3263 => Some(LinkerScriptConstants {
+            Port::Maxim32630 => Some(LinkerScriptConstants {
                 flash: LinkerArea { origin: 0x00000000, size: KB!(2048) },
                 ram: LinkerArea { origin: 0x20000000, size: KB!(512) },
             }),

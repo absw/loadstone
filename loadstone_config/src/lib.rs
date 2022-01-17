@@ -52,7 +52,7 @@ impl Configuration {
         match self.port {
             Port::Stm32F412 => flags.push("stm32f412"),
             Port::Wgm160P => flags.push("wgm160p"),
-            Port::Maxim3263 => flags.push("maxim3263"),
+            Port::Maxim32630 => flags.push("maxim32630"),
         };
 
         if self.security_configuration.security_mode == SecurityMode::P256ECDSA {

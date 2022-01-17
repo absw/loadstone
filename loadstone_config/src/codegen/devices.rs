@@ -21,7 +21,7 @@ pub fn generate<P: AsRef<Path>>(
             generate_flash_stm32(configuration, &mut code)?;
         }
         crate::port::Port::Wgm160P => {}
-        crate::port::Port::Maxim3263 => {}
+        crate::port::Port::Maxim32630 => {}
     }
 
     file.write_all(format!("{}", code).as_bytes())?;

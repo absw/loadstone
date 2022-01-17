@@ -36,6 +36,10 @@ fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<(
     Ok(())
 }
 
-fn generate_maxim3263(_configuration: &Configuration, _file: &mut File) -> Result<()> {
+fn generate_maxim3263(_configuration: &Configuration, file: &mut File) -> Result<()> {
+    let code = quote! {
+        pub use blue_hal::hal::null::NullFlash as ExternalFlash;
+    };
+    file.write_all(format!("{}", code).as_bytes())?;
     Ok(())
 }
