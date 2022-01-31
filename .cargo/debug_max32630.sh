@@ -9,7 +9,11 @@ set -x
 "${GDB}" \
     -ex "target extended-remote :3333" \
     -ex "monitor init" \
-    -ex "monitor program ./node_brain verify" \
+    -ex "monitor program target/thumbv7em-none-eabi/release/loadstone verify" \
+    -ex "monitor arm semihosting enable" \
+    -ex "monitor rtt server start 8765 0" \
+    -ex "monitor rtt setup 0x20000000 0x30 \"SEGGER RTT\"" \
+    -ex "monitor rtt start" \
     -ex "monitor reset halt" \
     -ex "load" \
     "$@"
