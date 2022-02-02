@@ -2,7 +2,7 @@ use crate::devices::bootloader::Bootloader;
 use blue_hal::{
     max32pac,
     hal::null::{NullError, NullFlash, NullSerial, NullSystick},
-    drivers::maxim3263::flash::{self, Flash},
+    drivers::max3263::flash::{self, Flash},
 };
 use crate::devices::image::CrcImageReader as ImageReader;
 use super::update_signal::NullUpdatePlanner;
