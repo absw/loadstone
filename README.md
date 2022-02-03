@@ -95,3 +95,12 @@ example, to flash a binary to a MAX32631 from the command line, do:
 ```
 openocd -f openocd/max3263x.cfg -c "program loadstone.bin verify"
 ```
+
+If flashing a bootable image into a loadstone bank, it has to be signed first.
+Use the signing tool (`tools/signing_tool`) to append a footer to the image
+before flashing. You can then flash that image to a specified location using
+OpenOCD:
+
+```
+openocd -f openocd/max3263x.cfg -c "program my_image_signed.bin 0x00008000 verify"
+```
