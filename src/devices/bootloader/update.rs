@@ -1,5 +1,8 @@
 use super::*;
-use crate::devices::{cli::file_transfer::FileTransfer, update_signal::{ReadUpdateSignal, UpdatePlan}};
+use crate::devices::{
+    cli::file_transfer::FileTransfer,
+    update_signal::{ReadUpdateSignal, UpdatePlan},
+};
 use blue_hal::uprintln;
 
 enum UpdateResult<MCUF: Flash> {
@@ -9,14 +12,8 @@ enum UpdateResult<MCUF: Flash> {
     UpdateError,
 }
 
-impl<
-        EXTF: Flash,
-        MCUF: Flash,
-        SRL: Serial,
-        T: time::Now,
-        R: image::Reader,
-        U: UpdatePlanner,
-    > Bootloader<EXTF, MCUF, SRL, T, R, U>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: UpdatePlanner>
+    Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// If the current bootable (MCU flash) image is different from the top
     /// non-golden image, attempts to replace it. On failure, this process
@@ -30,7 +27,6 @@ impl<
             duprintln!(self.serial, "No current image.");
             return None;
         };
-
 
         let bank: Option<u8> = match self
             .update_planner
@@ -56,7 +52,10 @@ impl<
                 Some(i)
             }
             Some(UpdatePlan::Serial) => {
-                duprintln!(self.serial, "Update signal set to Serial, attempting one-shot serial update.");
+                duprintln!(
+                    self.serial,
+                    "Update signal set to Serial, attempting one-shot serial update."
+                );
                 match self.attempt_serial_update() {
                     Ok(image) => return Some(image),
                     Err(e) => {
