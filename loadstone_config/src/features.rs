@@ -47,6 +47,7 @@ impl BootMetrics {
     pub fn timing_supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
+            Port::Stm32F446 => false,
             Port::Wgm160P => false,
             Port::Max32631 => false,
         }
@@ -78,6 +79,7 @@ impl Serial {
     pub fn supported(port: &Port) -> bool {
         match port {
             Port::Stm32F412 => true,
+            Port::Stm32F446 => false,
             Port::Wgm160P => false,
             Port::Max32631 => false,
         }

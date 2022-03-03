@@ -23,6 +23,7 @@ stm32f429 = ["blue_hal/stm32f429", "stm32f4_any"]
 stm32f469 = ["blue_hal/stm32f469", "stm32f4_any"]
 stm32f407 = ["blue_hal/stm32f407", "stm32f4_any"]
 stm32f412 = ["blue_hal/stm32f412", "stm32f4_any"]
+stm32f446 = ["blue_hal/stm32f446", "stm32f4_any"]
 stm32f4_any = ["blue_hal/stm32_any", "stm32_any"]
 stm32_any = ["cortex_m_any"]
 

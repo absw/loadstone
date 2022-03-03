@@ -51,6 +51,7 @@ impl Configuration {
         let mut flags = vec![];
         match self.port {
             Port::Stm32F412 => flags.push("stm32f412"),
+            Port::Stm32F446 => flags.push("stm32f446"),
             Port::Wgm160P => flags.push("wgm160p"),
             Port::Max32631 => flags.push("max32631"),
         };

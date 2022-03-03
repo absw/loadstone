@@ -51,6 +51,7 @@ pub fn serial_tx(port: &Port) -> PinIterator {
             PeripheralPin::new(Cow::from("USART6"), Cow::from("a"), 11, 8),
             PeripheralPin::new(Cow::from("USART6"), Cow::from("g"), 14, 8),
         ])),
+        Port::Stm32F446 => Box::new(None.into_iter()),
         Port::Wgm160P => Box::new(None.into_iter()),
         Port::Max32631 => Box::new(None.into_iter()),
     }
@@ -69,6 +70,7 @@ pub fn serial_rx(port: &Port) -> PinIterator {
             PeripheralPin::new(Cow::from("USART6"), Cow::from("a"), 12, 8),
             PeripheralPin::new(Cow::from("USART6"), Cow::from("g"), 9, 8),
         ])),
+        Port::Stm32F446 => Box::new(None.into_iter()),
         Port::Wgm160P => Box::new(None.into_iter()),
         Port::Max32631 => Box::new(None.into_iter()),
     }
@@ -139,6 +141,14 @@ pub fn qspi(port: Port) -> QspiPinOptions {
                 PeripheralPin::new(Cow::from("QSPI"), Cow::from("d"), 13, 10),
                 PeripheralPin::new(Cow::from("QSPI"), Cow::from("f"), 6, 9),
             ])),
+        },
+        Port::Stm32F446 => QspiPinOptions {
+            clk: Box::new(IntoIterator::into_iter([])),
+            bk1_cs: Box::new(IntoIterator::into_iter([])),
+            bk1_io0: Box::new(IntoIterator::into_iter([])),
+            bk1_io1: Box::new(IntoIterator::into_iter([])),
+            bk1_io2: Box::new(IntoIterator::into_iter([])),
+            bk1_io3: Box::new(IntoIterator::into_iter([])),
         },
         Port::Wgm160P => QspiPinOptions {
             clk: Box::new(IntoIterator::into_iter([])),

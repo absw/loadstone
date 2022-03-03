@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, IntoEnumIterator)]
 pub enum Port {
     Stm32F412,
+    Stm32F446,
     Wgm160P,
     Max32631,
 }
@@ -39,6 +40,7 @@ impl Display for Port {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Port::Stm32F412 => "stm32f412",
+            Port::Stm32F446 => "stm32f446",
             Port::Wgm160P => "wgm160p",
             Port::Max32631 => "max32631",
         })
@@ -70,6 +72,7 @@ impl Port {
     pub fn family(&self) -> Family {
         match self {
             Port::Stm32F412 => Family::Stm32,
+            Port::Stm32F446 => Family::Stm32,
             Port::Wgm160P => Family::Efm32,
             Port::Max32631 => Family::Max32,
         }
@@ -79,6 +82,7 @@ impl Port {
     pub fn subfamily(&self) -> Subfamily {
         match self {
             Port::Stm32F412 => Subfamily::Stm32f4,
+            Port::Stm32F446 => Subfamily::Stm32f4,
             Port::Wgm160P => Subfamily::Efm32Gg11,
             Port::Max32631 => Subfamily::Max3263,
         }
@@ -91,6 +95,10 @@ impl Port {
         match self {
             Port::Stm32F412 => Some(LinkerScriptConstants {
                 flash: LinkerArea { origin: 0x08000000, size: KB!(896) },
+                ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
+            }),
+            Port::Stm32F446 => Some(LinkerScriptConstants {
+                flash: LinkerArea { origin: 0x08000000, size: KB!(1024) },
                 ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
             }),
             Port::Wgm160P => Some(LinkerScriptConstants {

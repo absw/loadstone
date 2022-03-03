@@ -104,6 +104,13 @@ pub fn internal_flash(port: &Port) -> FlashChip {
             end: 0x0810_0000,
             region_size: KB!(16),
         },
+        Port::Stm32F446 => FlashChip {
+            name: "STM32F446 MCU Flash".to_owned(),
+            internal: true,
+            start: 0x0800_0000,
+            end: 0x0820_0000,
+            region_size: KB!(16),
+        },
         Port::Wgm160P => FlashChip {
             name: "EFM32GG11 MCU Flash".to_owned(),
             internal: true,
@@ -133,6 +140,7 @@ pub fn external_flash(port: &Port) -> impl Iterator<Item = FlashChip> {
             region_size: KB!(4),
         })
         .into_iter(),
+        Port::Stm32F446 => None.into_iter(),
         Port::Wgm160P => None.into_iter(),
         Port::Max32631 => None.into_iter(),
     }

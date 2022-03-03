@@ -20,6 +20,7 @@ pub fn generate<P: AsRef<Path>>(
             generate_serial_stm32(configuration, &mut code)?;
             generate_flash_stm32(configuration, &mut code)?;
         }
+        crate::port::Port::Stm32F446 => {}
         crate::port::Port::Wgm160P => {}
         crate::port::Port::Max32631 => {}
     }
