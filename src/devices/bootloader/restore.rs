@@ -1,13 +1,7 @@
 use super::*;
 
-impl<
-        EXTF: Flash,
-        MCUF: Flash,
-        SRL: Serial,
-        T: time::Now,
-        R: image::Reader,
-        U: UpdatePlanner,
-    > Bootloader<EXTF, MCUF, SRL, T, R, U>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: UpdatePlanner>
+    Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// Restores the first image available in all banks, attempting to restore
     /// from the golden image as a last resort.

@@ -68,3 +68,39 @@ LOADSTONE_CONFIG=`cat my_stm32_config.ron` cargo b loadstone --features stm32f41
 # Building a manual port
 LOADSTONE_CONFIG='' cargo b loadstone --features my_manual_port
 ```
+
+To build and debug, use `rb` instead of `b`. For example:
+
+```
+LOADSTONE_CONFIG=`cat /path/to/max32631_config.ron` cargo rb loadstone --features=max32631
+```
+
+Some targets require an OpenOCD instance to be running to begin a debug session,
+including the MAX32631 and WGM160P. When debugging on the MAX32631, due to a
+bug in the current version of OpenOCD,
+[Maxim Integrated's fork of OpenOCD](https://github.com/MaximIntegratedMicros/openocd)
+should be used instead.
+
+# Flashing
+
+To create a binary after a build, the `objcopy` utility can be used. Do
+
+```
+arm-none-eabi-objcopy -Obinary target/thumbv7em-none-eabi/release/loadstone loadstone.bin
+```
+
+A binary file can be programmed with OpenOCD (using the `program` command). For
+example, to flash a binary to a MAX32631 from the command line, do:
+
+```
+openocd -f openocd/max3263x.cfg -c "program loadstone.bin verify"
+```
+
+If flashing a bootable image into a loadstone bank, it has to be signed first.
+Use the signing tool (`tools/signing_tool`) to append a footer to the image
+before flashing. You can then flash that image to a specified location using
+OpenOCD:
+
+```
+openocd -f openocd/max3263x.cfg -c "program my_image_signed.bin 0x00008000 verify"
+```

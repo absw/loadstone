@@ -1,7 +1,7 @@
 [package]
-edition = "2018"
+edition = "2021"
 name = "loadstone"
-version = "1.0.0"
+version = "1.1.0"
 default-run = "loadstone"
 license = "MIT"
 description = "Portable secure bootloader for Cortex-M MCUs"
@@ -25,15 +25,23 @@ stm32f407 = ["blue_hal/stm32f407", "stm32f4_any"]
 stm32f412 = ["blue_hal/stm32f412", "stm32f4_any"]
 stm32f4_any = ["blue_hal/stm32_any", "stm32_any"]
 stm32_any = ["cortex_m_any"]
-cortex_m_any = []
-wgm160p = ["blue_hal/wgm160p", "efm32gg11b_any"]
+
 efm32gg11b_any = ["cortex_m_any"]
+wgm160p = ["blue_hal/wgm160p", "efm32gg11b_any"]
+
+max32631 = ["blue_hal/max32631", "max3263_any"]
+max3263_any = ["blue_hal/max3263_any", "max32_any"]
+max32_any = ["cortex_m_any"]
+
+cortex_m_any = []
+
 defmt-default = []
 defmt-trace = []
 defmt-debug = []
 defmt-info = []
 defmt-warn = []
 defmt-error = []
+
 ecdsa-verify = ["ecdsa", "p256"]
 # Bases the binary address space on the first bootable
 # bank rather than the first valid Flash address of the

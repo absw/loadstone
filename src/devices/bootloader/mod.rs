@@ -4,7 +4,12 @@
 //! the exception of how to construct one. Construction is
 //! handled by the `port` module as it depends on board
 //! specific information.
-use super::{boot_metrics::{boot_metrics_mut, BootMetrics, BootPath}, image::{self, Bank, Image}, traits::{Flash, Serial}, update_signal::UpdatePlanner};
+use super::{
+    boot_metrics::{boot_metrics_mut, BootMetrics, BootPath},
+    image::{self, Bank, Image},
+    traits::{Flash, Serial},
+    update_signal::UpdatePlanner,
+};
 use crate::error::Error;
 use blue_hal::{
     duprintln,
@@ -49,14 +54,8 @@ pub struct Bootloader<
     pub(crate) _marker: PhantomData<R>,
 }
 
-impl<
-        EXTF: Flash,
-        MCUF: Flash,
-        SRL: Serial,
-        T: time::Now,
-        R: image::Reader,
-        U: UpdatePlanner,
-    > Bootloader<EXTF, MCUF, SRL, T, R, U>
+impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: UpdatePlanner>
+    Bootloader<EXTF, MCUF, SRL, T, R, U>
 {
     /// Main bootloader routine.
     ///
@@ -207,9 +206,7 @@ pub mod doubles {
         fn read_update_plan(&self) -> UpdatePlan { self.plan }
     }
     impl WriteUpdateSignal for FakeUpdatePlanner {
-        fn write_update_plan(&mut self, plan: UpdatePlan) {
-            self.plan = plan;
-        }
+        fn write_update_plan(&mut self, plan: UpdatePlan) { self.plan = plan; }
     }
 
     pub type BootloaderDouble = super::Bootloader<

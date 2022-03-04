@@ -9,7 +9,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(bool_to_option)]
 
-use std::{array::IntoIter, fmt::Display};
+use std::fmt::Display;
 
 use features::{BootMetrics, FeatureConfiguration, Serial};
 use memory::{external_flash, MemoryConfiguration};
@@ -52,6 +52,7 @@ impl Configuration {
         match self.port {
             Port::Stm32F412 => flags.push("stm32f412"),
             Port::Wgm160P => flags.push("wgm160p"),
+            Port::Max32631 => flags.push("max32631"),
         };
 
         if self.security_configuration.security_mode == SecurityMode::P256ECDSA {
@@ -64,7 +65,7 @@ impl Configuration {
     /// Missing configuration steps to have enough information to generate a loadstone binary.
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
         #[rustfmt::skip]
-        IntoIter::new([
+        IntoIterator::into_iter([
             self.memory_configuration.internal_memory_map.bootable_index.is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),
 

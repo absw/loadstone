@@ -1,7 +1,7 @@
 use anyhow::Result;
 use itertools::Itertools;
 use quote::{TokenStreamExt, format_ident, quote};
-use std::{array::IntoIter, fs::File, io::Write, iter::empty};
+use std::{fs::File, io::Write, iter::empty};
 use syn::{Ident, Index};
 
 use crate::{Configuration, features::Serial, pins::QspiPins};
@@ -45,7 +45,7 @@ fn generate_pin_constructor(
     let serial_pin_structs: Box<dyn Iterator<Item = Ident>> =
         if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial
         {
-            Box::new(IntoIter::new([
+            Box::new(IntoIterator::into_iter([
                 format_ident!("gpio{}", tx_pin.bank),
                 format_ident!("gpio{}", rx_pin.bank),
             ]))
@@ -56,7 +56,7 @@ fn generate_pin_constructor(
     let serial_pin_fields: Box<dyn Iterator<Item = Ident>> =
         if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial
         {
-            Box::new(IntoIter::new([
+            Box::new(IntoIterator::into_iter([
                 format_ident!("p{}{}", tx_pin.bank, tx_pin.index),
                 format_ident!("p{}{}", rx_pin.bank, rx_pin.index),
             ]))
@@ -176,7 +176,7 @@ fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__priva
 
 fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = SerialPinTokens>> {
     if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial {
-        Box::new(IntoIter::new([
+        Box::new(IntoIterator::into_iter([
             SerialPinTokens {
                 bank: tx_pin.bank.chars().nth(0).unwrap(),
                 index: (tx_pin.index as usize).into(),
@@ -207,7 +207,7 @@ fn qspi_flash_pin_tokens(
     let pins = configuration.memory_configuration.external_memory_map.pins.clone()
         .unwrap_or_else(|| QspiPins::create(configuration.port));
 
-    Box::new(IntoIter::new([
+    Box::new(IntoIterator::into_iter([
         QspiFlashPinTokens {
             bank: pins.clk.bank.chars().next().unwrap(),
             index: (pins.clk.index as usize).into(),

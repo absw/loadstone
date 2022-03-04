@@ -50,7 +50,7 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
 
     let missing_flags: Vec<_> = configuration
         .required_feature_flags()
-        .map(|s| s.replace("-", "_"))
+        .map(|s| s.replace('-', "_"))
         .filter(|f| !&supplied_flags.contains(&(*f).to_owned()))
         .collect();
 
@@ -65,7 +65,7 @@ fn validate_feature_flags_against_configuration(configuration: &Configuration) {
         panic!(
             "\n\nThe configuration file requires flags that haven't been supplied. \
             Please build again with `--features={}`\n\n",
-            missing_flags.join(",").replace("_", "-"),
+            missing_flags.join(",").replace('_', "-"),
         );
     }
 }
