@@ -6,6 +6,8 @@ TARGET_NAME=$(cat .cargo/.runner-target)
 
 if [[ "$TARGET_NAME" = "stm32f412" ]]; then
     exec probe-run --chip STM32F412ZGTx $*
+elif [[ "$TARGET_NAME" = "stm32f446" ]]; then
+    exec probe-run --chip STM32F446RETx $*
 elif [[ "$TARGET_NAME" = "wgm160p" ]]; then
     exec .cargo/debug_wgm160p.sh $*
 elif [[ "$TARGET_NAME" = "max32631" ]]; then
