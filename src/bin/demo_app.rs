@@ -17,6 +17,14 @@ fn main() -> ! {
     app.run();
 }
 
+#[cfg(all(target_arch = "arm", feature = "stm32f446"))]
+#[entry]
+fn main() -> ! {
+    use loadstone_lib::devices::boot_manager;
+    let app = boot_manager::BootManager::new();
+    app.run();
+}
+
 #[cfg(all(target_arch = "arm", feature = "wgm160p"))]
 #[entry]
 fn main() -> ! {
