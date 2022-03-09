@@ -99,7 +99,7 @@ impl Port {
             }),
             Port::Stm32F446 => Some(LinkerScriptConstants {
                 flash: LinkerArea { origin: 0x08000000, size: KB!(1024) },
-                ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
+                ram: LinkerArea { origin: 0x20000000, size: KB!(112) },
             }),
             Port::Wgm160P => Some(LinkerScriptConstants {
                 flash: LinkerArea { origin: 0x00000000, size: KB!(1024) },
