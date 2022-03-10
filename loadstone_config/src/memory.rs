@@ -108,7 +108,7 @@ pub fn internal_flash(port: &Port) -> FlashChip {
             name: "STM32F446 MCU Flash".to_owned(),
             internal: true,
             start: 0x0800_0000,
-            end: 0x0820_0000,
+            end: 0x0808_0000,
             region_size: KB!(16),
         },
         Port::Wgm160P => FlashChip {
