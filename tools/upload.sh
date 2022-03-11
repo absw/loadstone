@@ -5,5 +5,5 @@ if [ "$#" -ne 2 ]; then
    exit 1
 fi
 
-stty -F $2 115200 cs8 -parenb -cstopb -ixoff
-sx $1 < $2 > $2
+stty -F "$2" 115200 cs8 -parenb -cstopb -ixoff
+sx "$1" < "$2" > "$2"
