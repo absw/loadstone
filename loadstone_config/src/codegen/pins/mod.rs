@@ -1,11 +1,27 @@
-use crate::{port, Configuration};
+use crate::{port, Configuration, pins::QspiPins};
 use anyhow::Result;
-use quote::quote;
+use quote::{format_ident, quote};
+use syn::{Ident, Index};
 use std::{
     fs::{File, OpenOptions},
     io::Write,
     path::Path,
+    iter::empty,
 };
+
+struct SerialPinTokens {
+    bank: char,
+    index: Index,
+    mode: Ident,
+    direction: Ident,
+    peripheral: Ident,
+}
+struct QspiFlashPinTokens {
+    bank: char,
+    index: Index,
+    mode: Ident,
+    earmark: Ident,
+}
 
 use super::prettify_file;
 mod stm32;
@@ -38,8 +54,19 @@ fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<(
 
 fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()> {
     let code = if configuration.memory_configuration.external_flash.is_some() {
+        let qspi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
+            format_ident!("P{}{}", p.bank, p.index)
+        });
+
+        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
+            p.mode
+        });
+
         quote! {
-            pub use blue_hal::drivers::is25lp128f::Is25Lp128F as ExternalFlash;
+            use blue_hal::drivers::{is25lp128f::Is25Lp128F, max3263::gpio::*};
+            pub type QspiPins = (#(#qspi_pins<#qspi_modes>,)*);
+            pub type Qspi = blue_hal::drivers::max3263::qspi::Qspi<QspiPins>;
+            pub type ExternalFlash = Is25Lp128F<Qspi>;
         }
     } else {
         quote! {
@@ -49,4 +76,54 @@ fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()
 
     file.write_all(format!("{}", code).as_bytes())?;
     Ok(())
+}
+
+fn qspi_flash_pin_tokens(
+    configuration: &Configuration,
+) -> Box<dyn Iterator<Item = QspiFlashPinTokens>> {
+    if configuration.memory_configuration.external_flash.is_none() {
+        return Box::new(empty());
+    }
+
+    let pins = configuration.memory_configuration.external_memory_map.pins.clone()
+        .unwrap_or_else(|| QspiPins::create(configuration.port));
+
+    Box::new(IntoIterator::into_iter([
+        QspiFlashPinTokens {
+            bank: pins.clk.bank.chars().next().unwrap(),
+            index: (pins.clk.index as usize).into(),
+            mode: format_ident!("AF{}", pins.clk.af_index),
+            earmark: format_ident!("QspiClk"),
+        },
+        QspiFlashPinTokens {
+            bank: pins.bk1_cs.bank.chars().next().unwrap(),
+            index: (pins.bk1_cs.index as usize).into(),
+            mode: format_ident!("AF{}", pins.bk1_cs.af_index),
+            earmark: format_ident!("QspiChipSelect"),
+        },
+        QspiFlashPinTokens {
+            bank: pins.bk1_io0.bank.chars().next().unwrap(),
+            index: (pins.bk1_io0.index as usize).into(),
+            mode: format_ident!("AF{}", pins.bk1_io0.af_index),
+            earmark: format_ident!("QspiOutput"),
+        },
+        QspiFlashPinTokens {
+            bank: pins.bk1_io1.bank.chars().next().unwrap(),
+            index: (pins.bk1_io1.index as usize).into(),
+            mode: format_ident!("AF{}", pins.bk1_io1.af_index),
+            earmark: format_ident!("QspiInput"),
+        },
+        QspiFlashPinTokens {
+            bank: pins.bk1_io2.bank.chars().next().unwrap(),
+            index: (pins.bk1_io2.index as usize).into(),
+            mode: format_ident!("AF{}", pins.bk1_io2.af_index),
+            earmark: format_ident!("QspiSecondaryOutput"),
+        },
+        QspiFlashPinTokens {
+            bank: pins.bk1_io3.bank.chars().next().unwrap(),
+            index: (pins.bk1_io3.index as usize).into(),
+            mode: format_ident!("AF{}", pins.bk1_io3.af_index),
+            earmark: format_ident!("QspiSecondaryInput"),
+        },
+    ]))
 }

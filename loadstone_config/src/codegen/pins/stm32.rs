@@ -1,24 +1,10 @@
 use anyhow::Result;
 use itertools::Itertools;
 use quote::{TokenStreamExt, format_ident, quote};
-use std::{fs::File, io::Write, iter::empty};
-use syn::{Ident, Index};
+use std::{fs::File, io::Write};
+use super::*;
 
-use crate::{Configuration, features::Serial, pins::QspiPins};
-
-struct SerialPinTokens {
-    bank: char,
-    index: Index,
-    mode: Ident,
-    direction: Ident,
-    peripheral: Ident,
-}
-struct QspiFlashPinTokens {
-    bank: char,
-    index: Index,
-    mode: Ident,
-    earmark: Ident,
-}
+use crate::{Configuration, features::Serial};
 
 pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> Result<()> {
     let mut code = quote! {
@@ -195,54 +181,4 @@ fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = Seria
     } else {
         Box::new(None.into_iter())
     }
-}
-
-fn qspi_flash_pin_tokens(
-    configuration: &Configuration,
-) -> Box<dyn Iterator<Item = QspiFlashPinTokens>> {
-    if configuration.memory_configuration.external_flash.is_none() {
-        return Box::new(empty());
-    }
-
-    let pins = configuration.memory_configuration.external_memory_map.pins.clone()
-        .unwrap_or_else(|| QspiPins::create(configuration.port));
-
-    Box::new(IntoIterator::into_iter([
-        QspiFlashPinTokens {
-            bank: pins.clk.bank.chars().next().unwrap(),
-            index: (pins.clk.index as usize).into(),
-            mode: format_ident!("AF{}", pins.clk.af_index),
-            earmark: format_ident!("QspiClk"),
-        },
-        QspiFlashPinTokens {
-            bank: pins.bk1_cs.bank.chars().next().unwrap(),
-            index: (pins.bk1_cs.index as usize).into(),
-            mode: format_ident!("AF{}", pins.bk1_cs.af_index),
-            earmark: format_ident!("QspiChipSelect"),
-        },
-        QspiFlashPinTokens {
-            bank: pins.bk1_io0.bank.chars().next().unwrap(),
-            index: (pins.bk1_io0.index as usize).into(),
-            mode: format_ident!("AF{}", pins.bk1_io0.af_index),
-            earmark: format_ident!("QspiOutput"),
-        },
-        QspiFlashPinTokens {
-            bank: pins.bk1_io1.bank.chars().next().unwrap(),
-            index: (pins.bk1_io1.index as usize).into(),
-            mode: format_ident!("AF{}", pins.bk1_io1.af_index),
-            earmark: format_ident!("QspiInput"),
-        },
-        QspiFlashPinTokens {
-            bank: pins.bk1_io2.bank.chars().next().unwrap(),
-            index: (pins.bk1_io2.index as usize).into(),
-            mode: format_ident!("AF{}", pins.bk1_io2.af_index),
-            earmark: format_ident!("QspiSecondaryOutput"),
-        },
-        QspiFlashPinTokens {
-            bank: pins.bk1_io3.bank.chars().next().unwrap(),
-            index: (pins.bk1_io3.index as usize).into(),
-            mode: format_ident!("AF{}", pins.bk1_io3.af_index),
-            earmark: format_ident!("QspiSecondaryInput"),
-        },
-    ]))
 }
