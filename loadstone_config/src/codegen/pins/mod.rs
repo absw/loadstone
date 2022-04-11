@@ -36,10 +36,17 @@ fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<(
     Ok(())
 }
 
-fn generate_max3263(_configuration: &Configuration, file: &mut File) -> Result<()> {
-    let code = quote! {
-        pub use blue_hal::hal::null::NullFlash as ExternalFlash;
+fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()> {
+    let code = if configuration.memory_configuration.external_flash.is_some() {
+        quote! {
+            pub use blue_hal::drivers::is25lp128f::Is25Lp128F as ExternalFlash;
+        }
+    } else {
+        quote! {
+            pub use blue_hal::hal::null::NullFlash as ExternalFlash;
+        }
     };
+
     file.write_all(format!("{}", code).as_bytes())?;
     Ok(())
 }

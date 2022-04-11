@@ -134,6 +134,13 @@ pub fn external_flash(port: &Port) -> impl Iterator<Item = FlashChip> {
         })
         .into_iter(),
         Port::Wgm160P => None.into_iter(),
-        Port::Max32631 => None.into_iter(),
+        Port::Max32631 => Some(FlashChip {
+            name: "IS25LP128F".to_owned(),
+            internal: false,
+            start: 0x0000_0000,
+            end: 0x00FF_FFFF,
+            region_size: KB!(4),
+        })
+        .into_iter(),
     }
 }

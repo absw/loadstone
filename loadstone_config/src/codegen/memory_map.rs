@@ -59,6 +59,12 @@ fn generate_imports(memory_configuration: &MemoryConfiguration, port: &Port) -> 
                 .map(|f| format_ident!("{}", f))
                 .collect()
         }
+        Some(external_flash) if external_flash.name.to_lowercase().contains("is25lp128f") => {
+            ["blue_hal", "drivers", "is25lp128f", "Address"]
+                .iter()
+                .map(|f| format_ident!("{}", f))
+                .collect()
+        }
         None if *port == Port::Stm32F412 => ["blue_hal", "hal", "null", "NullAddress"]
             .iter()
             .map(|f| format_ident!("{}", f))
