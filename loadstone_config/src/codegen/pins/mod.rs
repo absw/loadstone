@@ -54,18 +54,21 @@ fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<(
 
 fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()> {
     let code = if configuration.memory_configuration.external_flash.is_some() {
+        // NOTE: Since the IS25LP218F external flash communicated over 4-wire SPI, the underlying
+        // SPI driver only expects 4 pin types, but the configuration provides 6. We can just
+        // ignore the final two pins (IO2, IO3).
+
         let spi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
             format_ident!("P{}{}", p.bank, p.index)
-        });
+        }).take(4);
 
         let spi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
             p.mode
-        });
+        }).take(4);
 
         quote! {
             use blue_hal::drivers::{is25lp128f::Is25Lp128F, max3263::gpio::*};
-            pub type SpiPins = (#(#spi_pins<#spi_modes>,)*);
-            pub type Spi = blue_hal::drivers::max3263::spi::Spi<SpiPins>;
+            pub type Spi = blue_hal::drivers::max3263::spi::Spi<#(#spi_pins<#spi_modes>,)*>;
             pub type ExternalFlash = Is25Lp128F<Spi>;
         }
     } else {
