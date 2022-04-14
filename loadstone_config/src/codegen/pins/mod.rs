@@ -54,19 +54,19 @@ fn generate_efm32gg(_configuration: &Configuration, file: &mut File) -> Result<(
 
 fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()> {
     let code = if configuration.memory_configuration.external_flash.is_some() {
-        let qspi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
+        let spi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
             format_ident!("P{}{}", p.bank, p.index)
         });
 
-        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
+        let spi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
             p.mode
         });
 
         quote! {
             use blue_hal::drivers::{is25lp128f::Is25Lp128F, max3263::gpio::*};
-            pub type QspiPins = (#(#qspi_pins<#qspi_modes>,)*);
-            pub type Qspi = blue_hal::drivers::max3263::qspi::Qspi<QspiPins>;
-            pub type ExternalFlash = Is25Lp128F<Qspi>;
+            pub type SpiPins = (#(#spi_pins<#spi_modes>,)*);
+            pub type Spi = blue_hal::drivers::max3263::spi::Spi<SpiPins>;
+            pub type ExternalFlash = Is25Lp128F<Spi>;
         }
     } else {
         quote! {
