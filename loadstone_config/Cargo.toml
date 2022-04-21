@@ -16,6 +16,7 @@ anyhow = "1.0.*"
 tightness = "1.0.*"
 enum-iterator = "0.6.*"
 itertools = "0.10.*"
+proc-macro2 = "1.0.37"
 
 [dependencies.ecdsa]
 version = "0.11"
