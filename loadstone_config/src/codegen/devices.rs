@@ -86,7 +86,7 @@ fn generate_flash_max32(config: &Configuration, code: &mut TokenStream) -> Resul
                 clkman: &mut max32pac::CLKMAN,
                 (clock, chip_select, mosi, miso): FlashPins,
             ) -> Option<ExternalFlash> {
-                let spi = Spi::new(spim, clkman, clock, chip_select, mosi, miso);
+                let spi = Spi::new(spim, clkman, clock, chip_select, mosi, miso).unwrap();
                 let external_flash = ExternalFlash::new(spi);
                 Some(external_flash)
             }
