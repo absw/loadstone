@@ -71,16 +71,20 @@ fn generate_max3263(configuration: &Configuration, file: &mut File) -> Result<()
                 is25lp128f::Is25Lp128F,
                 max3263::gpio::*,
             };
+            pub type FlashPins = ( #(#spi_pins<#spi_modes>,)* );
             pub type Spi = blue_hal::drivers::max3263::spi::Spi<#(#spi_pins<#spi_modes>,)*>;
             pub type ExternalFlash = Is25Lp128F<Spi>;
 
-            pub fn pins() -> (#(#spi_pins<#spi_modes>,)*) {
+            pub fn pins() -> FlashPins {
                 todo!()
             }
         }
     } else {
         quote! {
             pub use blue_hal::hal::null::NullFlash as ExternalFlash;
+            pub type FlashPins = ();
+
+            pub fn pins() -> FlashPins { () }
         }
     };
 

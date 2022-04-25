@@ -54,15 +54,12 @@ impl Bootloader<ExternalFlash, Flash, NullSerial, NullSystick, ImageReader, Null
 
         peripherals.ICC.ctrl_stat.write(|w| w.enable().set_bit());
 
-        let (spi_clock, spi_select, spi_miso, spi_mosi) = pin_configuration::pins();
+        let flash_pins = pin_configuration::pins();
 
         let optional_external_flash = devices::construct_flash(
             peripherals.SPIM1,
             &mut peripherals.CLKMAN,
-            spi_clock,
-            spi_select,
-            spi_miso,
-            spi_mosi,
+            flash_pins,
         );
 
         let mcu_flash = Flash::new(peripherals.FLC);
