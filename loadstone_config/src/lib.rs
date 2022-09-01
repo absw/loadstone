@@ -7,7 +7,6 @@
 //! (things like feature flags, memory map configuration, etc).
 
 #![feature(stmt_expr_attributes)]
-#![feature(bool_to_option)]
 
 use std::fmt::Display;
 

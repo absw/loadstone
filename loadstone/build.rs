@@ -1,5 +1,3 @@
-#![feature(bool_to_option)]
-
 use anyhow::Result;
 use loadstone_config::{codegen::generate_modules, security::SecurityMode, Configuration};
 use std::fs;

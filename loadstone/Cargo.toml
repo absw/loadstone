@@ -1,0 +1,123 @@
+[package]
+edition = "2021"
+name = "loadstone"
+version = "1.1.0"
+default-run = "loadstone"
+license = "MIT"
+description = "Portable secure bootloader for Cortex-M MCUs"
+repository = "https://github.com/absw/loadstone"
+readme = "README.md"
+keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
+categories = ["embedded", "no-std"]
+exclude = ["docker/*", "docs/*", "documentation/*", "svd/*"]
+
+[features]
+default = [
+   "defmt-default",
+]
+
+# The features below reflect the hierarchy of stm32 families.
+# Choosing a f4 family implies f4, which implies stm32, which
+# implies cortex M...
+stm32f429 = ["blue_hal/stm32f429", "stm32f4_any"]
+stm32f469 = ["blue_hal/stm32f469", "stm32f4_any"]
+stm32f407 = ["blue_hal/stm32f407", "stm32f4_any"]
+stm32f412 = ["blue_hal/stm32f412", "stm32f4_any"]
+stm32f4_any = ["blue_hal/stm32_any", "stm32_any"]
+stm32_any = ["cortex_m_any"]
+
+efm32gg11b_any = ["cortex_m_any"]
+wgm160p = ["blue_hal/wgm160p", "efm32gg11b_any"]
+
+max32631 = ["blue_hal/max32631", "max3263_any"]
+max3263_any = ["blue_hal/max3263_any", "max32_any"]
+max32_any = ["cortex_m_any"]
+
+cortex_m_any = []
+
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []
+
+ecdsa-verify = ["ecdsa", "p256"]
+# Bases the binary address space on the first bootable
+# bank rather than the first valid Flash address of the
+# target board. This is mainly useful for the demo app,
+# which is generally booted by loadstone.
+relocate-to-bootable-bank = []
+
+[dependencies]
+cortex-m = "0.6.0"
+cortex-m-rt = "0.6.10"
+cortex-m-semihosting = "0.3.3"
+nb = "0.1.*"
+panic-semihosting = "0.5.*"
+static_assertions = "1.1.*"
+defmt = "0.2"
+defmt-rtt = "0.2"
+alloc-cortex-m = "0.4.1"
+marker-blanket = "0.1.*"
+
+[dependencies.funty]
+version = "=1.1.0"
+default-features = false
+
+[dependencies.crc]
+version = "1.8.1"
+default-features = false
+
+[dependencies.ecdsa]
+version = "0.11"
+default-features = false
+features = ["pem"]
+optional = true
+
+[dependencies.sha2]
+version = "0.9.5"
+default-features = false
+
+[dependencies.p256]
+version = "0.8.*"
+default-features = false
+features = ["ecdsa", "sha256", "pem"]
+optional = true
+
+[dependencies.blue_hal]
+version = "1.0.0"
+
+[dependencies.ufmt]
+version = "0.1.*"
+default-features = false
+
+[lib]
+name = "loadstone_lib"
+test = true
+bench = false
+
+[[bin]]
+name = "loadstone"
+test = true
+bench = false
+
+[profile.release]
+opt-level = "z"
+codegen-units = 1 # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash
+lto = true # better optimizations
+
+[profile.dev]
+opt-level = 1 # Some optimization not to tank the binary size
+codegen-units = 1 # better optimizations
+lto = true # better optimizations
+
+[build-dependencies]
+anyhow = "1.0.*"
+ron = "0.6.*"
+serde = "1.0.*"
+
+[build-dependencies.loadstone_config]
+path = "../loadstone_config"
+version = "1.0.0"
