@@ -6,8 +6,6 @@
 //! uses this dependency to help generate the code that Loadstone includes
 //! (things like feature flags, memory map configuration, etc).
 
-#![feature(stmt_expr_attributes)]
-
 use std::fmt::Display;
 
 use features::{BootMetrics, FeatureConfiguration, Serial};
@@ -63,7 +61,6 @@ impl Configuration {
 
     /// Missing configuration steps to have enough information to generate a loadstone binary.
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
-        #[rustfmt::skip]
         IntoIterator::into_iter([
             self.memory_configuration.internal_memory_map.bootable_index.is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),

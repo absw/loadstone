@@ -1,7 +1,5 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
-#![feature(bool_to_option)]
-#![feature(stmt_expr_attributes)]
 #![warn(clippy::all, rust_2018_idioms)]
 
 mod app;
