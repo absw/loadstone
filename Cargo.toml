@@ -3,4 +3,6 @@ members = [
     "loadstone",
     "loadstone_config",
     "loadstone_front",
+    "tools/confedit",
+    "tools/signing_tool",
 ]
