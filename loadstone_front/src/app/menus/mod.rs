@@ -45,8 +45,11 @@ pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics,
     ui.indent(0, |ui| {
         ui.horizontal_wrapped(|ui| {
             let mut dummy = false;
-            let timing_box =
-                if let BootMetrics::Enabled { timing } = boot_metrics { timing } else { &mut dummy };
+            let timing_box = if let BootMetrics::Enabled { timing } = boot_metrics {
+                timing
+            } else {
+                &mut dummy
+            };
             ui.set_enabled(BootMetrics::timing_supported(port) && metrics_box);
             ui.checkbox(timing_box, "Timing Metrics");
             ui.label("Include boot timing as part of the boot metrics.");
@@ -60,11 +63,7 @@ pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics,
 pub fn configure_custom_greetings(ui: &mut egui::Ui, greetings: &mut Greetings) {
     let mut greetings_box = matches!(greetings, Greetings::Custom { .. });
     let loadstone_with_version = || {
-        format!(
-            "-- Loadstone [{}-{}] --",
-            env!("CARGO_PKG_VERSION"),
-            git_version::git_version!()
-        )
+        format!("-- Loadstone [{}-{}] --", env!("CARGO_PKG_VERSION"), git_version::git_version!())
     };
     let demo_with_version = || {
         format!(
@@ -109,7 +108,7 @@ mod colours {
         if ui.visuals().dark_mode {
             Color32::from_rgb(0xbd, 0x19, 0x19)
         } else {
-            Color32::from_rgb(0xf8, 0x19,0x19)
+            Color32::from_rgb(0xf8, 0x19, 0x19)
         }
     }
 

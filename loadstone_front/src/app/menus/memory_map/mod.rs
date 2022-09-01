@@ -2,9 +2,14 @@ use std::cmp::{self, max};
 
 use crate::app::menus::memory_map::normalize::normalize;
 
-use eframe::egui::{self, Button, Label, Slider};
-use loadstone_config::{KB, memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap}, pins::{PeripheralPin, QspiPins, qspi}, port::Port};
 use super::colours;
+use eframe::egui::{self, Button, Label, Slider};
+use loadstone_config::{
+    memory::{self, Bank, ExternalMemoryMap, FlashChip, InternalMemoryMap},
+    pins::{qspi, PeripheralPin, QspiPins},
+    port::Port,
+    KB,
+};
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
 static GOLDEN_TOOLTIP: &'static str =
@@ -37,9 +42,7 @@ pub fn configure_memory_map(
 
     ui.horizontal_wrapped(|ui| {
         ui.add(Label::new("Internal flash chip: ").heading());
-        ui.add(
-            Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)),
-        );
+        ui.add(Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)));
     });
 
     ui.indent(0, |ui| {
@@ -50,7 +53,13 @@ pub fn configure_memory_map(
         });
         ui.label("Banks");
         ui.indent(0, |ui| {
-            configure_internal_banks(ui, internal_memory_map, external_memory_map, &internal_flash, golden_index);
+            configure_internal_banks(
+                ui,
+                internal_memory_map,
+                external_memory_map,
+                &internal_flash,
+                golden_index,
+            );
         });
     });
 
@@ -58,16 +67,16 @@ pub fn configure_memory_map(
         ui.set_enabled(memory::external_flash(port).count() > 0);
         ui.add(Label::new("External flash chip:").heading());
         egui::ComboBox::from_id_source("external_flash_chip")
-        .selected_text(match external_flash {
-            Some(map) => &map.name,
-            None => "Select external flash (optional)",
-        })
-        .show_ui(ui, |ui| {
-            ui.selectable_value(external_flash, None, "None");
-            for chip in memory::external_flash(port) {
-                ui.selectable_value(external_flash, Some(chip.clone()), chip.name);
-            }
-        });
+            .selected_text(match external_flash {
+                Some(map) => &map.name,
+                None => "Select external flash (optional)",
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(external_flash, None, "None");
+                for chip in memory::external_flash(port) {
+                    ui.selectable_value(external_flash, Some(chip.clone()), chip.name);
+                }
+            });
     });
 
     if let Some(external_flash) = external_flash {
@@ -224,11 +233,11 @@ fn configure_external_banks(
         match (pins_box, &pins) {
             (true, None) => {
                 *pins = Some(QspiPins::create(port));
-            },
+            }
             (false, Some(_)) => {
                 *pins = None;
-            },
-            _ => { },
+            }
+            _ => {}
         };
     });
 
@@ -262,12 +271,21 @@ fn configure_external_banks(
             external_banks.remove(to_delete);
         }
 
-        let bank_start_address =
-            external_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(external_flash.start);
+        let bank_start_address = external_memory_map
+            .banks
+            .last()
+            .map(|b| b.end_address())
+            .unwrap_or(external_flash.start);
         let enough_space = bank_start_address + external_flash.region_size < external_flash.end;
         ui.set_enabled(enough_space);
         ui.horizontal_wrapped(|ui| {
-            add_external_bank(ui, external_memory_map, bank_start_address, external_flash, max_bank_count);
+            add_external_bank(
+                ui,
+                external_memory_map,
+                bank_start_address,
+                external_flash,
+                max_bank_count,
+            );
         });
     });
 }
@@ -428,27 +446,28 @@ fn configure_qpsi_pins(ui: &mut egui::Ui, port: Port, pins: &mut QspiPins) {
         &mut pins.bk1_io3,
     ];
 
-    let names = [
-        "clk",
-        "bk1_cs",
-        "bk1_io0",
-        "bk1_io1",
-        "bk1_io2",
-        "bk1_io3",
-    ];
+    let names = ["clk", "bk1_cs", "bk1_io0", "bk1_io1", "bk1_io2", "bk1_io3"];
 
     for i in 0..6usize {
-        let alternatives: Vec<PeripheralPin> = alternatives.remove(0).filter(|p| {
-            for o in &old_pins {
-                if *o == *p { return false; }
-            }
-            true
-        }).collect();
+        let alternatives: Vec<PeripheralPin> = alternatives
+            .remove(0)
+            .filter(|p| {
+                for o in &old_pins {
+                    if *o == *p {
+                        return false;
+                    }
+                }
+                true
+            })
+            .collect();
 
-        egui::ComboBox::from_label(names[i]).selected_text(new_pins[i].to_string()).show_ui(ui, |ui| {
-            for alternative in alternatives {
-                ui.selectable_value(new_pins[i], alternative.clone(), alternative);
-            }
-        });
+        egui::ComboBox::from_label(names[i]).selected_text(new_pins[i].to_string()).show_ui(
+            ui,
+            |ui| {
+                for alternative in alternatives {
+                    ui.selectable_value(new_pins[i], alternative.clone(), alternative);
+                }
+            },
+        );
     }
 }

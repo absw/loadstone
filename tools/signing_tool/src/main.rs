@@ -58,9 +58,11 @@ fn main() -> Result<(), String> {
         matches.occurrences_of("golden") > 0,
     ) {
         Ok(written_size) => {
-            println!("Successfully appended {} to image ({} bytes).", if
-                     private_key_filename.is_some() { "signature " } else { "CRC" },
-                     written_size);
+            println!(
+                "Successfully appended {} to image ({} bytes).",
+                if private_key_filename.is_some() { "signature " } else { "CRC" },
+                written_size
+            );
             Ok(())
         }
         Err(e) => Err(e.to_string()),

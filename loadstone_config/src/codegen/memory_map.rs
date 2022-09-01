@@ -47,7 +47,10 @@ fn validate_bank_count(configuration: &MemoryConfiguration) -> Result<()> {
         Ok(())
     } else {
         Err(anyhow::format_err!(
-            "A bank count greater than {} is not supported (found {}).", u8::MAX, count))
+            "A bank count greater than {} is not supported (found {}).",
+            u8::MAX,
+            count
+        ))
     }
 }
 
@@ -105,8 +108,9 @@ fn generate_external_banks(
     let bootable = vec![false; number_of_external_banks];
     let location: Vec<u32> = map.banks.iter().map(|b| b.start_address).collect();
     let size: Vec<usize> = map.banks.iter().map(|b| (b.size_kb * 1024) as usize).collect();
-    let golden: Vec<bool> =
-        (0..number_of_external_banks).map(|i| Some((i + base_index).saturating_sub(1)) == golden_index).collect();
+    let golden: Vec<bool> = (0..number_of_external_banks)
+        .map(|i| Some((i + base_index).saturating_sub(1)) == golden_index)
+        .collect();
 
     let code = quote! {
         const NUMBER_OF_EXTERNAL_BANKS: usize = #number_of_external_banks;

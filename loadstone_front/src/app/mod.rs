@@ -6,10 +6,13 @@ use self::menus::{
 };
 
 use crate::app::menus::{
-    generate, update_signal::configure_update_signal,
-    serial::configure_serial, configure_custom_greetings
+    configure_custom_greetings, generate, serial::configure_serial,
+    update_signal::configure_update_signal,
 };
-use eframe::{egui::{self, ScrollArea, TextStyle, mutex::Mutex}, epi};
+use eframe::{
+    egui::{self, mutex::Mutex, ScrollArea, TextStyle},
+    epi,
+};
 const GIT_VERSION: &str = git_version::git_version!();
 
 use loadstone_config::{features::Serial, pins, Configuration};
@@ -96,61 +99,75 @@ impl epi::App for LoadstoneApp {
                 ui.separator();
                 select_port(ui, &mut configuration.port);
                 ui.separator();
-                egui::CollapsingHeader::new("Features").text_style(TextStyle::Heading).show(ui, |ui| {
-                    ui.label("Greyed out features are unsupported in the current configuration.");
-                    ui.set_enabled(
-                        Serial::supported(&mut configuration.port)
-                            && pins::serial_tx(&mut configuration.port).count() > 0
-                            && pins::serial_rx(&mut configuration.port).count() > 0,
-                    );
-                    configure_serial(
-                        ui,
-                        &mut &mut configuration.feature_configuration.serial,
-                        &mut configuration.port,
-                    );
-                    configure_boot_metrics(
-                        ui,
-                        &mut configuration.feature_configuration.boot_metrics,
-                        &mut configuration.port,
-                    );
-                    configure_custom_greetings(
-                        ui,
-                        &mut configuration.feature_configuration.greetings,
-                    );
-                    configure_update_signal(
-                        ui,
-                        &mut configuration.feature_configuration.update_signal,
-                    );
-                });
-                egui::CollapsingHeader::new("Memory map").text_style(TextStyle::Heading).show(ui, |ui| {
-                    configure_memory_map(
-                        ui,
-                        &mut configuration.memory_configuration.internal_memory_map,
-                        &mut configuration.memory_configuration.external_memory_map,
-                        &mut configuration.memory_configuration.external_flash,
-                        &mut configuration.memory_configuration.golden_index,
-                        &configuration.port,
-                    );
-                });
-                egui::CollapsingHeader::new("Security").text_style(TextStyle::Heading).show(ui, |ui| {
-                    configure_security(
-                        ui,
-                        &mut configuration.security_configuration.security_mode,
-                        &mut configuration.security_configuration.verifying_key_raw,
-                        verifying_key_text_field,
-                    );
-                });
-                egui::CollapsingHeader::new("Generate").text_style(TextStyle::Heading).show(ui, |ui| {
-                    generate::generate(
-                        ui,
-                        frame,
-                        personal_access_token_field,
-                        git_ref_field,
-                        git_fork_field,
-                        last_request_response,
-                        &configuration,
-                    );
-                });
+                egui::CollapsingHeader::new("Features").text_style(TextStyle::Heading).show(
+                    ui,
+                    |ui| {
+                        ui.label(
+                            "Greyed out features are unsupported in the current configuration.",
+                        );
+                        ui.set_enabled(
+                            Serial::supported(&mut configuration.port)
+                                && pins::serial_tx(&mut configuration.port).count() > 0
+                                && pins::serial_rx(&mut configuration.port).count() > 0,
+                        );
+                        configure_serial(
+                            ui,
+                            &mut &mut configuration.feature_configuration.serial,
+                            &mut configuration.port,
+                        );
+                        configure_boot_metrics(
+                            ui,
+                            &mut configuration.feature_configuration.boot_metrics,
+                            &mut configuration.port,
+                        );
+                        configure_custom_greetings(
+                            ui,
+                            &mut configuration.feature_configuration.greetings,
+                        );
+                        configure_update_signal(
+                            ui,
+                            &mut configuration.feature_configuration.update_signal,
+                        );
+                    },
+                );
+                egui::CollapsingHeader::new("Memory map").text_style(TextStyle::Heading).show(
+                    ui,
+                    |ui| {
+                        configure_memory_map(
+                            ui,
+                            &mut configuration.memory_configuration.internal_memory_map,
+                            &mut configuration.memory_configuration.external_memory_map,
+                            &mut configuration.memory_configuration.external_flash,
+                            &mut configuration.memory_configuration.golden_index,
+                            &configuration.port,
+                        );
+                    },
+                );
+                egui::CollapsingHeader::new("Security").text_style(TextStyle::Heading).show(
+                    ui,
+                    |ui| {
+                        configure_security(
+                            ui,
+                            &mut configuration.security_configuration.security_mode,
+                            &mut configuration.security_configuration.verifying_key_raw,
+                            verifying_key_text_field,
+                        );
+                    },
+                );
+                egui::CollapsingHeader::new("Generate").text_style(TextStyle::Heading).show(
+                    ui,
+                    |ui| {
+                        generate::generate(
+                            ui,
+                            frame,
+                            personal_access_token_field,
+                            git_ref_field,
+                            git_fork_field,
+                            last_request_response,
+                            &configuration,
+                        );
+                    },
+                );
             });
         });
     }

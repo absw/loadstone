@@ -62,13 +62,14 @@ impl Configuration {
     /// Missing configuration steps to have enough information to generate a loadstone binary.
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
         IntoIterator::into_iter([
-            self.memory_configuration.internal_memory_map.bootable_index.is_none()
+            self.memory_configuration
+                .internal_memory_map
+                .bootable_index
+                .is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),
-
             (self.security_configuration.security_mode == SecurityMode::P256ECDSA
                 && self.security_configuration.verifying_key_raw.is_empty())
-                .then_some(RequiredConfigurationStep::PublicKey),
-
+            .then_some(RequiredConfigurationStep::PublicKey),
         ])
         .flatten()
     }
@@ -82,12 +83,12 @@ impl Configuration {
         }
 
         self.memory_configuration.internal_memory_map.banks.truncate(u8::MAX as usize);
-        let max_external_banks = (u8::MAX as usize)
-            - self.memory_configuration.internal_memory_map.banks.len();
+        let max_external_banks =
+            (u8::MAX as usize) - self.memory_configuration.internal_memory_map.banks.len();
         self.memory_configuration.external_memory_map.banks.truncate(max_external_banks);
 
         if !features::BootMetrics::timing_supported(&self.port) {
-            if let BootMetrics::Enabled{timing} = &mut self.feature_configuration.boot_metrics {
+            if let BootMetrics::Enabled { timing } = &mut self.feature_configuration.boot_metrics {
                 *timing = false
             }
         }

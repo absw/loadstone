@@ -3,11 +3,11 @@
 //! in case it's complete, gets transformed into a .ron file
 //! to be sent to GithubActions or built locally.
 
+use super::colours;
 use base64::write::EncoderWriter as Base64Encoder;
 use itertools::Itertools;
 use ron::ser::PrettyConfig;
 use std::{fs::OpenOptions, io::Write, sync::Arc};
-use super::colours;
 
 use anyhow::Result;
 use loadstone_config::Configuration;
@@ -117,8 +117,15 @@ fn generate_in_ci(
         if ui.button("Trigger Build").clicked() {
             let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
                 .unwrap_or("Invalid Configuration Supplied".into());
-            generate_web(&configuration, &personal_access_token_field, &git_ref_field, &git_fork_field, &ron, last_request_response)
-                .unwrap();
+            generate_web(
+                &configuration,
+                &personal_access_token_field,
+                &git_ref_field,
+                &git_fork_field,
+                &ron,
+                last_request_response,
+            )
+            .unwrap();
             personal_access_token_field.clear();
         }
     });

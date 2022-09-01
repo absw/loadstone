@@ -1,10 +1,10 @@
 use anyhow::Result;
 use itertools::Itertools;
-use quote::{TokenStreamExt, format_ident, quote};
+use quote::{format_ident, quote, TokenStreamExt};
 use std::{fs::File, io::Write, iter::empty};
 use syn::{Ident, Index};
 
-use crate::{Configuration, features::Serial, pins::QspiPins};
+use crate::{features::Serial, pins::QspiPins, Configuration};
 
 struct SerialPinTokens {
     bank: char,
@@ -64,13 +64,11 @@ fn generate_pin_constructor(
             Box::new(None.into_iter())
         };
 
-    let qspi_pin_structs = qspi_flash_pin_tokens(configuration).map(|p| {
-        format_ident!("gpio{}", p.bank)
-    });
+    let qspi_pin_structs =
+        qspi_flash_pin_tokens(configuration).map(|p| format_ident!("gpio{}", p.bank));
 
-    let qspi_pin_fields = qspi_flash_pin_tokens(configuration).map(|p| {
-        format_ident!("p{}{}", p.bank, p.index)
-    });
+    let qspi_pin_fields =
+        qspi_flash_pin_tokens(configuration).map(|p| format_ident!("p{}{}", p.bank, p.index));
 
     code.append_all(quote! {
         #[allow(unused)]
@@ -113,13 +111,10 @@ fn generate_imports_and_types(
         });
     }
     if let Some(_) = &configuration.memory_configuration.external_flash {
-        let qspi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
-            format_ident!("P{}{}", p.bank, p.index)
-        });
+        let qspi_pins =
+            qspi_flash_pin_tokens(configuration).map(|p| format_ident!("P{}{}", p.bank, p.index));
 
-        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
-            p.mode
-        });
+        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| p.mode);
 
         code.append_all(quote! {
             use blue_hal::drivers::micron::n25q128a_flash::MicronN25q128a;
@@ -204,7 +199,11 @@ fn qspi_flash_pin_tokens(
         return Box::new(empty());
     }
 
-    let pins = configuration.memory_configuration.external_memory_map.pins.clone()
+    let pins = configuration
+        .memory_configuration
+        .external_memory_map
+        .pins
+        .clone()
         .unwrap_or_else(|| QspiPins::create(configuration.port));
 
     Box::new(IntoIterator::into_iter([

@@ -1,8 +1,8 @@
+use super::colours;
 use eframe::egui::{self, Button};
 use loadstone_config::security::SecurityMode;
 use p256::ecdsa::VerifyingKey;
 use std::str::FromStr;
-use super::colours;
 
 /// Renders the menu to configure security options (at the moment,
 /// `CRC` and `ECDSA` image verification.
@@ -33,7 +33,10 @@ pub fn configure_security(
             if !verifying_key_raw.is_empty() {
                 ui.horizontal_wrapped(|ui| {
                     ui.colored_label(colours::success(ui), "\u{1F5DD} Valid Key Supplied");
-                    if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
+                    if ui
+                        .add(Button::new("Delete").text_color(colours::error(ui)).small())
+                        .clicked()
+                    {
                         verifying_key_raw.clear();
                     };
                 });
