@@ -861,7 +861,7 @@ dependencies = [
 [[package]]
 name = "eframe"
 version = "0.13.1"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "egui",
  "egui_glium",
@@ -872,7 +872,7 @@ dependencies = [
 [[package]]
 name = "egui"
 version = "0.13.1"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "epaint",
  "ron",
@@ -882,7 +882,7 @@ dependencies = [
 [[package]]
 name = "egui_glium"
 version = "0.13.1"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "copypasta",
  "directories-next",
@@ -898,7 +898,7 @@ dependencies = [
 [[package]]
 name = "egui_web"
 version = "0.13.0"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "egui",
  "epi",
@@ -935,7 +935,7 @@ dependencies = [
 [[package]]
 name = "emath"
 version = "0.13.0"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "serde",
 ]
@@ -982,7 +982,7 @@ dependencies = [
 [[package]]
 name = "epaint"
 version = "0.13.0"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "ab_glyph",
  "ahash",
@@ -995,7 +995,7 @@ dependencies = [
 [[package]]
 name = "epi"
 version = "0.13.0"
-source = "git+https://github.com/emilk/egui.git#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+source = "git+https://github.com/emilk/egui.git?rev=7c5a2d60c5d000f193bc7b16c5a53c059fee8259#7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 dependencies = [
  "egui",
  "ron",

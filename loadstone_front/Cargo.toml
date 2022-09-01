@@ -29,6 +29,7 @@ sha2 = "0.9"
 [dependencies.eframe]
 # Gives us egui, epi and web+native backends
 git = "https://github.com/emilk/egui.git"
+rev = "7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
 features = ["http"]
 
 [dependencies.serde]
