@@ -9,6 +9,7 @@ clap = "2"
 base64 = "0.13"
 crc = "1.8"
 sha2 = "0.9"
+blue_hal = "1"
 
 [dependencies.ecdsa]
 version = "0.11"
@@ -17,7 +18,3 @@ features = ["pem"]
 [dependencies.p256]
 version = "0.8"
 features = ["ecdsa", "sha256", "pem"]
-
-[dependencies.blue_hal]
-git = "ssh://git@github.com/absw/blue_hal.git"
-branch = "main"
