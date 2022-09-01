@@ -47,6 +47,3 @@ features = ["ecdsa", "sha256", "pem"]
 default = []
 http = ["eframe/http"] # Enable if you want to do http requests
 persistence = ["eframe/persistence"] # Enable if you want to persist app state on shutdown
-
-[profile.release]
-opt-level = 2 # fast and small wasm

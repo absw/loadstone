@@ -6,3 +6,14 @@ members = [
     "tools/confedit",
     "tools/signing_tool",
 ]
+
+[profile.release]
+opt-level = "z"
+codegen-units = 1
+debug = true
+lto = true
+
+[profile.dev]
+opt-level = 1
+codegen-units = 1
+lto = true
