@@ -5,6 +5,6 @@ edition = "2018"
 
 [dependencies]
 loadstone_config = { path = "../../loadstone_config" }
-ron = "*"
-serde = "*"
+ron = "0.6"
+serde = "1"
 clap = "2"

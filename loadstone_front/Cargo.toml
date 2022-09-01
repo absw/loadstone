@@ -9,38 +9,50 @@ readme = "README.md"
 keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
 categories = ["embedded", "no-std"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-eframe = { git = "https://github.com/emilk/egui.git", features = ["http"] } # Gives us egui, epi and web+native backends
-anyhow = "*"
-itertools = "*"
-serde = { version = "1.0", features = ["derive"] }
-wasm-bindgen = { version = "*", features = ["serde-serialize"] }
-web-sys = { version = "*", features = ["Blob", "BlobPropertyBag", "Url"] }
-wasm-bindgen-futures = "*"
-ron = "*"
-base64 = "*"
-git-version = "*"
-reqwest-wasm = "*"
-futures = "*"
 loadstone_config = { path = "../loadstone_config/" }
-atomic_refcell = "*"
-enum-iterator = "*"
-getrandom = { version = "*", features = ["js"] }
+anyhow = "1"
+itertools = "0.10"
+wasm-bindgen-futures = "0.4"
+ron = "0.6"
+base64 = "0.13"
+git-version = "0.3"
+reqwest-wasm = "0.11"
+futures = "0.3"
+atomic_refcell = "0.1"
+enum-iterator = "0.6"
+sha2 = "0.9"
+
+[dependencies.eframe]
+# Gives us egui, epi and web+native backends
+git = "https://github.com/emilk/egui.git"
+features = ["http"]
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+features = ["serde-serialize"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = ["Blob", "BlobPropertyBag", "Url"]
+
+[dependencies.getrandom]
+version = "0.2"
+features = ["js"]
 
 [dependencies.ecdsa]
-version = "*"
+version = "0.11"
 features = ["pem"]
 
-[dependencies.sha2]
-version = "*"
-
 [dependencies.p256]
-version = "*"
+version = "0.8"
 features = ["ecdsa", "sha256", "pem"]
 
 [features]

@@ -1,26 +1,21 @@
 [package]
 name = "signing_tool"
 version = "0.2.0"
-authors = ["Arron Speake <arron.speake@bluefruit.co.uk>"]
 edition = "2018"
 description = "Tool to calculate and append signatures to images."
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 clap = "2"
 base64 = "0.13"
-crc = "1.8.1"
+crc = "1.8"
+sha2 = "0.9"
 
 [dependencies.ecdsa]
-version = "*"
+version = "0.11"
 features = ["pem"]
 
-[dependencies.sha2]
-version = "*"
-
 [dependencies.p256]
-version = "*"
+version = "0.8"
 features = ["ecdsa", "sha256", "pem"]
 
 [dependencies.blue_hal]
