@@ -35,11 +35,17 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         {
             None => None,
             Some(UpdatePlan::None) => {
-                duprintln!(self.serial, "Update signal set to None, refusing to update.");
+                duprintln!(
+                    self.serial,
+                    "Update signal set to None, refusing to update."
+                );
                 return Some(current_image);
             }
             Some(UpdatePlan::Any) => {
-                duprintln!(self.serial, "Update signal set to Any, checking for image updates.");
+                duprintln!(
+                    self.serial,
+                    "Update signal set to Any, checking for image updates."
+                );
                 None
             }
             Some(UpdatePlan::Index(i)) => {
@@ -85,18 +91,27 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
 
     fn attempt_serial_update(&mut self) -> Result<Image<MCUF::Address>, Error> {
         // Restore the update plan so the attempt is done only once.
-        self.update_planner.as_mut().unwrap().write_update_plan(UpdatePlan::None);
+        self.update_planner
+            .as_mut()
+            .unwrap()
+            .write_update_plan(UpdatePlan::None);
 
         let boot_bank = self.boot_bank();
 
         if let Some(serial) = self.serial.as_mut() {
             uprintln!(serial, "Please send firmware image via XMODEM.");
 
-            if self.mcu_flash.write_from_blocks(boot_bank.location, serial.blocks(None)).is_err() {
+            if self
+                .mcu_flash
+                .write_from_blocks(boot_bank.location, serial.blocks(None))
+                .is_err()
+            {
                 return Err(Error::FlashCorrupted);
             }
         } else {
-            return Err(Error::DeviceError("Cannot perform serial update without serial console."));
+            return Err(Error::DeviceError(
+                "Cannot perform serial update without serial console.",
+            ));
         }
 
         R::image_at(&mut self.mcu_flash, boot_bank)
@@ -209,7 +224,11 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         bank: Bank<MCUF::Address>,
         boot_bank: Bank<MCUF::Address>,
     ) -> Option<Image<MCUF::Address>> {
-        duprintln!(self.serial, "Replacing current image with bank {:?}.", bank.index,);
+        duprintln!(
+            self.serial,
+            "Replacing current image with bank {:?}.",
+            bank.index,
+        );
         Self::copy_image_single_flash(
             &mut self.serial,
             &mut self.mcu_flash,
@@ -218,7 +237,12 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
             false,
         )
         .expect("Failed to copy a valid image!");
-        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
+        duprintln!(
+            self.serial,
+            "Replaced image with bank {:?} [{}]",
+            bank.index,
+            MCUF::label(),
+        );
         let image = R::image_at(&mut self.mcu_flash, boot_bank)
             .expect("Failed to verify an image after copy!");
         Some(image)
@@ -229,7 +253,11 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         bank: Bank<EXTF::Address>,
         boot_bank: Bank<MCUF::Address>,
     ) -> Option<Image<MCUF::Address>> {
-        duprintln!(self.serial, "Replacing current image with bank {:?}.", bank.index,);
+        duprintln!(
+            self.serial,
+            "Replacing current image with bank {:?}.",
+            bank.index,
+        );
         Self::copy_image(
             &mut self.serial,
             self.external_flash.as_mut().unwrap(),
@@ -239,7 +267,12 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
             false,
         )
         .expect("Failed to copy a valid image!");
-        duprintln!(self.serial, "Replaced image with bank {:?} [{}]", bank.index, MCUF::label(),);
+        duprintln!(
+            self.serial,
+            "Replaced image with bank {:?} [{}]",
+            bank.index,
+            MCUF::label(),
+        );
         let image = R::image_at(&mut self.mcu_flash, boot_bank)
             .expect("Failed to verify an image after copy!");
         Some(image)

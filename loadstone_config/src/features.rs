@@ -31,15 +31,22 @@ pub enum BootMetrics {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum Greetings {
     Default,
-    Custom { loadstone: Cow<'static, str>, demo: Cow<'static, str> },
+    Custom {
+        loadstone: Cow<'static, str>,
+        demo: Cow<'static, str>,
+    },
 }
 
 impl Default for Greetings {
-    fn default() -> Self { Self::Default }
+    fn default() -> Self {
+        Self::Default
+    }
 }
 
 impl Default for BootMetrics {
-    fn default() -> Self { Self::Disabled }
+    fn default() -> Self {
+        Self::Disabled
+    }
 }
 
 impl BootMetrics {
@@ -70,7 +77,9 @@ pub enum Serial {
 }
 
 impl Default for Serial {
-    fn default() -> Self { Self::Disabled }
+    fn default() -> Self {
+        Self::Disabled
+    }
 }
 
 impl Serial {
@@ -83,7 +92,9 @@ impl Serial {
         }
     }
 
-    pub fn enabled(&self) -> bool { matches!(self, Serial::Enabled { .. }) }
+    pub fn enabled(&self) -> bool {
+        matches!(self, Serial::Enabled { .. })
+    }
 }
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
@@ -93,5 +104,7 @@ pub enum UpdateSignal {
 }
 
 impl Default for UpdateSignal {
-    fn default() -> Self { UpdateSignal::Disabled }
+    fn default() -> Self {
+        UpdateSignal::Disabled
+    }
 }

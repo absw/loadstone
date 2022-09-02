@@ -5,11 +5,11 @@ use loadstone_config::{
     port::Port,
 };
 
+pub mod generate;
 pub mod memory_map;
 pub mod security;
-pub mod generate;
-pub mod update_signal;
 pub mod serial;
+pub mod update_signal;
 
 /// Renders the dropdown menu to select one of the supported
 /// hardware ports.
@@ -63,7 +63,11 @@ pub fn configure_boot_metrics(ui: &mut egui::Ui, boot_metrics: &mut BootMetrics,
 pub fn configure_custom_greetings(ui: &mut egui::Ui, greetings: &mut Greetings) {
     let mut greetings_box = matches!(greetings, Greetings::Custom { .. });
     let loadstone_with_version = || {
-        format!("-- Loadstone [{}-{}] --", env!("CARGO_PKG_VERSION"), git_version::git_version!())
+        format!(
+            "-- Loadstone [{}-{}] --",
+            env!("CARGO_PKG_VERSION"),
+            git_version::git_version!()
+        )
     };
     let demo_with_version = || {
         format!(

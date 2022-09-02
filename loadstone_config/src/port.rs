@@ -16,7 +16,9 @@ pub enum Port {
 impl Default for Port {
     // Arbitrary default port for the purposes of seeding
     // the defaults in the web application
-    fn default() -> Self { Self::Stm32F412 }
+    fn default() -> Self {
+        Self::Stm32F412
+    }
 }
 
 /// Supported hardware families.
@@ -90,16 +92,34 @@ impl Port {
     pub fn linker_script_constants(&self) -> Option<LinkerScriptConstants> {
         match self {
             Port::Stm32F412 => Some(LinkerScriptConstants {
-                flash: LinkerArea { origin: 0x08000000, size: KB!(896) },
-                ram: LinkerArea { origin: 0x20000000, size: KB!(256) },
+                flash: LinkerArea {
+                    origin: 0x08000000,
+                    size: KB!(896),
+                },
+                ram: LinkerArea {
+                    origin: 0x20000000,
+                    size: KB!(256),
+                },
             }),
             Port::Wgm160P => Some(LinkerScriptConstants {
-                flash: LinkerArea { origin: 0x00000000, size: KB!(1024) },
-                ram: LinkerArea { origin: 0x20000000, size: KB!(128) },
+                flash: LinkerArea {
+                    origin: 0x00000000,
+                    size: KB!(1024),
+                },
+                ram: LinkerArea {
+                    origin: 0x20000000,
+                    size: KB!(128),
+                },
             }),
             Port::Max32631 => Some(LinkerScriptConstants {
-                flash: LinkerArea { origin: 0x00000000, size: KB!(2048) },
-                ram: LinkerArea { origin: 0x20000000, size: KB!(512) },
+                flash: LinkerArea {
+                    origin: 0x00000000,
+                    size: KB!(2048),
+                },
+                ram: LinkerArea {
+                    origin: 0x20000000,
+                    size: KB!(512),
+                },
             }),
         }
     }

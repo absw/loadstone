@@ -106,7 +106,10 @@ fn generate_in_ci(
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(git_fork_field);
-        ui.colored_label(colours::info(ui), "Github Fork (You must have write access)");
+        ui.colored_label(
+            colours::info(ui),
+            "Github Fork (You must have write access)",
+        );
     });
     ui.horizontal_wrapped(|ui| {
         ui.text_edit_singleline(git_ref_field);

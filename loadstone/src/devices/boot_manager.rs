@@ -103,7 +103,9 @@ impl<MCUF: Flash, EXTF: Flash, SRL: Serial, R: image::Reader, WUS: WriteUpdateSi
     }
 
     /// Triggers a soft system reset.
-    pub fn reset(&mut self) -> ! { SCB::sys_reset(); }
+    pub fn reset(&mut self) -> ! {
+        SCB::sys_reset();
+    }
 
     pub fn set_update_signal(&mut self, plan: UpdatePlan) -> Result<(), Error> {
         if let Some(us) = self.update_signal.as_mut() {

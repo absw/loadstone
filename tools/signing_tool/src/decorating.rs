@@ -13,7 +13,9 @@ const GOLDEN_STRING: &str = "XPIcbOUrpG";
 /// constant could be used as a firmware image, as it contains the magic string
 /// halfway through.
 pub const MAGIC_STRING: &str = "HSc7c2ptydZH2QkqZWPcJgG3JtnJ6VuA";
-pub fn magic_string_inverted() -> Vec<u8> { MAGIC_STRING.as_bytes().iter().map(|b| !b).collect() }
+pub fn magic_string_inverted() -> Vec<u8> {
+    MAGIC_STRING.as_bytes().iter().map(|b| !b).collect()
+}
 
 pub fn decorate_file(image_filename: &str, is_golden: bool) -> Result<(), Error> {
     let file = open_image(image_filename)?;

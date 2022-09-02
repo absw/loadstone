@@ -42,7 +42,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
                 EXTF::label()
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
-            self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
+            self.boot_metrics.boot_path = BootPath::Restored {
+                bank: input_bank.index,
+            };
             return R::image_at(&mut self.mcu_flash, output).ok();
         }
         None
@@ -50,8 +52,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
 
     fn restore_internal(&mut self, golden: bool) -> Option<Image<MCUF::Address>> {
         let output = self.boot_bank();
-        for input_bank in
-            self.mcu_banks.iter().filter(|b| b.is_golden == golden && b.index != output.index)
+        for input_bank in self
+            .mcu_banks
+            .iter()
+            .filter(|b| b.is_golden == golden && b.index != output.index)
         {
             duprintln!(
                 self.serial,
@@ -78,7 +82,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
                 MCUF::label()
             );
             duprintln!(self.serial, "Verifying the image again in the boot bank...");
-            self.boot_metrics.boot_path = BootPath::Restored { bank: input_bank.index };
+            self.boot_metrics.boot_path = BootPath::Restored {
+                bank: input_bank.index,
+            };
             return R::image_at(&mut self.mcu_flash, output).ok();
         }
         None

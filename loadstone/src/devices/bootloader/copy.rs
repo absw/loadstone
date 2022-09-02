@@ -40,10 +40,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(
-                flash.read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read])
-            )?;
-            block!(flash.write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
+            block!(flash.read(
+                input_image_start_address + byte_index,
+                &mut buffer[0..bytes_to_read]
+            ))?;
+            block!(flash.write(
+                output_image_start_address + byte_index,
+                &buffer[0..bytes_to_read]
+            ))?;
             byte_index += bytes_to_read;
         }
         Ok(())
@@ -84,10 +88,14 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
 
         while byte_index < total_size {
             let bytes_to_read = min(TRANSFER_BUFFER_SIZE, total_size.saturating_sub(byte_index));
-            block!(input_flash
-                .read(input_image_start_address + byte_index, &mut buffer[0..bytes_to_read]))?;
-            block!(output_flash
-                .write(output_image_start_address + byte_index, &buffer[0..bytes_to_read]))?;
+            block!(input_flash.read(
+                input_image_start_address + byte_index,
+                &mut buffer[0..bytes_to_read]
+            ))?;
+            block!(output_flash.write(
+                output_image_start_address + byte_index,
+                &buffer[0..bytes_to_read]
+            ))?;
             byte_index += bytes_to_read;
         }
         Ok(())

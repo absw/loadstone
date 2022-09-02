@@ -46,14 +46,18 @@ fn enforce_external_banks_are_contiguous(
             pair[1].start_address = pair[0].end_address();
         }
     }
-    external_memory_map.banks.retain(|b| b.end_address() < chip.end);
+    external_memory_map
+        .banks
+        .retain(|b| b.end_address() < chip.end);
 }
 
 fn enforce_internal_bank_ranges_are_maintained(
     internal_memory_map: &mut InternalMemoryMap,
     internal_flash: &FlashChip,
 ) {
-    internal_memory_map.banks.retain(|b| b.end_address() < internal_flash.end);
+    internal_memory_map
+        .banks
+        .retain(|b| b.end_address() < internal_flash.end);
     if let Some(index) = internal_memory_map.bootable_index {
         if index >= internal_memory_map.banks.len() {
             internal_memory_map.bootable_index = None;
@@ -76,8 +80,9 @@ fn enforce_internal_banks_follow_bootloader(
 ) {
     if internal_memory_map.banks.len() > 0 {
         // The start of the first bank must be aligned to the chip's erase granularity
-        internal_memory_map.bootloader_location =
-            internal_memory_map.bootloader_location.clamp(internal_flash.start, internal_flash.end);
+        internal_memory_map.bootloader_location = internal_memory_map
+            .bootloader_location
+            .clamp(internal_flash.start, internal_flash.end);
 
         let bootloader_end = internal_memory_map.bootloader_location
             + KB!(1) * internal_memory_map.bootloader_length_kb;

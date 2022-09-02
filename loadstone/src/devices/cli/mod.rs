@@ -44,7 +44,9 @@ pub enum Error {
 }
 
 impl From<ApplicationError> for Error {
-    fn from(e: ApplicationError) -> Self { Error::ApplicationError(e) }
+    fn from(e: ApplicationError) -> Self {
+        Error::ApplicationError(e)
+    }
 }
 
 pub const DEFAULT_GREETING: &str = "--=Loadstone demo app CLI + Boot Manager=--";
@@ -118,7 +120,9 @@ impl<'a> Parsable<'a> for u8 {
 }
 
 impl<'a> Parsable<'a> for &'a str {
-    fn parse(text: &'a str) -> Result<Self, Error> { Ok(text) }
+    fn parse(text: &'a str) -> Result<Self, Error> {
+        Ok(text)
+    }
 }
 
 trait RetrieveArgument<T> {
@@ -215,15 +219,23 @@ impl<SRL: Serial> Cli<SRL> {
                 uwriteln!(self.serial, "[CLI Error] Command missing an argument")
             }
             Err(Error::DuplicateArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command contains duplicate arguments")
+                uwriteln!(
+                    self.serial,
+                    "[CLI Error] Command contains duplicate arguments"
+                )
             }
             Err(Error::ApplicationError(e)) => {
-                uwriteln!(self.serial, "[CLI Error] Internal boot manager error: ").ok().unwrap();
+                uwriteln!(self.serial, "[CLI Error] Internal boot manager error: ")
+                    .ok()
+                    .unwrap();
                 e.report(&mut self.serial);
                 Ok(())
             }
             Err(Error::UnexpectedArguments) => {
-                uwriteln!(self.serial, "[CLI Error] Command contains an unexpected argument")
+                uwriteln!(
+                    self.serial,
+                    "[CLI Error] Command contains an unexpected argument"
+                )
             }
             Err(Error::ArgumentOutOfRange) => {
                 uwriteln!(self.serial, "[CLI Error] Argument is out of valid range")
@@ -239,7 +251,9 @@ impl<SRL: Serial> Cli<SRL> {
     }
 
     /// Returns the serial driver the CLI is using.
-    pub fn serial(&mut self) -> &mut SRL { &mut self.serial }
+    pub fn serial(&mut self) -> &mut SRL {
+        &mut self.serial
+    }
 
     /// Attempts to parse a given string into a command name and arguments.
     fn parse(text: &str) -> Result<(Name, ArgumentIterator), Error> {
@@ -247,7 +261,10 @@ impl<SRL: Serial> Cli<SRL> {
         if text.is_empty() {
             return Err(Error::CommandEmpty);
         }
-        if !text.chars().all(|c| c.is_ascii_alphanumeric() || ALLOWED_TOKENS.contains(c)) {
+        if !text
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || ALLOWED_TOKENS.contains(c))
+        {
             return Err(Error::CharactersNotAllowed);
         }
 
@@ -281,7 +298,11 @@ impl<SRL: Serial> Cli<SRL> {
 
     /// Creates a new CLI using the given serial.
     pub fn new(serial: SRL) -> Result<Self, Error> {
-        Ok(Cli { serial, greeted: false, needs_prompt: true })
+        Ok(Cli {
+            serial,
+            greeted: false,
+            needs_prompt: true,
+        })
     }
 
     fn read_line(&mut self, buffer: &mut [u8]) -> nb::Result<(), Error> {
@@ -289,7 +310,11 @@ impl<SRL: Serial> Cli<SRL> {
             Err(_) => true,
             Ok(b) => *b as char != LINE_TERMINATOR,
         });
-        if bytes.try_collect_slice(buffer).map_err(|_| Error::SerialReadError)? < buffer.len() {
+        if bytes
+            .try_collect_slice(buffer)
+            .map_err(|_| Error::SerialReadError)?
+            < buffer.len()
+        {
             Ok(())
         } else {
             Err(nb::Error::Other(Error::SerialBufferOverflow))
@@ -386,7 +411,9 @@ mod test {
     use blue_hal::hal::doubles::serial::*;
 
     impl Convertible for SerialStubError {
-        fn into(self) -> ApplicationError { ApplicationError::DeviceError("Serial stub failed") }
+        fn into(self) -> ApplicationError {
+            ApplicationError::DeviceError("Serial stub failed")
+        }
     }
 
     #[test]
@@ -394,13 +421,19 @@ mod test {
         let sample_command = "my_command an_option=5000 some_flag";
         let (name, mut arguments) = Cli::<SerialStub>::parse(sample_command).unwrap();
         assert_eq!("my_command", name);
-        assert_eq!(Argument::Pair("an_option", "5000"), arguments.next().unwrap());
+        assert_eq!(
+            Argument::Pair("an_option", "5000"),
+            arguments.next().unwrap()
+        );
         assert_eq!(Argument::Single("some_flag"), arguments.next().unwrap());
 
         let sample_command = "command         with_too_much_whitespace   but  still=valid   \n\n";
         let (name, mut arguments) = Cli::<SerialStub>::parse(sample_command).unwrap();
         assert_eq!("command", name);
-        assert_eq!(Argument::Single("with_too_much_whitespace"), arguments.next().unwrap());
+        assert_eq!(
+            Argument::Single("with_too_much_whitespace"),
+            arguments.next().unwrap()
+        );
         assert_eq!(Argument::Single("but"), arguments.next().unwrap());
         assert_eq!(Argument::Pair("still", "valid"), arguments.next().unwrap());
     }
@@ -410,19 +443,25 @@ mod test {
         let bad_command_no_fields = "";
         assert_eq!(
             Error::CommandEmpty,
-            Cli::<SerialStub>::parse(bad_command_no_fields).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_no_fields)
+                .err()
+                .unwrap()
         );
 
         let bad_command_strange_formatting = "command with=a=strange=argument";
         assert_eq!(
             Error::MalformedArguments,
-            Cli::<SerialStub>::parse(bad_command_strange_formatting).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_strange_formatting)
+                .err()
+                .unwrap()
         );
 
         let bad_command_characters_not_allowed = "com-mand with? bad+characters";
         assert_eq!(
             Error::CharactersNotAllowed,
-            Cli::<SerialStub>::parse(bad_command_characters_not_allowed).err().unwrap()
+            Cli::<SerialStub>::parse(bad_command_characters_not_allowed)
+                .err()
+                .unwrap()
         );
     }
 }

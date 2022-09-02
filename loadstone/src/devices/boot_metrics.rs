@@ -87,4 +87,6 @@ pub unsafe fn boot_metrics_mut() -> &'static mut BootMetrics {
 /// Horrendously unsafe. Simply returns a block at end of RAM reinterpreted as an arbitrary struct.
 /// Only useful right after bootstrapping the app, to retrieve metrics information before having a
 /// chance to clobber it.
-pub unsafe fn boot_metrics() -> &'static BootMetrics { boot_metrics_mut() }
+pub unsafe fn boot_metrics() -> &'static BootMetrics {
+    boot_metrics_mut()
+}

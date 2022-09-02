@@ -9,7 +9,9 @@ fn configure_runner(target: &str) {
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
-fn main() -> Result<()> { process_configuration_file() }
+fn main() -> Result<()> {
+    process_configuration_file()
+}
 
 fn process_configuration_file() -> Result<()> {
     println!("cargo:rerun-if-env-changed=LOADSTONE_CONFIG");

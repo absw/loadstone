@@ -49,7 +49,11 @@ impl<'a, S: TimeoutRead + Write + ?Sized> Iterator for BlockIterator<'a, S> {
         'block_loop: while self.max_retries.is_none() || retries < self.max_retries.unwrap() {
             let mut buffer_index = 0usize;
 
-            let message = if self.received_block { xmodem::ACK } else { xmodem::NAK };
+            let message = if self.received_block {
+                xmodem::ACK
+            } else {
+                xmodem::NAK
+            };
             if self.serial.write_char(message as char).is_err() {
                 retries += 1;
                 continue 'block_loop;
@@ -128,5 +132,7 @@ impl<'a, S: TimeoutRead + Write + ?Sized> BlockIterator<'a, S> {
 impl<'a, S: TimeoutRead + Write + ?Sized> Drop for BlockIterator<'a, S> {
     // Must fully consume the iterator on drop
     // to close the xmodem communication cleanly
-    fn drop(&mut self) { self.for_each(drop); }
+    fn drop(&mut self) {
+        self.for_each(drop);
+    }
 }

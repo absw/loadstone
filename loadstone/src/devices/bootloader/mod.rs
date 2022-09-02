@@ -93,7 +93,9 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         }
 
         match self.restore() {
-            Ok(image) => self.boot(image).expect("FATAL: Failed to boot from verified image!"),
+            Ok(image) => self
+                .boot(image)
+                .expect("FATAL: Failed to boot from verified image!"),
             Err(e) => {
                 info!("Failed to restore. Error: {:?}", e);
 
@@ -116,8 +118,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         assert_eq!(self.mcu_banks().filter(|b| b.bootable).count(), 1);
 
         // Banks are sequential across flash chips
-        let all_bank_indices =
-            self.mcu_banks().map(|b| b.index).chain(self.external_banks().map(|b| b.index));
+        let all_bank_indices = self
+            .mcu_banks()
+            .map(|b| b.index)
+            .chain(self.external_banks().map(|b| b.index));
         all_bank_indices.fold(0, |previous, current| {
             assert!(previous + 1 == current, "Flash banks are not in sequence!");
             current
@@ -203,10 +207,14 @@ pub mod doubles {
         plan: UpdatePlan,
     }
     impl ReadUpdateSignal for FakeUpdatePlanner {
-        fn read_update_plan(&self) -> UpdatePlan { self.plan }
+        fn read_update_plan(&self) -> UpdatePlan {
+            self.plan
+        }
     }
     impl WriteUpdateSignal for FakeUpdatePlanner {
-        fn write_update_plan(&mut self, plan: UpdatePlan) { self.plan = plan; }
+        fn write_update_plan(&mut self, plan: UpdatePlan) {
+            self.plan = plan;
+        }
     }
 
     pub type BootloaderDouble = super::Bootloader<
@@ -240,7 +248,10 @@ pub mod doubles {
         }
 
         pub fn with_external_banks(self, external_banks: &'static [Bank<Address>]) -> Self {
-            Self { external_banks, ..self }
+            Self {
+                external_banks,
+                ..self
+            }
         }
     }
 

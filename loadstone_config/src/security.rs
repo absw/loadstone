@@ -12,7 +12,9 @@ pub enum SecurityMode {
 }
 
 impl Default for SecurityMode {
-    fn default() -> Self { SecurityMode::P256ECDSA }
+    fn default() -> Self {
+        SecurityMode::P256ECDSA
+    }
 }
 
 /// Defines how Loadstone will aproach guaranteeing image security

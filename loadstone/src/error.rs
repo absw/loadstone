@@ -32,7 +32,9 @@ pub trait Convertible {
     fn into(self) -> Error;
 }
 impl<T: Convertible> From<T> for Error {
-    fn from(t: T) -> Self { t.into() }
+    fn from(t: T) -> Self {
+        t.into()
+    }
 }
 
 /// Exposes a report_unwrap() method that behaves like
@@ -87,10 +89,16 @@ impl Error {
                 "[Logic Error] -> Bank doesn't exist or is invalid in this context"
             ),
             Error::BankEmpty => {
-                uwriteln!(serial, "[Logic Error] -> Bank is empty (contains no firmware image)")
+                uwriteln!(
+                    serial,
+                    "[Logic Error] -> Bank is empty (contains no firmware image)"
+                )
             }
             Error::FlashCorrupted => {
-                uwriteln!(serial, "[Logic Error] -> Flash memory is corrupted or outdated")
+                uwriteln!(
+                    serial,
+                    "[Logic Error] -> Flash memory is corrupted or outdated"
+                )
             }
             Error::SignatureInvalid => {
                 uwriteln!(serial, "[LogicError] -> Image signature is invalid")
@@ -99,7 +107,10 @@ impl Error {
                 uwriteln!(serial, "[Logic Error] -> No image to restore from")
             }
             Error::NoExternalFlash => {
-                uwriteln!(serial, "[Logic Error] -> No external flash in this configuration")
+                uwriteln!(
+                    serial,
+                    "[Logic Error] -> No external flash in this configuration"
+                )
             }
             Error::ImageIsNotGolden => {
                 uwriteln!(serial, "[Logic Error] -> Image is not golden")

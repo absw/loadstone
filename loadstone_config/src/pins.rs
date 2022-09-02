@@ -26,7 +26,12 @@ pub struct PeripheralPin {
 
 impl PeripheralPin {
     const fn new(peripheral: Cow<'static, str>, bank: Bank, index: u32, af_index: u32) -> Self {
-        Self { peripheral, bank, index, af_index }
+        Self {
+            peripheral,
+            bank,
+            index,
+            af_index,
+        }
     }
 }
 

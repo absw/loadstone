@@ -53,7 +53,9 @@ impl Default for LoadstoneApp {
 }
 
 impl epi::App for LoadstoneApp {
-    fn name(&self) -> &str { "Loadstone Builder" }
+    fn name(&self) -> &str {
+        "Loadstone Builder"
+    }
 
     /// Called by the framework to load old app state (if any).
     #[cfg(feature = "persistence")]
@@ -99,9 +101,9 @@ impl epi::App for LoadstoneApp {
                 ui.separator();
                 select_port(ui, &mut configuration.port);
                 ui.separator();
-                egui::CollapsingHeader::new("Features").text_style(TextStyle::Heading).show(
-                    ui,
-                    |ui| {
+                egui::CollapsingHeader::new("Features")
+                    .text_style(TextStyle::Heading)
+                    .show(ui, |ui| {
                         ui.label(
                             "Greyed out features are unsupported in the current configuration.",
                         );
@@ -128,11 +130,10 @@ impl epi::App for LoadstoneApp {
                             ui,
                             &mut configuration.feature_configuration.update_signal,
                         );
-                    },
-                );
-                egui::CollapsingHeader::new("Memory map").text_style(TextStyle::Heading).show(
-                    ui,
-                    |ui| {
+                    });
+                egui::CollapsingHeader::new("Memory map")
+                    .text_style(TextStyle::Heading)
+                    .show(ui, |ui| {
                         configure_memory_map(
                             ui,
                             &mut configuration.memory_configuration.internal_memory_map,
@@ -141,22 +142,20 @@ impl epi::App for LoadstoneApp {
                             &mut configuration.memory_configuration.golden_index,
                             &configuration.port,
                         );
-                    },
-                );
-                egui::CollapsingHeader::new("Security").text_style(TextStyle::Heading).show(
-                    ui,
-                    |ui| {
+                    });
+                egui::CollapsingHeader::new("Security")
+                    .text_style(TextStyle::Heading)
+                    .show(ui, |ui| {
                         configure_security(
                             ui,
                             &mut configuration.security_configuration.security_mode,
                             &mut configuration.security_configuration.verifying_key_raw,
                             verifying_key_text_field,
                         );
-                    },
-                );
-                egui::CollapsingHeader::new("Generate").text_style(TextStyle::Heading).show(
-                    ui,
-                    |ui| {
+                    });
+                egui::CollapsingHeader::new("Generate")
+                    .text_style(TextStyle::Heading)
+                    .show(ui, |ui| {
                         generate::generate(
                             ui,
                             frame,
@@ -166,8 +165,7 @@ impl epi::App for LoadstoneApp {
                             last_request_response,
                             &configuration,
                         );
-                    },
-                );
+                    });
             });
         });
     }

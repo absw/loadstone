@@ -53,8 +53,10 @@ fn modify_configuration(
             Greetings::Custom { demo, .. } => demo,
         };
 
-        configuration.feature_configuration.greetings =
-            Greetings::Custom { loadstone: Cow::from(greeting), demo: old_demo };
+        configuration.feature_configuration.greetings = Greetings::Custom {
+            loadstone: Cow::from(greeting),
+            demo: old_demo,
+        };
     }
 
     if let Some(bank) = arguments.golden_bank {
@@ -62,26 +64,44 @@ fn modify_configuration(
     }
 
     if let Some(bank) = arguments.bootable_bank {
-        configuration.memory_configuration.internal_memory_map.bootable_index = Some(bank);
+        configuration
+            .memory_configuration
+            .internal_memory_map
+            .bootable_index = Some(bank);
     }
 
     if let Some(recovery) = arguments.recovery {
         let serial = &mut configuration.feature_configuration.serial;
-        if let Serial::Enabled { recovery_enabled, .. } = serial {
+        if let Serial::Enabled {
+            recovery_enabled, ..
+        } = serial
+        {
             *recovery_enabled = recovery;
         } else {
-            return Err(String::from("cannot enable serial recovery since serial is not enabled"));
+            return Err(String::from(
+                "cannot enable serial recovery since serial is not enabled",
+            ));
         }
     }
 
     if let Some(banks) = arguments.internal_banks {
-        let mut offset = configuration.memory_configuration.internal_memory_map.bootloader_location
-            + (configuration.memory_configuration.internal_memory_map.bootloader_length_kb * 1024);
+        let mut offset = configuration
+            .memory_configuration
+            .internal_memory_map
+            .bootloader_location
+            + (configuration
+                .memory_configuration
+                .internal_memory_map
+                .bootloader_length_kb
+                * 1024);
 
         configuration.memory_configuration.internal_memory_map.banks = banks
             .into_iter()
             .map(|size| {
-                let bank = Bank { size_kb: size, start_address: offset };
+                let bank = Bank {
+                    size_kb: size,
+                    start_address: offset,
+                };
                 offset += size * 1024;
                 bank
             })
@@ -94,7 +114,10 @@ fn modify_configuration(
         configuration.memory_configuration.external_memory_map.banks = banks
             .into_iter()
             .map(|size| {
-                let bank = Bank { size_kb: size, start_address: offset };
+                let bank = Bank {
+                    size_kb: size,
+                    start_address: offset,
+                };
                 offset += size * 1024;
                 bank
             })
@@ -150,7 +173,10 @@ fn parse_banks(string: &str) -> Result<Vec<u32>, String> {
             sizes.push(size);
             size = 0;
         } else {
-            return Err(format!("bank size list expects decimal digits and commas, found {}.", c));
+            return Err(format!(
+                "bank size list expects decimal digits and commas, found {}.",
+                c
+            ));
         }
     }
 
@@ -216,7 +242,14 @@ fn run_clap() -> Result<Arguments, String> {
         Some(string) => Some(parse_banks(string)?),
     };
 
-    Ok(Arguments { internal_banks, external_banks, greeting, golden_bank, bootable_bank, recovery })
+    Ok(Arguments {
+        internal_banks,
+        external_banks,
+        greeting,
+        golden_bank,
+        bootable_bank,
+        recovery,
+    })
 }
 
 fn main() {

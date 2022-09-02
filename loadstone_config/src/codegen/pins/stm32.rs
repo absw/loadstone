@@ -39,7 +39,10 @@ fn generate_pin_constructor(
     code: &mut quote::__private::TokenStream,
 ) -> () {
     let banks = 'a'..='h';
-    let gpio_fields = banks.clone().map(|b| format_ident!("gpio{}", b)).collect_vec();
+    let gpio_fields = banks
+        .clone()
+        .map(|b| format_ident!("gpio{}", b))
+        .collect_vec();
     let pac_gpio_fields = banks.map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
 
     let serial_pin_structs: Box<dyn Iterator<Item = Ident>> =
@@ -145,9 +148,12 @@ fn generate_imports_and_types(
 
 fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__private::TokenStream) {
     for bank in 'a'..='h' {
-        let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
-        let qspi_flash_pin_tokens =
-            qspi_flash_pin_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
+        let serial_tokens = serial_tokens(configuration)
+            .filter(|t| t.bank == bank)
+            .collect_vec();
+        let qspi_flash_pin_tokens = qspi_flash_pin_tokens(configuration)
+            .filter(|t| t.bank == bank)
+            .collect_vec();
 
         let serial_index = serial_tokens.iter().map(|t| &t.index);
         let serial_mode = serial_tokens.iter().map(|t| &t.mode);

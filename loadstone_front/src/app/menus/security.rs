@@ -13,8 +13,12 @@ pub fn configure_security(
     verifying_key_text_field: &mut String,
 ) {
     ui.horizontal_wrapped(|ui| {
-        ui.radio_value(security_mode, SecurityMode::P256ECDSA, "Enable P256 ECDSA mode.")
-            .on_hover_text("Enable P256 ECDSA signature verification.");
+        ui.radio_value(
+            security_mode,
+            SecurityMode::P256ECDSA,
+            "Enable P256 ECDSA mode.",
+        )
+        .on_hover_text("Enable P256 ECDSA signature verification.");
         ui.radio_value(security_mode, SecurityMode::Crc, "Enable CRC32 mode.")
             .on_hover_text("Disable ECDSA verification in favor of IEEE CRC32");
     });
@@ -41,10 +45,16 @@ pub fn configure_security(
                     };
                 });
             } else {
-                if ui.text_edit_multiline(verifying_key_text_field).lost_focus() {
+                if ui
+                    .text_edit_multiline(verifying_key_text_field)
+                    .lost_focus()
+                {
                     // Preprocess the key to ensure spaces are maintained
                     *verifying_key_text_field = verifying_key_text_field
-                        .replace("-----BEGIN PUBLIC KEY----- ", "-----BEGIN PUBLIC KEY-----\n")
+                        .replace(
+                            "-----BEGIN PUBLIC KEY----- ",
+                            "-----BEGIN PUBLIC KEY-----\n",
+                        )
                         .replace(" -----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----");
                     if VerifyingKey::from_str(&verifying_key_text_field).is_ok() {
                         *verifying_key_raw = verifying_key_text_field.clone();

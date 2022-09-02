@@ -70,13 +70,31 @@ pub struct Bank<A: Address> {
 
 impl<A: Address> Bank<A> {
     pub fn golden(index: u8, size: usize, location: A) -> Self {
-        Self { index, size, location, bootable: false, is_golden: true }
+        Self {
+            index,
+            size,
+            location,
+            bootable: false,
+            is_golden: true,
+        }
     }
     pub fn bootable(index: u8, size: usize, location: A) -> Self {
-        Self { index, size, location, bootable: true, is_golden: false }
+        Self {
+            index,
+            size,
+            location,
+            bootable: true,
+            is_golden: false,
+        }
     }
     pub fn regular(index: u8, size: usize, location: A) -> Self {
-        Self { index, size, location, bootable: false, is_golden: false }
+        Self {
+            index,
+            size,
+            location,
+            bootable: false,
+            is_golden: false,
+        }
     }
 }
 
@@ -107,16 +125,24 @@ pub trait Reader {
 impl<A: Address> Image<A> {
     /// Address of the start of the firmware image. Will generally coincide
     /// with the start of its associated image bank.
-    pub fn location(&self) -> A { self.location }
+    pub fn location(&self) -> A {
+        self.location
+    }
     /// Size of the firmware image, excluding decoration and signature/crc.
-    pub fn size(&self) -> usize { self.size }
+    pub fn size(&self) -> usize {
+        self.size
+    }
     /// Size of the firmware image, including decoration and signature.
     #[cfg(feature = "ecdsa-verify")]
     pub fn total_size(&self) -> usize {
         self.size()
             + image_ecdsa::SignatureSize::<image_ecdsa::NistP256>::to_usize()
             + MAGIC_STRING.len()
-            + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
+            + if self.is_golden() {
+                GOLDEN_STRING.len()
+            } else {
+                0
+            }
     }
     /// Size of the firmware image, including decoration and crc.
     #[cfg(not(feature = "ecdsa-verify"))]
@@ -124,18 +150,28 @@ impl<A: Address> Image<A> {
         self.size()
             + core::mem::size_of::<u32>()
             + MAGIC_STRING.len()
-            + if self.is_golden() { GOLDEN_STRING.len() } else { 0 }
+            + if self.is_golden() {
+                GOLDEN_STRING.len()
+            } else {
+                0
+            }
     }
     /// Whether the image is verified to be golden (contains a golden string).
     /// A golden image is a high reliability, 'blessed' image able
     /// to be used as a last resort fallback.
-    pub fn is_golden(&self) -> bool { self.golden }
+    pub fn is_golden(&self) -> bool {
+        self.golden
+    }
     #[cfg(feature = "ecdsa-verify")]
     /// ECDSA signature of the firmware image. This is also used as an unique
     /// identifier for the firmware image for the purposes of updating.
-    pub fn identifier(&self) -> image_ecdsa::Signature { self.signature }
+    pub fn identifier(&self) -> image_ecdsa::Signature {
+        self.signature
+    }
     #[cfg(not(feature = "ecdsa-verify"))]
     /// Firmware image CRC. This is also used as an unique
     /// identifier for the firmware image for the purposes of updating.
-    pub fn identifier(&self) -> u32 { self.crc }
+    pub fn identifier(&self) -> u32 {
+        self.crc
+    }
 }

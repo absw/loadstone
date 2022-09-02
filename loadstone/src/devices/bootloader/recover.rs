@@ -16,7 +16,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         let no_golden_bank_support = !mcu_golden_bank_exists && !external_golden_bank_exists;
 
         if mcu_golden_bank_exists {
-            duprintln!(self.serial, "Attempting golden image recovery to MCU flash...");
+            duprintln!(
+                self.serial,
+                "Attempting golden image recovery to MCU flash..."
+            );
             match self.recover_internal(true) {
                 Ok(_) => {
                     duprintln!(self.serial, "Finished flashing golden image.");
@@ -33,7 +36,10 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
         }
 
         if self.external_flash.is_some() && external_golden_bank_exists {
-            duprintln!(self.serial, "Attempting golden image recovery to external flash...");
+            duprintln!(
+                self.serial,
+                "Attempting golden image recovery to external flash..."
+            );
             match self.recover_external(true) {
                 Ok(_) => {
                     duprintln!(self.serial, "Finished flashing golden image.");
@@ -86,7 +92,11 @@ impl<EXTF: Flash, MCUF: Flash, SRL: Serial, T: time::Now, R: image::Reader, U: U
                 if golden { " golden" } else { "" }
             );
             let blocks = self.serial.as_mut().unwrap().blocks(None);
-            if self.mcu_flash.write_from_blocks(bank.location, blocks).is_err() {
+            if self
+                .mcu_flash
+                .write_from_blocks(bank.location, blocks)
+                .is_err()
+            {
                 duprintln!(
                     self.serial,
                     "FATAL: Failed to flash{} image during recovery mode.",

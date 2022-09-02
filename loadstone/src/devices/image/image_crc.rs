@@ -112,9 +112,16 @@ mod tests {
     #[test]
     fn retrieving_image_with_correct_crc_succeeds() {
         let mut flash = FakeFlash::new(Address(0));
-        let bank =
-            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
-        flash.write(Address(0), &TEST_IMAGE_WITH_CORRECT_CRC).unwrap();
+        let bank = Bank {
+            index: 1,
+            size: 512,
+            location: Address(0),
+            bootable: false,
+            is_golden: false,
+        };
+        flash
+            .write(Address(0), &TEST_IMAGE_WITH_CORRECT_CRC)
+            .unwrap();
 
         let image = CrcImageReader::image_at(&mut flash, bank).unwrap();
         assert_eq!(image.size, 12usize);
@@ -126,10 +133,18 @@ mod tests {
     #[test]
     fn retrieving_image_with_incorrect_crc_fails() {
         let mut flash = FakeFlash::new(Address(0));
-        let bank =
-            Bank { index: 1, size: 512, location: Address(0), bootable: false, is_golden: false };
+        let bank = Bank {
+            index: 1,
+            size: 512,
+            location: Address(0),
+            bootable: false,
+            is_golden: false,
+        };
 
         flash.write(Address(0), &TEST_IMAGE_WITH_BAD_CRC).unwrap();
-        assert_eq!(Err(Error::CrcInvalid), CrcImageReader::image_at(&mut flash, bank));
+        assert_eq!(
+            Err(Error::CrcInvalid),
+            CrcImageReader::image_at(&mut flash, bank)
+        );
     }
 }

@@ -10,8 +10,10 @@ use loadstone_config::{
 /// whether serial communication is available at all, whether it allows for image
 /// recovery, and what pins and peripherals it uses in a particular port.
 pub fn configure_serial(ui: &mut egui::Ui, serial: &mut Serial, port: &Port) {
-    let mut available_peripherals =
-        pins::serial_tx(port).chain(pins::serial_rx(port)).map(|p| p.peripheral).collect_vec();
+    let mut available_peripherals = pins::serial_tx(port)
+        .chain(pins::serial_rx(port))
+        .map(|p| p.peripheral)
+        .collect_vec();
     available_peripherals.sort();
     available_peripherals.dedup();
 
@@ -44,7 +46,12 @@ pub fn configure_serial(ui: &mut egui::Ui, serial: &mut Serial, port: &Port) {
 
         ui.label("Enable serial communications to retrieve information about the boot process.");
     });
-    if let Serial::Enabled { recovery_enabled, tx_pin, rx_pin } = serial {
+    if let Serial::Enabled {
+        recovery_enabled,
+        tx_pin,
+        rx_pin,
+    } = serial
+    {
         define_serial_options(
             ui,
             port,
@@ -92,10 +99,14 @@ fn select_peripheral(
     });
 
     let first_valid_tx = |peripheral| {
-        pins::serial_tx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap()
+        pins::serial_tx(port)
+            .find_map(|p| (&p.peripheral == peripheral).then_some(p))
+            .unwrap()
     };
     let first_valid_rx = |peripheral| {
-        pins::serial_rx(port).find_map(|p| (&p.peripheral == peripheral).then_some(p)).unwrap()
+        pins::serial_rx(port)
+            .find_map(|p| (&p.peripheral == peripheral).then_some(p))
+            .unwrap()
     };
 
     if tx_pin.peripheral != inferred_peripheral {

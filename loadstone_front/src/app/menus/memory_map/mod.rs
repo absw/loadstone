@@ -42,7 +42,11 @@ pub fn configure_memory_map(
 
     ui.horizontal_wrapped(|ui| {
         ui.add(Label::new("Internal flash chip: ").heading());
-        ui.add(Label::new(internal_flash.name.clone()).heading().text_color(colours::info(ui)));
+        ui.add(
+            Label::new(internal_flash.name.clone())
+                .heading()
+                .text_color(colours::info(ui)),
+        );
     });
 
     ui.indent(0, |ui| {
@@ -100,7 +104,11 @@ fn configure_internal_banks(
     internal_flash: &memory::FlashChip,
     golden_index: &mut Option<usize>,
 ) {
-    let InternalMemoryMap { banks, bootable_index, .. } = internal_memory_map;
+    let InternalMemoryMap {
+        banks,
+        bootable_index,
+        ..
+    } = internal_memory_map;
     let mut to_delete: Option<usize> = None;
     for (i, bank) in banks.iter_mut().enumerate() {
         configure_internal_bank(
@@ -120,8 +128,11 @@ fn configure_internal_banks(
 
     let max_bank_count = (u8::MAX as usize) - external_memory_map.banks.len();
 
-    let bank_start_address =
-        internal_memory_map.banks.last().map(|b| b.end_address()).unwrap_or(max(
+    let bank_start_address = internal_memory_map
+        .banks
+        .last()
+        .map(|b| b.end_address())
+        .unwrap_or(max(
             internal_memory_map.bootloader_location
                 + internal_memory_map.bootloader_length_kb * KB!(1),
             internal_flash.start + internal_memory_map.bootloader_length_kb * KB!(1),
@@ -189,13 +200,20 @@ fn configure_internal_bank(
         );
         ui.label(format!("Bank {}", i + 1));
         ui.add(
-            Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
-                .text_color(colours::info(ui)),
+            Label::new(format!(
+                "(0x{:x} - 0x{:x})",
+                bank.start_address,
+                bank.end_address()
+            ))
+            .text_color(colours::info(ui)),
         );
         ui.radio_value(bootable_index, Some(i), "Bootable");
         ui.scope(|ui| {
             ui.set_enabled(*bootable_index != Some(i));
-            if ui.radio(*golden_index == Some(i), "Golden").on_hover_text(GOLDEN_TOOLTIP).clicked()
+            if ui
+                .radio(*golden_index == Some(i), "Golden")
+                .on_hover_text(GOLDEN_TOOLTIP)
+                .clicked()
             {
                 *golden_index = match *golden_index {
                     Some(index) if index == i => None,
@@ -203,7 +221,10 @@ fn configure_internal_bank(
                 }
             };
         });
-        if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
+        if ui
+            .add(Button::new("Delete").text_color(colours::error(ui)).small())
+            .clicked()
+        {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
                 if i == *index {
@@ -251,8 +272,14 @@ fn configure_external_banks(
 
     ui.label("Banks");
     ui.indent(0, |ui| {
-        let ExternalMemoryMap { banks: external_banks, .. } = external_memory_map;
-        let InternalMemoryMap { banks: internal_banks, .. } = internal_memory_map;
+        let ExternalMemoryMap {
+            banks: external_banks,
+            ..
+        } = external_memory_map;
+        let InternalMemoryMap {
+            banks: internal_banks,
+            ..
+        } = internal_memory_map;
 
         let mut to_delete: Option<usize> = None;
         for (i, bank) in external_banks.iter_mut().enumerate() {
@@ -334,8 +361,12 @@ fn configure_external_bank(
         );
         ui.label(format!("Bank {}", global_index + 1));
         ui.add(
-            Label::new(format!("(0x{:x} - 0x{:x})", bank.start_address, bank.end_address()))
-                .text_color(colours::info(ui)),
+            Label::new(format!(
+                "(0x{:x} - 0x{:x})",
+                bank.start_address,
+                bank.end_address()
+            ))
+            .text_color(colours::info(ui)),
         );
         ui.scope(|ui| {
             if ui
@@ -349,7 +380,10 @@ fn configure_external_bank(
                 }
             };
         });
-        if ui.add(Button::new("Delete").text_color(colours::error(ui)).small()).clicked() {
+        if ui
+            .add(Button::new("Delete").text_color(colours::error(ui)).small())
+            .clicked()
+        {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
                 if global_index == *index {
@@ -400,7 +434,9 @@ fn select_bootloader_location(
             Slider::new(
                 &mut internal_memory_map.bootloader_location,
                 internal_flash.start
-                    ..=(internal_flash.end.saturating_sub(KB!(BOOTLOADER_MAX_LENGTH_KB))),
+                    ..=(internal_flash
+                        .end
+                        .saturating_sub(KB!(BOOTLOADER_MAX_LENGTH_KB))),
             )
             .clamp_to_range(true),
         );
@@ -461,13 +497,12 @@ fn configure_qpsi_pins(ui: &mut egui::Ui, port: Port, pins: &mut QspiPins) {
             })
             .collect();
 
-        egui::ComboBox::from_label(names[i]).selected_text(new_pins[i].to_string()).show_ui(
-            ui,
-            |ui| {
+        egui::ComboBox::from_label(names[i])
+            .selected_text(new_pins[i].to_string())
+            .show_ui(ui, |ui| {
                 for alternative in alternatives {
                     ui.selectable_value(new_pins[i], alternative.clone(), alternative);
                 }
-            },
-        );
+            });
     }
 }

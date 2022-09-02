@@ -1,6 +1,6 @@
+mod decorating;
 mod error;
 mod signing;
-mod decorating;
 
 use crate::{
     decorating::decorate_file,
@@ -60,7 +60,11 @@ fn main() -> Result<(), String> {
         Ok(written_size) => {
             println!(
                 "Successfully appended {} to image ({} bytes).",
-                if private_key_filename.is_some() { "signature " } else { "CRC" },
+                if private_key_filename.is_some() {
+                    "signature "
+                } else {
+                    "CRC"
+                },
                 written_size
             );
             Ok(())
