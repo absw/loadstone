@@ -33,7 +33,7 @@ const GITHUB_TOKEN_INSTRUCTIONS: &str = "https://docs.github.com/en/github/\
 const LOCAL_OUTPUT_FILENAME: &str = "loadstone_config.ron";
 
 /// Renders the image generation menu.
-pub fn generate<'a>(
+pub fn generate(
     ui: &mut Ui,
     frame: &mut epi::Frame<'_>,
     personal_access_token_field: &mut String,
@@ -119,12 +119,12 @@ fn generate_in_ci(
         ui.set_enabled(!personal_access_token_field.is_empty());
         if ui.button("Trigger Build").clicked() {
             let ron = ron::ser::to_string_pretty(&configuration, PrettyConfig::default())
-                .unwrap_or("Invalid Configuration Supplied".into());
+                .unwrap_or_else(|_| String::from("Invalid Configuration Supplied"));
             generate_web(
-                &configuration,
-                &personal_access_token_field,
-                &git_ref_field,
-                &git_fork_field,
+                configuration,
+                personal_access_token_field,
+                git_ref_field,
+                git_fork_field,
                 &ron,
                 last_request_response,
             )
@@ -212,7 +212,7 @@ fn generate_web(
     let formatted_body =format!(
             "{{\"ref\":\"{}\", \"inputs\": {{\"loadstone_configuration\":\"{}\",\"loadstone_features\":\"{}\"}}}}",
             git_ref,
-            ron.replace("\"", "\\\"").replace("\n",""),
+            ron.replace('\"', "\\\"").replace('\n', ""),
             configuration.required_feature_flags().collect_vec().join(","),
         );
 

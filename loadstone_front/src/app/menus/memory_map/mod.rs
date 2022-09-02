@@ -12,7 +12,7 @@ use loadstone_config::{
 };
 
 static BOOTLOADER_MAX_LENGTH_KB: u32 = 128;
-static GOLDEN_TOOLTIP: &'static str =
+static GOLDEN_TOOLTIP: &str =
     "Mark this bank as golden (used as a fallback in case of corruption)\n \
     Only one non-bootable bank may be golden, and only golden banks can store golden images.";
 
@@ -132,11 +132,13 @@ fn configure_internal_banks(
         .banks
         .last()
         .map(|b| b.end_address())
-        .unwrap_or(max(
-            internal_memory_map.bootloader_location
-                + internal_memory_map.bootloader_length_kb * KB!(1),
-            internal_flash.start + internal_memory_map.bootloader_length_kb * KB!(1),
-        ));
+        .unwrap_or_else(|| {
+            max(
+                internal_memory_map.bootloader_location
+                    + internal_memory_map.bootloader_length_kb * KB!(1),
+                internal_flash.start + internal_memory_map.bootloader_length_kb * KB!(1),
+            )
+        });
     let enough_space = bank_start_address + internal_flash.region_size < internal_flash.end;
     ui.set_enabled(enough_space);
     ui.horizontal_wrapped(|ui| {
@@ -166,7 +168,7 @@ fn add_internal_bank(
     if ui.button("Add bank").clicked() {
         // Bump the golden index if we added a bank under the golden one
         match golden_index {
-            Some(index) if *index >= internal_memory_map.banks.len() => *index = *index + 1,
+            Some(index) if *index >= internal_memory_map.banks.len() => *index += 1,
             _ => (),
         };
         internal_memory_map.banks.push(Bank {
@@ -227,10 +229,10 @@ fn configure_internal_bank(
         {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
-                if i == *index {
-                    *golden_index = None;
-                } else if i < *index {
-                    *index = *index - 1
+                match i.cmp(index) {
+                    cmp::Ordering::Less => *index -= 1,
+                    cmp::Ordering::Equal => *golden_index = None,
+                    cmp::Ordering::Greater => {}
                 }
             }
         };
@@ -386,10 +388,10 @@ fn configure_external_bank(
         {
             *to_delete = Some(i);
             if let Some(index) = golden_index {
-                if global_index == *index {
-                    *golden_index = None;
-                } else if global_index < *index {
-                    *index = *index - 1
+                match global_index.cmp(index) {
+                    cmp::Ordering::Less => *index -= 1,
+                    cmp::Ordering::Equal => *golden_index = None,
+                    cmp::Ordering::Greater => {}
                 }
             }
         };

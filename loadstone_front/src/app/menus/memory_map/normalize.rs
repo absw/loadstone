@@ -37,7 +37,7 @@ fn enforce_external_banks_are_contiguous(
     external_memory_map: &mut ExternalMemoryMap,
     chip: &mut FlashChip,
 ) {
-    if external_memory_map.banks.len() > 0 {
+    if !external_memory_map.banks.is_empty() {
         external_memory_map.banks[0].start_address = chip.start;
     }
     if external_memory_map.banks.len() > 1 {
@@ -78,7 +78,7 @@ fn enforce_internal_banks_follow_bootloader(
     internal_memory_map: &mut InternalMemoryMap,
     internal_flash: &FlashChip,
 ) {
-    if internal_memory_map.banks.len() > 0 {
+    if !internal_memory_map.banks.is_empty() {
         // The start of the first bank must be aligned to the chip's erase granularity
         internal_memory_map.bootloader_location = internal_memory_map
             .bootloader_location

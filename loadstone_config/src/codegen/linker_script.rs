@@ -13,9 +13,10 @@ pub fn generate_linker_script(configuration: &Configuration) -> Result<()> {
         .open("memory.x")?;
 
     #[allow(unused_mut)]
-    let mut constants = configuration.port.linker_script_constants().ok_or(anyhow!(
-        "Current board doesn't have linker script constants defined."
-    ))?;
+    let mut constants = configuration
+        .port
+        .linker_script_constants()
+        .ok_or_else(|| anyhow!("Current board doesn't have linker script constants defined."))?;
 
     if std::env::var("CARGO_FEATURE_RELOCATE_TO_BOOTABLE_BANK").is_ok() {
         relocate_to_bootable_bank(&mut constants, configuration)?;
@@ -45,9 +46,9 @@ fn relocate_to_bootable_bank(
     let bootable_address = configuration
         .memory_configuration
         .bootable_address()
-        .ok_or(anyhow!(
-            "Impossible to relocate: bootable bank is undefined in configuration file."
-        ))?;
+        .ok_or_else(|| {
+            anyhow!("Impossible to relocate: bootable bank is undefined in configuration file.")
+        })?;
     let offset = bootable_address - constants.flash.origin;
     constants.flash.size = constants.flash.size.saturating_sub(offset as usize);
     constants.flash.origin = bootable_address;

@@ -74,9 +74,7 @@ impl BootMetrics {
 /// application.
 pub unsafe fn boot_metrics_mut() -> &'static mut BootMetrics {
     let ram_end = 0x20010000;
-    let boot_metrics_raw: *mut BootMetrics = core::mem::transmute::<usize, *mut BootMetrics>(
-        ram_end - core::mem::size_of::<BootMetrics>(),
-    );
+    let boot_metrics_raw = (ram_end - core::mem::size_of::<BootMetrics>()) as *mut BootMetrics;
     boot_metrics_raw.as_mut().unwrap()
 }
 

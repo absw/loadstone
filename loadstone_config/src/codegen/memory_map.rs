@@ -25,7 +25,7 @@ pub fn generate<P: AsRef<Path>>(
         .truncate(true)
         .open(&filename)?;
     let base_index = 1usize;
-    let imports = generate_imports(&memory_configuration, port)?;
+    let imports = generate_imports(memory_configuration, port)?;
     let mcu_banks = generate_mcu_banks(
         base_index,
         &memory_configuration.internal_memory_map,

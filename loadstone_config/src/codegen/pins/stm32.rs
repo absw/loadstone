@@ -37,7 +37,7 @@ pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> 
 fn generate_pin_constructor(
     configuration: &Configuration,
     code: &mut quote::__private::TokenStream,
-) -> () {
+) {
     let banks = 'a'..='h';
     let gpio_fields = banks
         .clone()
@@ -113,7 +113,7 @@ fn generate_imports_and_types(
             pub type Serial = blue_hal::hal::null::NullSerial;
         });
     }
-    if let Some(_) = &configuration.memory_configuration.external_flash {
+    if configuration.memory_configuration.external_flash.is_some() {
         let qspi_pins =
             qspi_flash_pin_tokens(configuration).map(|p| format_ident!("P{}{}", p.bank, p.index));
 
@@ -179,14 +179,14 @@ fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = Seria
     if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial {
         Box::new(IntoIterator::into_iter([
             SerialPinTokens {
-                bank: tx_pin.bank.chars().nth(0).unwrap(),
+                bank: tx_pin.bank.chars().next().unwrap(),
                 index: (tx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", tx_pin.af_index),
                 direction: format_ident!("TxPin"),
                 peripheral: format_ident!("{}", tx_pin.peripheral),
             },
             SerialPinTokens {
-                bank: rx_pin.bank.chars().nth(0).unwrap(),
+                bank: rx_pin.bank.chars().next().unwrap(),
                 index: (rx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", rx_pin.af_index),
                 direction: format_ident!("RxPin"),

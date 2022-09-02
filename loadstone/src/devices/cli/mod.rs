@@ -27,7 +27,7 @@ pub mod file_transfer;
 const PROMPT: &str = "\n> ";
 const BUFFER_SIZE: usize = 256;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Error {
     CommandEmpty,
     CommandUnknown,

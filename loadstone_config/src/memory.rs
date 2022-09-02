@@ -81,7 +81,7 @@ impl MemoryConfiguration {
 }
 
 /// Definition of a flash chip's hardware.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FlashChip {
     /// Tag to identify the hardware.
     pub name: String,

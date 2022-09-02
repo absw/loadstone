@@ -102,7 +102,7 @@ impl<A: Address> Bank<A> {
 ///
 /// An image descriptor can only be constructed by scanning the flash and finding
 /// a correctly decorated and signed firmware image.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Image<A: Address> {
     size: usize,
     location: A,

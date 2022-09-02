@@ -56,7 +56,7 @@ pub fn configure_security(
                             "-----BEGIN PUBLIC KEY-----\n",
                         )
                         .replace(" -----END PUBLIC KEY-----", "\n-----END PUBLIC KEY-----");
-                    if VerifyingKey::from_str(&verifying_key_text_field).is_ok() {
+                    if VerifyingKey::from_str(verifying_key_text_field).is_ok() {
                         *verifying_key_raw = verifying_key_text_field.clone();
                     } else {
                         *verifying_key_text_field = String::new();

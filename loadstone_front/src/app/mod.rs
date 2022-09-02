@@ -108,19 +108,19 @@ impl epi::App for LoadstoneApp {
                             "Greyed out features are unsupported in the current configuration.",
                         );
                         ui.set_enabled(
-                            Serial::supported(&mut configuration.port)
-                                && pins::serial_tx(&mut configuration.port).count() > 0
-                                && pins::serial_rx(&mut configuration.port).count() > 0,
+                            Serial::supported(&configuration.port)
+                                && pins::serial_tx(&configuration.port).count() > 0
+                                && pins::serial_rx(&configuration.port).count() > 0,
                         );
                         configure_serial(
                             ui,
-                            &mut &mut configuration.feature_configuration.serial,
-                            &mut configuration.port,
+                            &mut configuration.feature_configuration.serial,
+                            &configuration.port,
                         );
                         configure_boot_metrics(
                             ui,
                             &mut configuration.feature_configuration.boot_metrics,
-                            &mut configuration.port,
+                            &configuration.port,
                         );
                         configure_custom_greetings(
                             ui,
@@ -163,7 +163,7 @@ impl epi::App for LoadstoneApp {
                             git_ref_field,
                             git_fork_field,
                             last_request_response,
-                            &configuration,
+                            configuration,
                         );
                     });
             });
