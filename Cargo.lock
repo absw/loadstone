@@ -46,27 +46,11 @@ dependencies = [
 
 [[package]]
 name = "aligned"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d39da9b88ae1a81c03c9c082b8db83f1d0e93914126041962af61034ab44c4a5"
-
-[[package]]
-name = "aligned"
 version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a785a543aea40f5e4e2e93bb2655d31bc21bb391fff65697150973e383f16bb"
 dependencies = [
  "as-slice",
-]
-
-[[package]]
-name = "alloc-cortex-m"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5069e21ec61f3b243a4a4c56d920d3206e6ee86022a67c23e9fe36eb60fc1efd"
-dependencies = [
- "cortex-m 0.7.6",
- "linked_list_allocator",
 ]
 
 [[package]]
@@ -226,14 +210,11 @@ dependencies = [
  "crc",
  "defmt",
  "defmt-rtt",
- "efm32gg11b",
  "marker-blanket",
- "max3263x",
  "nb 1.0.0",
  "nom 6.1.2",
  "paste",
  "static_assertions",
- "stm32f4",
  "ufmt",
 ]
 
@@ -474,23 +455,11 @@ dependencies = [
 
 [[package]]
 name = "cortex-m"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59971a5cf4dacacaf738dd9d8660875118fce790f800f661893eb20894c1d622"
-dependencies = [
- "aligned 0.2.0",
- "bare-metal",
- "cortex-m 0.6.7",
- "volatile-register",
-]
-
-[[package]]
-name = "cortex-m"
 version = "0.6.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9075300b07c6a56263b9b582c214d0ff037b00d45ec9fde1cc711490c56f1bb9"
 dependencies = [
- "aligned 0.3.5",
+ "aligned",
  "bare-metal",
  "bitfield",
  "cortex-m 0.7.6",
@@ -824,18 +793,6 @@ dependencies = [
  "elliptic-curve",
  "hmac",
  "signature",
-]
-
-[[package]]
-name = "efm32gg11b"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16328ab8e279fdc14fd6bc05cd1fb8d1e844b271317bd0782f36e7f49f1c7905"
-dependencies = [
- "bare-metal",
- "cortex-m 0.5.11",
- "cortex-m-rt",
- "vcell",
 ]
 
 [[package]]
@@ -1549,39 +1506,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "linked_list_allocator"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "822add9edb1860698b79522510da17bef885171f75aa395cff099d770c609c24"
-
-[[package]]
-name = "loadstone"
-version = "1.1.0"
-dependencies = [
- "alloc-cortex-m",
- "anyhow",
- "blue_hal",
- "cortex-m 0.6.7",
- "cortex-m-rt",
- "cortex-m-semihosting",
- "crc",
- "defmt",
- "defmt-rtt",
- "ecdsa",
- "funty",
- "loadstone_config",
- "marker-blanket",
- "nb 0.1.3",
- "p256",
- "panic-semihosting",
- "ron",
- "serde",
- "sha2",
- "static_assertions",
- "ufmt",
-]
-
-[[package]]
 name = "loadstone_config"
 version = "1.1.0"
 dependencies = [
@@ -1665,17 +1589,6 @@ name = "matches"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
-
-[[package]]
-name = "max3263x"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1270d2f554d26b8c898ce6c19e7cba25a4b5a65299f4eadfe261e0acb9ff463d"
-dependencies = [
- "cortex-m 0.7.6",
- "cortex-m-rt",
- "vcell",
-]
 
 [[package]]
 name = "memchr"
@@ -2090,16 +2003,6 @@ dependencies = [
  "ecdsa",
  "elliptic-curve",
  "sha2",
-]
-
-[[package]]
-name = "panic-semihosting"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3d55dedd501dfd02514646e0af4d7016ce36bc12ae177ef52056989966a1eec"
-dependencies = [
- "cortex-m 0.7.6",
- "cortex-m-semihosting",
 ]
 
 [[package]]
@@ -2664,18 +2567,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stm32f4"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee53b1097a4fd61cea5ce5b4639822df4caccdfe6a6dce3e76eee5dd302b2dea"
-dependencies = [
- "bare-metal",
- "cortex-m 0.6.7",
- "cortex-m-rt",
- "vcell",
-]
 
 [[package]]
 name = "strsim"

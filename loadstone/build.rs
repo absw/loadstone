@@ -5,7 +5,7 @@ use std::fs;
 fn configure_runner(target: &str) {
     println!("cargo:rerun-if-changed={}", RUNNER_TARGET_FILE);
 
-    const RUNNER_TARGET_FILE: &str = "../.cargo/.runner-target";
+    const RUNNER_TARGET_FILE: &str = ".cargo/.runner-target";
     fs::write(RUNNER_TARGET_FILE, target).unwrap();
 }
 
