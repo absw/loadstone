@@ -112,6 +112,29 @@ def command_build(args: List[str]) -> bool:
     return True
 
 
+def command_check(args: List[str]) -> bool:
+    if len(args) < 3:
+        print("Error: check: expected at least 1 argument.")
+        return False
+
+    config = read_file_argument(args[2])
+    if config == None:
+        print("Error: check: failed to read `" + args[2] + "`")
+        return False
+
+    environment = os.environ.copy()
+    environment["LOADSTONE_CONFIG"] = config.strip()
+
+    features = "--features=" + ",".join(args[3:])
+
+    result = subprocess.run(
+        ["cargo", "+nightly", "check", "--bin=loadstone", features],
+        cwd="./loadstone",
+        env=environment,
+    )
+    return result.returncode == 0
+
+
 def command_test(args: List[str]) -> bool:
     if len(args) < 3:
         print("Error: test: expected at least 1 argument.")
@@ -167,6 +190,13 @@ COMMANDS = {
         "Build loadstone",
         "Build loadstone using the configuration from the provided file. If the given path is '-' "
         + "use standard input for config.",
+        "CONFIG_FILE FEATURES...",
+    ),
+    "check": Command(
+        command_check,
+        "Check loadstone for errors",
+        "Run `cargo check` using the configuration from the provided file. If the given path is "
+        + "'-' use standard input for config.",
         "CONFIG_FILE FEATURES...",
     ),
     "test": Command(
