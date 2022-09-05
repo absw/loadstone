@@ -37,8 +37,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Test step (find and stop)
-        run: find ; false
       - name: Check sample stm32f4 build with external flash
         env:
           SCRIPT_MODE: true
