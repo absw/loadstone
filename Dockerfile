@@ -2,7 +2,7 @@ FROM rust:buster
 
 # Install zip
 RUN apt-get update
-RUN apt-get install zip -y
+RUN apt-get install zip libxcb-shape0-dev libxcb-xfixes0-dev -y
 
 # Install rust dependencies
 RUN rustup default nightly
