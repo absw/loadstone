@@ -60,7 +60,7 @@ fn generate_key<P: AsRef<Path>>(loadstone_path: P, configuration: &Configuration
     );
 
     fs::create_dir(loadstone_path.as_ref().join("src/devices/assets/")).ok();
-    let key_path = loadstone_path.as_ref().join("src/devices/assets/key.sec1");
+    let _key_path = loadstone_path.as_ref().join("src/devices/assets/key.sec1");
 
     panic!("configuration = {:?}", configuration)
 
