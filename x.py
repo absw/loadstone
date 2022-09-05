@@ -136,9 +136,8 @@ def command_build(args: List[str]) -> bool:
 
 
 def command_check(args: List[str]) -> bool:
-    if len(args) < 3:
-        print("Error: check: expected at least 1 argument.")
-        return False
+    if len(args) == 2:
+        return run_cargo_check("", [])
 
     config = read_file_argument(args[2])
     if config == None:
@@ -149,9 +148,8 @@ def command_check(args: List[str]) -> bool:
 
 
 def command_test(args: List[str]) -> bool:
-    if len(args) < 3:
-        print("Error: test: expected at least 1 argument.")
-        return False
+    if len(args) == 2:
+        return run_cargo_test("", [])
 
     config = read_file_argument(args[2])
     if config == None:
@@ -198,16 +196,16 @@ COMMANDS = {
     "check": Command(
         command_check,
         "Check loadstone for errors",
-        "Run `cargo check` using the configuration from the provided file. If the given path is "
-        + "'-' use standard input for config.",
-        "CONFIG_FILE FEATURES...",
+        "Check for common mistakes and errors. If a config file is provided, that is used. If the "
+        + "path is '-' use standard input for config.",
+        "CONFIG_FILE? FEATURES...",
     ),
     "test": Command(
         command_test,
         "Test loadstone",
-        "Build and run loadstone's tests using the configuration from the provided file. If the "
-        + "given path is '-' use standard input for config.",
-        "CONFIG_FILE FEATURES...",
+        "Build and run loadstone's tests. If a config file is provided, that is used. If the path "
+        + "is '-', use standard input for config.",
+        "CONFIG_FILE? FEATURES...",
     ),
 }
 
