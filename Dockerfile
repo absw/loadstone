@@ -10,5 +10,6 @@ RUN rustup update
 RUN cargo install cargo-binutils
 RUN rustup component add llvm-tools-preview
 RUN rustup component add rustfmt
+RUN rustup component add clippy
 RUN rustup target add thumbv7em-none-eabi
 RUN rustup target add thumbv7em-none-eabihf
