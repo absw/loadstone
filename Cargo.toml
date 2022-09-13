@@ -1,12 +1,16 @@
 [workspace]
 members = [
+    "loadstone",
     "loadstone_config",
-    "loadstone_front",
-    "tools/confedit",
-    "tools/signing_tool",
 ]
 
-# Loadstone is excluded from the workspace, since its building is managed by x.py
-exclude = [
-    "loadstone",
-]
+[profile.release]
+opt-level = "z"
+codegen-units = 1 # better optimizations
+debug = true # symbols are nice and they don't increase the size on Flash
+lto = true # better optimizations
+
+[profile.dev]
+opt-level = 1 # Some optimization not to tank the binary size
+codegen-units = 1 # better optimizations
+lto = true # better optimizations
