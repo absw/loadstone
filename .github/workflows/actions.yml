@@ -9,10 +9,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Tests
-        env:
-          LOADSTONE_CONFIG: ""
-        run: cargo test
+      - name: Loadstone tests
+        run: ./x.py test /dev/null
+      - name: Tool tests
+        run: cd tools && cargo test
 
   clippy:
     runs-on: ubuntu-latest
@@ -40,20 +40,16 @@ jobs:
       - name: Check sample stm32f4 build with external flash
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),],bootable_index:Some(0),),external_memory_map:(banks:[(start_address:0,size_kb:7500,),],),external_flash:Some((name:\"Micronn25q128a\",internal:false,start:0,end:16777215,region_size:4096,)),golden_index:Some(2),),feature_configuration:(serial:Enabled(recovery_enabled:true,tx_pin:(peripheral:\"USART1\",bank:\"a\",index:15,af_index:6,),rx_pin:(peripheral:\"USART1\",bank:\"b\",index:3,af_index:7,),),boot_metrics:Enabled(timing:true,),update_signal: Disabled,greetings: Default,),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
-        run: cargo check --features 'stm32f412' --target thumbv7em-none-eabihf
+        run: ./x.py check .github/workflows/examples/stm32f4_external.ron stm32f412
       - name: Check sample stm32f4 build without external flash
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),(start_address:134299648,size_kb:850,),(start_address:135170048,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(2),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:true,),update_signal: Enabled,greetings: Custom( loadstone: \"hi\", demo: \"hello\",),),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
-        run: cargo check --features 'stm32f412' --target thumbv7em-none-eabihf
+        run: ./x.py check .github/workflows/examples/stm32f4.ron stm32f412
       - name: Check sample wgm160p build
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Wgm160P,memory_configuration:(internal_memory_map:(bootloader_location:0,bootloader_length_kb:1,banks:[(start_address:4096,size_kb:4,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:Some(3),),feature_configuration:(serial:Disabled,boot_metrics:Enabled(timing:false,),update_signal: Enabled,greetings: Default,),security_configuration:(security_mode:Crc,verifying_key_raw:\"\",),)"
-        run: cargo check --features 'wgm160p' --target thumbv7em-none-eabihf
+        run: ./x.py check .github/workflows/examples/wgm160p.ron wgm160p
       - name: Check sample stm32f4 build with encryption
         env:
           SCRIPT_MODE: true
-          LOADSTONE_CONFIG: "(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Enabled(recovery_enabled:false,tx_pin:(peripheral:\"USART1\",bank:\"a\",index:9,af_index:7,),rx_pin:(peripheral:\"USART1\",bank:\"b\",index:3,af_index:7,),),boot_metrics:Disabled,update_signal: Disabled,greetings: Default,),security_configuration:(security_mode:P256ECDSA,verifying_key_raw:\"-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp\nv7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==\n-----END PUBLIC KEY-----\n\",),)"
-        run: cargo check --features 'stm32f412,ecdsa-verify' --target thumbv7em-none-eabihf
+        run: ./x.py check .github/workflows/examples/stm32f4_encrypted.ron stm32f412 ecdsa-verify

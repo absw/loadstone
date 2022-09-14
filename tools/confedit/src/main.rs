@@ -1,6 +1,14 @@
-use std::{borrow::Cow, io::{Read, Write}};
 use clap::clap_app;
-use loadstone_config::{Configuration, features::{Greetings, Serial}, memory::Bank, security::{SecurityConfiguration, SecurityMode}};
+use loadstone_config::{
+    features::{Greetings, Serial},
+    memory::Bank,
+    security::{SecurityConfiguration, SecurityMode},
+    Configuration,
+};
+use std::{
+    borrow::Cow,
+    io::{Read, Write},
+};
 
 struct Arguments {
     internal_banks: Option<Vec<u32>>,
@@ -35,7 +43,10 @@ fn get_input_configuration(string: String) -> Result<Configuration, String> {
     }
 }
 
-fn modify_configuration(mut configuration: Configuration, arguments: Arguments) -> Result<Configuration, String> {
+fn modify_configuration(
+    mut configuration: Configuration,
+    arguments: Arguments,
+) -> Result<Configuration, String> {
     if let Some(greeting) = arguments.greeting {
         let old_demo = match configuration.feature_configuration.greetings {
             Greetings::Default => Cow::from(""),
@@ -53,23 +64,39 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
     }
 
     if let Some(bank) = arguments.bootable_bank {
-        configuration.memory_configuration.internal_memory_map.bootable_index = Some(bank);
+        configuration
+            .memory_configuration
+            .internal_memory_map
+            .bootable_index = Some(bank);
     }
 
     if let Some(recovery) = arguments.recovery {
         let serial = &mut configuration.feature_configuration.serial;
-        if let Serial::Enabled { recovery_enabled, .. } = serial {
+        if let Serial::Enabled {
+            recovery_enabled, ..
+        } = serial
+        {
             *recovery_enabled = recovery;
         } else {
-            return Err(String::from("cannot enable serial recovery since serial is not enabled"));
+            return Err(String::from(
+                "cannot enable serial recovery since serial is not enabled",
+            ));
         }
     }
 
     if let Some(banks) = arguments.internal_banks {
-        let mut offset = configuration.memory_configuration.internal_memory_map.bootloader_location
-            + (configuration.memory_configuration.internal_memory_map.bootloader_length_kb * 1024);
+        let mut offset = configuration
+            .memory_configuration
+            .internal_memory_map
+            .bootloader_location
+            + (configuration
+                .memory_configuration
+                .internal_memory_map
+                .bootloader_length_kb
+                * 1024);
 
-        configuration.memory_configuration.internal_memory_map.banks = banks.into_iter()
+        configuration.memory_configuration.internal_memory_map.banks = banks
+            .into_iter()
             .map(|size| {
                 let bank = Bank {
                     size_kb: size,
@@ -77,13 +104,15 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
                 };
                 offset += size * 1024;
                 bank
-            }).collect();
+            })
+            .collect();
     }
 
     if let Some(banks) = arguments.external_banks {
         let mut offset = 0;
 
-        configuration.memory_configuration.external_memory_map.banks = banks.into_iter()
+        configuration.memory_configuration.external_memory_map.banks = banks
+            .into_iter()
             .map(|size| {
                 let bank = Bank {
                     size_kb: size,
@@ -91,7 +120,8 @@ fn modify_configuration(mut configuration: Configuration, arguments: Arguments) 
                 };
                 offset += size * 1024;
                 bank
-            }).collect();
+            })
+            .collect();
     }
 
     Ok(configuration)
@@ -103,7 +133,8 @@ fn get_output_string(configuration: Configuration) -> Result<String, String> {
 }
 
 fn write_output_string(string: String) -> Result<(), String> {
-    std::io::stdout().write_all(string.as_bytes())
+    std::io::stdout()
+        .write_all(string.as_bytes())
         .map_err(|e| format!("failed to write output to standard output stream: {}.", e))
 }
 
@@ -128,13 +159,13 @@ fn to_decimal_digit(c: char) -> Option<u32> {
         '7' => Some(7),
         '8' => Some(8),
         '9' => Some(9),
-        _ => None
+        _ => None,
     }
 }
 
 fn parse_banks(string: &str) -> Result<Vec<u32>, String> {
     let mut sizes = Vec::new();
-    let mut size : u32 = 0;
+    let mut size: u32 = 0;
     for c in string.chars() {
         if let Some(d) = to_decimal_digit(c) {
             size = (size * 10) + d;
@@ -142,9 +173,12 @@ fn parse_banks(string: &str) -> Result<Vec<u32>, String> {
             sizes.push(size);
             size = 0;
         } else {
-            return Err(format!("bank size list expects decimal digits and commas, found {}.", c))
+            return Err(format!(
+                "bank size list expects decimal digits and commas, found {}.",
+                c
+            ));
         }
-    };
+    }
 
     if size > 0 {
         sizes.push(size);
@@ -172,7 +206,8 @@ fn run_clap() -> Result<Arguments, String> {
         if s == "none" {
             Some(None)
         } else {
-            let n = s.parse::<usize>()
+            let n = s
+                .parse::<usize>()
                 .map_err(|_| "--golden-bank expected an unsigned integer argument".to_string())?;
             Some(Some(n))
         }
@@ -183,10 +218,11 @@ fn run_clap() -> Result<Arguments, String> {
     let bootable_bank = match matches.value_of("bootable") {
         None => None,
         Some(string) => {
-            let n = string.parse::<usize>()
+            let n = string
+                .parse::<usize>()
                 .map_err(|_| "--golden-bank expected an unsigned integer argument".to_string())?;
             Some(n)
-        },
+        }
     };
 
     let recovery = match matches.value_of("recovery") {

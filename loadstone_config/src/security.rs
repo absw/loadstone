@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SecurityMode {
     /// Enforces image integrity through a cyclical redundancy check.
     /// This only helps against unintentional corruption, and doesn't
@@ -12,7 +12,9 @@ pub enum SecurityMode {
 }
 
 impl Default for SecurityMode {
-    fn default() -> Self { SecurityMode::P256ECDSA }
+    fn default() -> Self {
+        SecurityMode::P256ECDSA
+    }
 }
 
 /// Defines how Loadstone will aproach guaranteeing image security

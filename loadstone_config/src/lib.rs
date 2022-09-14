@@ -6,9 +6,6 @@
 //! uses this dependency to help generate the code that Loadstone includes
 //! (things like feature flags, memory map configuration, etc).
 
-#![feature(stmt_expr_attributes)]
-#![feature(bool_to_option)]
-
 use std::fmt::Display;
 
 use features::{BootMetrics, FeatureConfiguration, Serial};
@@ -17,12 +14,12 @@ use port::Port;
 use security::{SecurityConfiguration, SecurityMode};
 use serde::{Deserialize, Serialize};
 
-pub mod port;
-pub mod pins;
-pub mod memory;
-pub mod features;
-pub mod security;
 pub mod codegen;
+pub mod features;
+pub mod memory;
+pub mod pins;
+pub mod port;
+pub mod security;
 
 #[derive(Serialize, Deserialize, Default, Debug)]
 /// Defines all configuration for a "codegen" loadstone port. This struct
@@ -43,7 +40,9 @@ pub struct Configuration {
 
 impl Configuration {
     /// True if the configuration is comprehensive enough to generate a loadstone binary.
-    pub fn complete(&self) -> bool { self.required_configuration_steps().count() == 0 }
+    pub fn complete(&self) -> bool {
+        self.required_configuration_steps().count() == 0
+    }
 
     /// Returns an iterator over the feature flags that will be necessary to compile loadstone
     /// when using this configuration struct.
@@ -64,15 +63,15 @@ impl Configuration {
 
     /// Missing configuration steps to have enough information to generate a loadstone binary.
     pub fn required_configuration_steps(&self) -> impl Iterator<Item = RequiredConfigurationStep> {
-        #[rustfmt::skip]
         IntoIterator::into_iter([
-            self.memory_configuration.internal_memory_map.bootable_index.is_none()
+            self.memory_configuration
+                .internal_memory_map
+                .bootable_index
+                .is_none()
                 .then_some(RequiredConfigurationStep::BootableBank),
-
             (self.security_configuration.security_mode == SecurityMode::P256ECDSA
                 && self.security_configuration.verifying_key_raw.is_empty())
-                .then_some(RequiredConfigurationStep::PublicKey),
-
+            .then_some(RequiredConfigurationStep::PublicKey),
         ])
         .flatten()
     }
@@ -85,18 +84,27 @@ impl Configuration {
             self.feature_configuration.serial = Serial::Disabled;
         }
 
-        self.memory_configuration.internal_memory_map.banks.truncate(u8::MAX as usize);
-        let max_external_banks = (u8::MAX as usize)
-            - self.memory_configuration.internal_memory_map.banks.len();
-        self.memory_configuration.external_memory_map.banks.truncate(max_external_banks);
+        self.memory_configuration
+            .internal_memory_map
+            .banks
+            .truncate(u8::MAX as usize);
+        let max_external_banks =
+            (u8::MAX as usize) - self.memory_configuration.internal_memory_map.banks.len();
+        self.memory_configuration
+            .external_memory_map
+            .banks
+            .truncate(max_external_banks);
 
         if !features::BootMetrics::timing_supported(&self.port) {
-            if let BootMetrics::Enabled{timing} = &mut self.feature_configuration.boot_metrics {
+            if let BootMetrics::Enabled { timing } = &mut self.feature_configuration.boot_metrics {
                 *timing = false
             }
         }
 
-        if !matches!(self.security_configuration.security_mode, SecurityMode::P256ECDSA) {
+        if !matches!(
+            self.security_configuration.security_mode,
+            SecurityMode::P256ECDSA
+        ) {
             self.security_configuration.verifying_key_raw.clear();
         }
 

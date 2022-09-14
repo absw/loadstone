@@ -1,0 +1,5 @@
+(port:Stm32F412,memory_configuration:(internal_memory_map:(bootloader_location:134217728,bootloader_length_kb:64,banks:[(start_address:134283264,size_kb:16,),],bootable_index:Some(0),),external_memory_map:(banks:[],),external_flash:None,golden_index:None,),feature_configuration:(serial:Enabled(recovery_enabled:false,tx_pin:(peripheral:"USART1",bank:"a",index:9,af_index:7,),rx_pin:(peripheral:"USART1",bank:"b",index:3,af_index:7,),),boot_metrics:Disabled,update_signal: Disabled,greetings: Default,),security_configuration:(security_mode:P256ECDSA,verifying_key_raw:"-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEPdEmj0oKViN8nvnri0I6JZsy7PQp
+v7TUuHT5jFnFsx4xxOmA+MyGXk/fsZHnKiUfWb4smzrWxJCKKwI2vHBw8A==
+-----END PUBLIC KEY-----
+",),)

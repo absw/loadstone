@@ -1,10 +1,10 @@
 use anyhow::Result;
 use itertools::Itertools;
-use quote::{TokenStreamExt, format_ident, quote};
+use quote::{format_ident, quote, TokenStreamExt};
 use std::{fs::File, io::Write, iter::empty};
 use syn::{Ident, Index};
 
-use crate::{Configuration, features::Serial, pins::QspiPins};
+use crate::{features::Serial, pins::QspiPins, Configuration};
 
 struct SerialPinTokens {
     bank: char,
@@ -37,9 +37,12 @@ pub fn generate_stm32f4_pins(configuration: &Configuration, file: &mut File) -> 
 fn generate_pin_constructor(
     configuration: &Configuration,
     code: &mut quote::__private::TokenStream,
-) -> () {
+) {
     let banks = 'a'..='h';
-    let gpio_fields = banks.clone().map(|b| format_ident!("gpio{}", b)).collect_vec();
+    let gpio_fields = banks
+        .clone()
+        .map(|b| format_ident!("gpio{}", b))
+        .collect_vec();
     let pac_gpio_fields = banks.map(|b| format_ident!("GPIO{}", b.to_uppercase().next().unwrap()));
 
     let serial_pin_structs: Box<dyn Iterator<Item = Ident>> =
@@ -64,13 +67,11 @@ fn generate_pin_constructor(
             Box::new(None.into_iter())
         };
 
-    let qspi_pin_structs = qspi_flash_pin_tokens(configuration).map(|p| {
-        format_ident!("gpio{}", p.bank)
-    });
+    let qspi_pin_structs =
+        qspi_flash_pin_tokens(configuration).map(|p| format_ident!("gpio{}", p.bank));
 
-    let qspi_pin_fields = qspi_flash_pin_tokens(configuration).map(|p| {
-        format_ident!("p{}{}", p.bank, p.index)
-    });
+    let qspi_pin_fields =
+        qspi_flash_pin_tokens(configuration).map(|p| format_ident!("p{}{}", p.bank, p.index));
 
     code.append_all(quote! {
         #[allow(unused)]
@@ -112,14 +113,11 @@ fn generate_imports_and_types(
             pub type Serial = blue_hal::hal::null::NullSerial;
         });
     }
-    if let Some(_) = &configuration.memory_configuration.external_flash {
-        let qspi_pins = qspi_flash_pin_tokens(configuration).map(|p| {
-            format_ident!("P{}{}", p.bank, p.index)
-        });
+    if configuration.memory_configuration.external_flash.is_some() {
+        let qspi_pins =
+            qspi_flash_pin_tokens(configuration).map(|p| format_ident!("P{}{}", p.bank, p.index));
 
-        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| {
-            p.mode
-        });
+        let qspi_modes = qspi_flash_pin_tokens(configuration).map(|p| p.mode);
 
         code.append_all(quote! {
             use blue_hal::drivers::micron::n25q128a_flash::MicronN25q128a;
@@ -150,9 +148,12 @@ fn generate_imports_and_types(
 
 fn generate_gpio_macros(configuration: &Configuration, code: &mut quote::__private::TokenStream) {
     for bank in 'a'..='h' {
-        let serial_tokens = serial_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
-        let qspi_flash_pin_tokens =
-            qspi_flash_pin_tokens(configuration).filter(|t| t.bank == bank).collect_vec();
+        let serial_tokens = serial_tokens(configuration)
+            .filter(|t| t.bank == bank)
+            .collect_vec();
+        let qspi_flash_pin_tokens = qspi_flash_pin_tokens(configuration)
+            .filter(|t| t.bank == bank)
+            .collect_vec();
 
         let serial_index = serial_tokens.iter().map(|t| &t.index);
         let serial_mode = serial_tokens.iter().map(|t| &t.mode);
@@ -178,14 +179,14 @@ fn serial_tokens(configuration: &Configuration) -> Box<dyn Iterator<Item = Seria
     if let Serial::Enabled { tx_pin, rx_pin, .. } = &configuration.feature_configuration.serial {
         Box::new(IntoIterator::into_iter([
             SerialPinTokens {
-                bank: tx_pin.bank.chars().nth(0).unwrap(),
+                bank: tx_pin.bank.chars().next().unwrap(),
                 index: (tx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", tx_pin.af_index),
                 direction: format_ident!("TxPin"),
                 peripheral: format_ident!("{}", tx_pin.peripheral),
             },
             SerialPinTokens {
-                bank: rx_pin.bank.chars().nth(0).unwrap(),
+                bank: rx_pin.bank.chars().next().unwrap(),
                 index: (rx_pin.index as usize).into(),
                 mode: format_ident!("AF{}", rx_pin.af_index),
                 direction: format_ident!("RxPin"),
@@ -204,7 +205,11 @@ fn qspi_flash_pin_tokens(
         return Box::new(empty());
     }
 
-    let pins = configuration.memory_configuration.external_memory_map.pins.clone()
+    let pins = configuration
+        .memory_configuration
+        .external_memory_map
+        .pins
+        .clone()
         .unwrap_or_else(|| QspiPins::create(configuration.port));
 
     Box::new(IntoIterator::into_iter([

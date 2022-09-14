@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "confedit",
+    "loadstone_front",
+    "signing_tool",
+]

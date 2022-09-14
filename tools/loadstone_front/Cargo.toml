@@ -1,0 +1,64 @@
+[package]
+name = "loadstone_front"
+version = "1.0.0"
+edition = "2018"
+license = "MIT"
+description = "Portable secure bootloader for Cortex-M MCUs - Builder Web App"
+repository = "https://github.com/absw/loadstone"
+readme = "README.md"
+keywords = ["embedded", "bootloader", "cortex", "secure", "bare_metal"]
+categories = ["embedded", "no-std"]
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+anyhow = "1"
+itertools = "0.10"
+wasm-bindgen-futures = "0.4"
+ron = "0.6"
+base64 = "0.13"
+git-version = "0.3"
+reqwest-wasm = "0.11"
+futures = "0.3"
+atomic_refcell = "0.1"
+enum-iterator = "0.6"
+sha2 = "0.9"
+
+[dependencies.loadstone_config]
+path = "../../loadstone_config/"
+
+[dependencies.eframe]
+# Gives us egui, epi and web+native backends
+git = "https://github.com/emilk/egui.git"
+rev = "7c5a2d60c5d000f193bc7b16c5a53c059fee8259"
+features = ["http"]
+
+[dependencies.serde]
+version = "1.0"
+features = ["derive"]
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+features = ["serde-serialize"]
+
+[dependencies.web-sys]
+version = "0.3"
+features = ["Blob", "BlobPropertyBag", "Url"]
+
+[dependencies.getrandom]
+version = "0.2"
+features = ["js"]
+
+[dependencies.ecdsa]
+version = "0.11"
+features = ["pem"]
+
+[dependencies.p256]
+version = "0.8"
+features = ["ecdsa", "sha256", "pem"]
+
+[features]
+default = []
+http = ["eframe/http"] # Enable if you want to do http requests
+persistence = ["eframe/persistence"] # Enable if you want to persist app state on shutdown

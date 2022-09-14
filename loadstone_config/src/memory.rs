@@ -22,7 +22,9 @@ pub struct Bank {
 
 impl Bank {
     /// Address immediately after the end of this bank.
-    pub fn end_address(&self) -> u32 { self.start_address + self.size_kb * 1024 }
+    pub fn end_address(&self) -> u32 {
+        self.start_address + self.size_kb * 1024
+    }
 }
 
 /// Memory map for an internal (MCU) flash. This must contain the loadstone bootloader itself
@@ -79,7 +81,7 @@ impl MemoryConfiguration {
 }
 
 /// Definition of a flash chip's hardware.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FlashChip {
     /// Tag to identify the hardware.
     pub name: String,
